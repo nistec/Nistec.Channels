@@ -1,0 +1,53 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChannelsServerDemo", "ChannelsServerDemo\ChannelsServerDemo.csproj", "{1053AFE2-723E-4187-9D09-71AD6983DF7D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nistec.Lib", "..\..\Nistec.Lib\Nistec.Lib.csproj", "{54F52ED5-AECD-47C6-93D8-7B3358BA7F8C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nistec.Logger", "..\..\Nistec.Logger\Nistec.Logger.csproj", "{E510DD2C-859C-476C-9901-60EDFC5E71F1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nistec.Channels", "..\..\Nistec.Channels\Nistec.Channels.csproj", "{0839A364-A34D-4143-AD4C-AEF4C7B232AC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChannelsClientDemo", "ChannelsClientDemo\ChannelsClientDemo.csproj", "{B0E79176-742F-4431-83F8-7A8C14288C4A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Library", "Library", "{6A832824-1616-40B4-B355-CD8A1D627D70}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1053AFE2-723E-4187-9D09-71AD6983DF7D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1053AFE2-723E-4187-9D09-71AD6983DF7D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1053AFE2-723E-4187-9D09-71AD6983DF7D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1053AFE2-723E-4187-9D09-71AD6983DF7D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{54F52ED5-AECD-47C6-93D8-7B3358BA7F8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54F52ED5-AECD-47C6-93D8-7B3358BA7F8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54F52ED5-AECD-47C6-93D8-7B3358BA7F8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54F52ED5-AECD-47C6-93D8-7B3358BA7F8C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E510DD2C-859C-476C-9901-60EDFC5E71F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E510DD2C-859C-476C-9901-60EDFC5E71F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E510DD2C-859C-476C-9901-60EDFC5E71F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E510DD2C-859C-476C-9901-60EDFC5E71F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0839A364-A34D-4143-AD4C-AEF4C7B232AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0839A364-A34D-4143-AD4C-AEF4C7B232AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0839A364-A34D-4143-AD4C-AEF4C7B232AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0839A364-A34D-4143-AD4C-AEF4C7B232AC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B0E79176-742F-4431-83F8-7A8C14288C4A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B0E79176-742F-4431-83F8-7A8C14288C4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B0E79176-742F-4431-83F8-7A8C14288C4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B0E79176-742F-4431-83F8-7A8C14288C4A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0839A364-A34D-4143-AD4C-AEF4C7B232AC} = {6A832824-1616-40B4-B355-CD8A1D627D70}
+		{54F52ED5-AECD-47C6-93D8-7B3358BA7F8C} = {6A832824-1616-40B4-B355-CD8A1D627D70}
+		{E510DD2C-859C-476C-9901-60EDFC5E71F1} = {6A832824-1616-40B4-B355-CD8A1D627D70}
+	EndGlobalSection
+EndGlobal
