@@ -104,7 +104,7 @@ namespace Nistec.Channels
                 InBufferSize = inBufferSize,
                 OutBufferSize = outBufferSize,
                 PipeDirection = isDuplex ? PipeDirection.InOut : System.IO.Pipes.PipeDirection.Out,
-                PipeOptions = isAsync ? PipeOptions.Asynchronous : PipeOptions.None,
+                PipeOptions = isAsync ? PipeOptions.Asynchronous | PipeOptions.WriteThrough : PipeOptions.None,
                 VerifyPipe = pipeName
             };
             this.PipeDirection = isDuplex ? PipeDirection.InOut : System.IO.Pipes.PipeDirection.Out;
@@ -128,7 +128,7 @@ namespace Nistec.Channels
                 InBufferSize = PipeSettings.DefaultInBufferSize,
                 OutBufferSize = PipeSettings.DefaultOutBufferSize,
                 PipeDirection = isDuplex ? PipeDirection.InOut : System.IO.Pipes.PipeDirection.Out,
-                PipeOptions = isAsync ? PipeOptions.Asynchronous : PipeOptions.None,
+                PipeOptions = isAsync ? PipeOptions.Asynchronous | PipeOptions.WriteThrough : PipeOptions.None,
                 VerifyPipe = pipeName
             };
         }
@@ -150,7 +150,7 @@ namespace Nistec.Channels
                 InBufferSize = PipeSettings.DefaultInBufferSize,
                 OutBufferSize = PipeSettings.DefaultOutBufferSize,
                 PipeDirection = isDuplex ? PipeDirection.InOut : System.IO.Pipes.PipeDirection.Out,
-                PipeOptions =  PipeOptions.None,
+                PipeOptions = PipeOptions.Asynchronous | PipeOptions.WriteThrough, //PipeOptions.None,
                 VerifyPipe = pipeName
             };
         }
@@ -259,7 +259,7 @@ namespace Nistec.Channels
                 // Try to open the named pipe identified by the pipe name.
 
                 pipeClient = new NamedPipeClientStream(
-                    ServerName,                 // The server name
+                    ServerName,                          // The server name
                     Settings.PipeName,                   // The unique pipe name
                     Settings.PipeDirection,              // The pipe is duplex
                     Settings.PipeOptions                 // No additional parameters
@@ -366,7 +366,7 @@ namespace Nistec.Channels
             }
             catch (MessageException mex)
             {
-                Log.Exception("The tcp client throws the MessageException : ", mex, true);
+                Log.Exception("The client throws the MessageException : ", mex, true);
                 if (enableException)
                     throw mex;
                 return response;

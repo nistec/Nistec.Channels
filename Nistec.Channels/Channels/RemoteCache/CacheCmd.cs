@@ -419,6 +419,8 @@ namespace Nistec.Channels.RemoteCache
         public const string GetItemsReport = "sync_GetItemsReport";
         /// <summary>Get all entites names from sync cache.</summary>
         public const string GetAllEntityNames = "sync_GetAllEntityNames";
+        /// <summary>Get all items count for specified entity from sync cache.</summary>
+        public const string GetEntityItemsCount = "sync_GetEntityItemsCount";
 
     }
 }

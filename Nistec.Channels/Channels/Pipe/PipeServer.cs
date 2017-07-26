@@ -43,9 +43,9 @@ namespace Nistec.Channels
         private int numThreads;
         private bool Listen;
         private bool Initilize = false;
-        private bool IsAsync = false;
+        private bool IsAsync = true;
         Thread[] servers;
-
+        static object mlock = new object();
         ILogger _Logger = Logger.Instance;
         /// <summary>
         /// Get or Set Logger that implements <see cref="ILogger"/> interface.
@@ -155,7 +155,7 @@ namespace Nistec.Channels
                 return;
             numThreads = MaxServerConnections;
             servers = new Thread[numThreads];
-
+            //IsAsync = true;
             for (int i = 0; i < numThreads; i++)
             {
                 if (IsAsync)
@@ -165,6 +165,7 @@ namespace Nistec.Channels
                 servers[i].IsBackground = true;
                 servers[i].Start();
             }
+            Initilize = true;
             OnLoad();
 
             Log.Info("Waiting for client connection...\n");
@@ -239,6 +240,10 @@ namespace Nistec.Channels
 
             int cbResponse = bResponse.iLength;
 
+            //BinaryWriter bw = new BinaryWriter(pipeServer);
+            //bw.Write(bResponse.ToArray(), 0, cbResponse);
+            //bw.Flush();
+
             pipeServer.Write(bResponse.ToArray(), 0, cbResponse);
 
             pipeServer.Flush();
@@ -288,6 +293,8 @@ namespace Nistec.Channels
                 );
         }
 
+
+
         NamedPipeServerStream CreatePipeAccessControl()
         {
             // Fix up the DACL on the pipe before opening the listener instance
@@ -297,7 +304,7 @@ namespace Nistec.Channels
                         PipeDirection,                                      // The pipe is duplex
                         NamedPipeServerStream.MaxAllowedServerInstances,    // MaxAllowedServerInstances
                         PipeTransmissionMode.Message,                       // Byte|Message-based communication
-                        PipeOptions.None,                                   // No additional parameters
+                        PipeOptions.Asynchronous | PipeOptions.WriteThrough,// No additional parameters
                         InBufferSize,                                       // Input buffer size
                         OutBufferSize,                                      // Output buffer size
                         null,                                               // Pipe security attributes
@@ -337,12 +344,12 @@ namespace Nistec.Channels
 
             while (Listen)
             {
-
-
                 try
                 {
-
-                    pipeServer = CreatePipeAccessControl();
+                    lock (mlock)
+                    {
+                        pipeServer = CreatePipeAccessControl();
+                    }
 
                     // Wait for the client to connect.
                     //Netlog.Info("Waiting for the client's connection...");
@@ -353,11 +360,13 @@ namespace Nistec.Channels
                     OnClientConnected();
 
                     message = ReadRequest(pipeServer);
-
+                    //Netlog.Info("ReadRequest finished.");
                     NetStream res = ExecRequset(message);
-
+                    //Netlog.Info("ExecRequset finished.");
+                    
                     WriteResponse(pipeServer, res);
-
+                    //Netlog.Info("WriteResponse finished.");
+                    
                     //pipeServer.Flush();
 
                     // Flush the pipe to allow the client to read the pipe's contents 
@@ -388,6 +397,7 @@ namespace Nistec.Channels
                         message = default(TRequest);
                     }
                 }
+                Thread.Sleep(10);
             }
             Console.WriteLine("{0} Pipe server stope listen Thread<{1}>", PipeName, Thread.CurrentThread.ManagedThreadId);
 
@@ -402,7 +412,7 @@ namespace Nistec.Channels
         private void RunAsync()
         {
             NamedPipeServerStream pipeServerAsync = null;
-            bool connected = false;
+            //bool connected = false;
             //const string ResponseMessage = "Default response from server\0";
             Console.WriteLine("{0} Pipe server async start listen Thread<{1}>", PipeName, Thread.CurrentThread.ManagedThreadId);
 
@@ -412,46 +422,49 @@ namespace Nistec.Channels
 
                 try
                 {
-
-                    pipeServerAsync = CreatePipeAccessControl();
+                    lock (mlock)
+                    {
+                        pipeServerAsync = CreatePipeAccessControl();
+                    }
 
                     // Wait for the client to connect.
                     AsyncCallback myCallback = new AsyncCallback(WaitForConnectionAsyncCallback);
                     IAsyncResult asyncResult = pipeServerAsync.BeginWaitForConnection(myCallback, pipeServerAsync);
 
-                    while (!asyncResult.IsCompleted)
-                    {
-                        Thread.Sleep(100);
-                    }
+                    //while (!asyncResult.IsCompleted)
+                    //{
+                    //    Thread.Sleep(100);
+                    //}
 
-                    connected = true;
+                    //connected = true;
 
-                    OnClientConnected();
+                    //OnClientConnected();
 
                     //pipeServer.Flush();
 
                     // Flush the pipe to allow the client to read the pipe's contents 
                     // before disconnecting. Then disconnect the client's connection.
-                    pipeServerAsync.WaitForPipeDrain();
-                    pipeServerAsync.Disconnect();
-                    connected = false;
+                    //pipeServerAsync.WaitForPipeDrain();
+                    //pipeServerAsync.Disconnect();
+                    //connected = false;
                 }
                 catch (Exception ex)
                 {
                     Log.Exception("The pipe sync server throws the error: ", ex, true);
                 }
-                finally
-                {
-                    if (pipeServerAsync != null)
-                    {
-                        if (connected && pipeServerAsync.IsConnected)
-                        {
-                            pipeServerAsync.Disconnect();
-                        }
-                        pipeServerAsync.Close();
-                        pipeServerAsync = null;
-                    }
-                }
+                //finally
+                //{
+                //    if (pipeServerAsync != null)
+                //    {
+                //        if (connected && pipeServerAsync.IsConnected)
+                //        {
+                //            pipeServerAsync.Disconnect();
+                //        }
+                //        pipeServerAsync.Close();
+                //        pipeServerAsync = null;
+                //    }
+                //}
+                Thread.Sleep(10);
             }
             Console.WriteLine("{0} Pipe server async stop listen Thread<{1}>", PipeName, Thread.CurrentThread.ManagedThreadId);
         }
@@ -459,18 +472,25 @@ namespace Nistec.Channels
 
         private void WaitForConnectionAsyncCallback(IAsyncResult result)
         {
+            bool connected = false;
+            NamedPipeServerStream pipeServerAsync = null;
             TRequest message = default(TRequest);
             try
             {
-                NamedPipeServerStream pipeServerAsync = (NamedPipeServerStream)result.AsyncState;
+                pipeServerAsync = (NamedPipeServerStream)result.AsyncState;
 
                 pipeServerAsync.EndWaitForConnection(result);
+
+                connected = true;
+
+                OnClientConnected();
 
                 message = ReadRequest(pipeServerAsync);
 
                 NetStream res = ExecRequset(message);
 
                 WriteResponse(pipeServerAsync, res);
+
             }
             catch (OperationCanceledException oex)
             {
@@ -482,12 +502,23 @@ namespace Nistec.Channels
             }
             finally
             {
+                if (pipeServerAsync != null)
+                {
+                    if (connected && pipeServerAsync.IsConnected)
+                    {
+                        pipeServerAsync.Disconnect();
+                    }
+                    pipeServerAsync.Close();
+                    pipeServerAsync = null;
+                }
                 if (message != null)
                 {
                     message.Dispose();
                     message = default(TRequest);
                 }
+
             }
+            Thread.Sleep(10);
         }
 
 
@@ -507,6 +538,15 @@ namespace Nistec.Channels
         {
             PipeSecurity pipeSecurity = new PipeSecurity();
 
+            //pipeSecurity.AddAccessRule(new PipeAccessRule(
+            //            WindowsIdentity.GetCurrent().User,
+            //            PipeAccessRights.FullControl,
+            //            AccessControlType.Allow));
+            //pipeSecurity.AddAccessRule(new PipeAccessRule(
+            //            new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null),
+            //            PipeAccessRights.ReadWrite, AccessControlType.Allow));
+
+
             // Allow Everyone read and write access to the pipe.
             pipeSecurity.SetAccessRule(new PipeAccessRule("Authenticated Users",
                 PipeAccessRights.ReadWrite, AccessControlType.Allow));
@@ -517,6 +557,8 @@ namespace Nistec.Channels
 
             return pipeSecurity;
         }
+
+
         #endregion
     }
 }

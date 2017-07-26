@@ -28,13 +28,14 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Nistec.Channels.RemoteCache
 {
    
 
     /// <summary>
-    /// A Session Api
+    /// A Sync Cache Api
     /// </summary>
     public class SyncCacheApi
     {
@@ -44,7 +45,7 @@ namespace Nistec.Channels.RemoteCache
         int port;
         int readTimeout;
         bool useConfig;
-
+        bool isAsync = true;
         public static SyncCacheApi Get(NetProtocol protocol = CacheApi.DefaultProtocol)
         {
             if (protocol == NetProtocol.NA)
@@ -73,6 +74,12 @@ namespace Nistec.Channels.RemoteCache
             return key;
         }
 
+        internal object GetAsync(string command, string itemName, string[] keys, Type type)
+        {
+            var result = Task.Factory.StartNew<object>(() => Get(command, itemName, keys, type));
+            return result == null ? null : result.Result;
+        }
+
         internal object Get(string command, string itemName, string[] keys, Type type)
         {
             IMessage message = CacheApi.CreateMessage(command, GetKey(itemName, keys), type, protocol);
@@ -82,6 +89,11 @@ namespace Nistec.Channels.RemoteCache
             return CacheApi.SendDuplex(message, hostAddress, port, readTimeout, protocol);
         }
 
+        internal T GetAsync<T>(string command, string itemName, string[] keys)
+        {
+            var result = Task.Factory.StartNew<T>(() => Get<T>(command, itemName, keys));
+            return result == null ? default(T) : result.Result;
+        }
         internal T Get<T>(string command, string itemName, string[] keys)
         {
             switch (command)
@@ -110,6 +122,11 @@ namespace Nistec.Channels.RemoteCache
 
         }
 
+        internal void DoAsync(string command, string key, string[] args)
+        {
+           Task.Factory.StartNew(() => Do(command, key, args));
+        }
+
         internal void Do(string command, string key, string[] args)
         {
             IMessage message = CacheApi.CreateMessage(command, key, null, CacheApi.TypeEmpty, args, protocol);
@@ -117,8 +134,8 @@ namespace Nistec.Channels.RemoteCache
                 CacheApi.SendOut(message, CacheApi.HostType.Sync, protocol);
             else
                 CacheApi.SendOut(message, hostAddress, port, readTimeout, protocol);
-
         }
+
         #endregion
 
  
@@ -130,7 +147,7 @@ namespace Nistec.Channels.RemoteCache
         /// <returns></returns>
         public object Get(MessageKey info, Type type)
         {
-            return Get(SyncCacheCmd.GetSyncItem, info.ItemName, info.ItemKeys, type);
+            return GetAsync(SyncCacheCmd.GetSyncItem, info.ItemName, info.ItemKeys, type);
         }
 
         /// <summary>
@@ -142,7 +159,7 @@ namespace Nistec.Channels.RemoteCache
         /// <returns></returns>
         public object Get(string entityName, string[] keys, Type type)
         {
-            return Get(SyncCacheCmd.GetSyncItem, entityName, keys, type);
+            return GetAsync(SyncCacheCmd.GetSyncItem, entityName, keys, type);
         }
 
         /// <summary>
@@ -153,7 +170,7 @@ namespace Nistec.Channels.RemoteCache
         /// <returns></returns>
         public T Get<T>(MessageKey info)
         {
-            return Get<T>(SyncCacheCmd.GetSyncItem, info.ItemName, info.ItemKeys);
+            return GetAsync<T>(SyncCacheCmd.GetSyncItem, info.ItemName, info.ItemKeys);
         }
         /// <summary>
         /// Get item from sync cache using arguments.
@@ -164,7 +181,7 @@ namespace Nistec.Channels.RemoteCache
         /// <returns></returns>
         public T Get<T>(string entityName, string[] keys)
         {
-            return Get<T>(SyncCacheCmd.GetSyncItem, entityName, keys);
+            return GetAsync<T>(SyncCacheCmd.GetSyncItem, entityName, keys);
         }
 
         /// <summary>
@@ -173,9 +190,9 @@ namespace Nistec.Channels.RemoteCache
         /// <param name="itemName"></param>
         /// <param name="keys"></param>
         /// <returns></returns>
-        public IDictionary GetRecord(string itemName, string[] keys)
+        public IDictionary GetRecord(string itemName, string[] keys, bool isAsync = false)
         {
-            return Get<IDictionary>(SyncCacheCmd.GetRecord, itemName, keys);
+            return GetAsync<IDictionary>(SyncCacheCmd.GetRecord, itemName, keys);
         }
 
 
@@ -198,7 +215,7 @@ namespace Nistec.Channels.RemoteCache
         /// </code></example>
         public IDictionary GetRecord(MessageKey info)
         {
-            return Get<IDictionary>(SyncCacheCmd.GetRecord, info.ItemName, info.ItemKeys);
+            return GetAsync<IDictionary>(SyncCacheCmd.GetRecord, info.ItemName, info.ItemKeys);
         }
 
         /// <summary>
@@ -206,7 +223,6 @@ namespace Nistec.Channels.RemoteCache
         /// </summary>
         /// <param name="info"></param>
         /// <param name="format"></param>
-        /// <param name="protocol"></param>
         /// <returns></returns>
         public string GetJson(MessageKey info, JsonFormat format)
         {
@@ -220,7 +236,6 @@ namespace Nistec.Channels.RemoteCache
         /// <param name="entityName"></param>
         /// <param name="keys"></param>
         /// <param name="format"></param>
-        /// <param name="protocol"></param>
         /// <returns></returns>
         public string GetJson(string entityName, string[] keys, JsonFormat format)
         {
@@ -232,11 +247,10 @@ namespace Nistec.Channels.RemoteCache
         /// Get item as stream from sync cache using <see cref="MessageKey"/>.
         /// </summary>
         /// <param name="info"></param>
-        /// <param name="entityType"></param>
         /// <returns></returns>
         public NetStream GetAs(MessageKey info)
         {
-            return Get<NetStream>(SyncCacheCmd.GetAs, info.ItemName, info.ItemKeys);
+            return GetAsync<NetStream>(SyncCacheCmd.GetAs, info.ItemName, info.ItemKeys);
         }
 
         /// <summary>
@@ -244,11 +258,10 @@ namespace Nistec.Channels.RemoteCache
         /// </summary>
         /// <param name="entityName"></param>
         /// <param name="keys"></param>
-        /// <param name="protocol"></param>
         /// <returns></returns>
         public NetStream GetAs(string entityName, string[] keys)
         {
-            return Get<NetStream>(SyncCacheCmd.GetAs, entityName, keys);
+            return GetAsync<NetStream>(SyncCacheCmd.GetAs, entityName, keys);
         }
 
         /// <summary>
@@ -271,7 +284,7 @@ namespace Nistec.Channels.RemoteCache
         /// </code></example>
         public T GetEntity<T>(MessageKey info)
         {
-            return Get<T>(SyncCacheCmd.GetEntity, info.ItemName, info.ItemKeys);
+            return GetAsync<T>(SyncCacheCmd.GetEntity, info.ItemName, info.ItemKeys);
         }
 
         /// <summary>
@@ -282,21 +295,21 @@ namespace Nistec.Channels.RemoteCache
         /// <returns></returns>
         public T GetEntity<T>(string entityName, string[] keys)
         {
-            return Get<T>(SyncCacheCmd.GetEntity, entityName, keys);
+            return GetAsync<T>(SyncCacheCmd.GetEntity, entityName, keys);
         }
         /// <summary>
         /// Reset all items in sync cache
         /// </summary>
         public void Reset()
         {
-            Do(SyncCacheCmd.Reset, "*", null);
+            DoAsync(SyncCacheCmd.Reset, "*", null);
         }
         /// <summary>
         /// Refresh all items in sync cache
         /// </summary>
         public void Refresh()
         {
-            Do(SyncCacheCmd.Refresh, "*", null);
+            DoAsync(SyncCacheCmd.Refresh, "*", null);
         }
         /// <summary>
         /// Refresh specified item in sync cache.
@@ -311,7 +324,7 @@ namespace Nistec.Channels.RemoteCache
         /// </code></example>
         public void Refresh(string syncName)
         {
-            Do(SyncCacheCmd.RefreshItem, syncName, null);
+            DoAsync(SyncCacheCmd.RefreshItem, syncName, null);
         }
         /// <summary>
         /// Refresh specified item in sync cache.
@@ -326,7 +339,7 @@ namespace Nistec.Channels.RemoteCache
         /// </code></example>
         public void RemoveItem(string syncName)
         {
-            Do(SyncCacheCmd.RemoveSyncItem, syncName, null);
+            DoAsync(SyncCacheCmd.RemoveSyncItem, syncName, null);
         }
         /// <summary>
         /// Get entity values as <see cref="EntityStream"/> array from sync cache using entityName.
@@ -335,7 +348,7 @@ namespace Nistec.Channels.RemoteCache
         /// <returns></returns>
         public GenericKeyValue GetEntityItems(string entityName)
         {
-            return Get<GenericKeyValue>(SyncCacheCmd.GetEntityItems, entityName, null);
+            return GetAsync<GenericKeyValue>(SyncCacheCmd.GetEntityItems, entityName, null);
         }
 
         /// <summary>
@@ -345,7 +358,7 @@ namespace Nistec.Channels.RemoteCache
         /// <returns></returns>
         public string[] GetEntityKeys(string entityName)
         {
-            return Get<string[]>(SyncCacheCmd.GetEntityKeys, entityName, null);
+            return GetAsync<string[]>(SyncCacheCmd.GetEntityKeys, entityName, null);
         }
 
         /// <summary>
@@ -354,7 +367,7 @@ namespace Nistec.Channels.RemoteCache
         /// <returns></returns>
         public string[] GetAllEntityNames()
         {
-            return Get<string[]>(SyncCacheCmd.GetAllEntityNames, "*", null);
+            return GetAsync<string[]>(SyncCacheCmd.GetAllEntityNames, "*", null);
         }
 
         /// <summary>
@@ -364,7 +377,7 @@ namespace Nistec.Channels.RemoteCache
         /// <returns></returns>
         public DataTable GetItemsReport(string entityName)
         {
-            return Get<DataTable>(SyncCacheCmd.GetItemsReport, entityName, null);
+            return GetAsync<DataTable>(SyncCacheCmd.GetItemsReport, entityName, null);
         }
 
         /// <summary>
@@ -373,7 +386,7 @@ namespace Nistec.Channels.RemoteCache
         /// <returns></returns>
         public string Reply(string text)
         {
-            return Get<string>(SyncCacheCmd.Reply, text, new string[] { text });
+            return GetAsync<string>(SyncCacheCmd.Reply, text, new string[] { text });
         }
     }
    
