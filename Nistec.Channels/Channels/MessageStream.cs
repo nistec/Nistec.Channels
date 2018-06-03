@@ -31,6 +31,11 @@ using Nistec.IO;
 using System.Net.Sockets;
 using System.IO.Pipes;
 using Nistec.Serialization;
+using System.Diagnostics;
+using Nistec.Channels.Tcp;
+using Nistec.Channels.Http;
+using System.Collections.Specialized;
+using System.Net;
 
 namespace Nistec.Channels
 {
@@ -38,8 +43,8 @@ namespace Nistec.Channels
     /// Represent a message stream for network communication like namedPipe or Tcp.
     /// This message can serialize/desrialize fast and easly using the <see cref="BinaryStreamer"/>
     /// </summary>
-    [Serializable]
-    public abstract class MessageStream : ISerialEntity, IMessageStream, ISerialJson, IDisposable
+    [Serializable]//IMessageStream,
+    public abstract class MessageStream : ISerialEntity,  ISerialJson, IMessageStream, ITransformMessage, IBodyStream//, IDisposable
     {
         #region properties
         /// <summary>
@@ -48,13 +53,14 @@ namespace Nistec.Channels
         public static Formatters DefaultFormatter { get { return Formatters.BinarySerializer; } }
 
         /// <summary>
-        /// Get or Set The message key.
+        /// Get or Set The message Id.
         /// </summary>
-        public string Key { get; set; }
+        public string Id { get; set; }
         /// <summary>
         /// Get or Set The message body stream.
         /// </summary>
-        public NetStream BodyStream { get; set; }
+        //NetStream _BodyStream;
+        public NetStream BodyStream { get; set; }// { protected get { return _BodyStream == null ? null : _BodyStream.Ready(); } public set { _BodyStream = value; } }
         /// <summary>
         ///  Get or Set The type name of body stream.
         /// </summary>
@@ -64,13 +70,17 @@ namespace Nistec.Channels
         /// </summary>
         public Formatters Formatter { get; set; }
         /// <summary>
-        /// Get or Set The message key.
+        /// Get or Set The message detail.
         /// </summary>
-        public string Id { get; set; }
+        public string Label { get; set; }
         /// <summary>
         /// Get or Set The message command.
         /// </summary>
         public string Command { get; set; }
+        /// <summary>
+        /// Get or Set who send the message.
+        /// </summary>
+        public string Sender { get; set; }
         /// <summary>
         /// Get or Set indicate wether the message is a duplex type.
         /// </summary>
@@ -86,7 +96,17 @@ namespace Nistec.Channels
         /// <summary>
         /// Get or Set The extra arguments for current message.
         /// </summary>
-        public GenericNameValue Args { get; set; }
+        public NameValueArgs Args { get; set; }
+        /// <summary>
+        /// Get or Set The return type name.
+        /// </summary>
+        public TransformType TransformType { get; set; }
+        /// <summary>
+        /// Get or Set The message GroupId.
+        /// </summary>
+        public string GroupId { get; set; }
+ 
+
         #endregion
 
         #region ctor
@@ -112,16 +132,32 @@ namespace Nistec.Channels
         /// <param name="info"></param>
         protected MessageStream(SerializeInfo info)
         {
-            Key = info.GetValue<string>("Key");
+            Id = info.GetValue<string>("Id");
             BodyStream = (NetStream)info.GetValue("BodyStream");
             TypeName = info.GetValue<string>("TypeName");
             Formatter = (Formatters)info.GetValue<int>("Formatter");
-            Id = info.GetValue<string>("Id");
+            Label = info.GetValue<string>("Label");
+            GroupId = info.GetValue<string>("GroupId");
             Command = info.GetValue<string>("Command");
             IsDuplex = info.GetValue<bool>("IsDuplex");
             Expiration = info.GetValue<int>("Expiration");
             Modified = info.GetValue<DateTime>("Modified");
-            Args = (GenericNameValue)info.GetValue("Args");
+            Args = (NameValueArgs)info.GetValue("Args");
+        }
+
+        void Copy(MessageStream copy)
+        {
+            Id = copy.Id;
+            BodyStream = copy.BodyStream;
+            TypeName = copy.TypeName;
+            Formatter = copy.Formatter;
+            Label = copy.Label;
+            GroupId = copy.GroupId;
+            Command = copy.Command;
+            IsDuplex = copy.IsDuplex;
+            Expiration = copy.Expiration;
+            Modified = copy.Modified;
+            Args = copy.Args;
         }
         #endregion
 
@@ -153,9 +189,9 @@ namespace Nistec.Channels
             {
                 Command = null;
                 Args = null;
-                Key = null;
-                TypeName = null;
                 Id = null;
+                TypeName = null;
+                Label = null;
                 if (BodyStream != null)
                 {
                     BodyStream.Dispose();
@@ -171,7 +207,7 @@ namespace Nistec.Channels
         int GetSize()
         {
             if (BodyStream == null)
-                return 0;// GetInternalSize();
+                return 0;
             return BodyStream.iLength;
         }
 
@@ -216,6 +252,21 @@ namespace Nistec.Channels
             }
         }
 
+        public bool IsValidInfo()
+        {
+            return !string.IsNullOrEmpty(Id) && !string.IsNullOrEmpty(Label);
+        }
+        public void ValiddateInfo()
+        {
+            if (string.IsNullOrEmpty(Id) || string.IsNullOrEmpty(Label))
+            {
+                throw new ArgumentException("ComplexKey is null or empty");
+            }
+        }
+        public string KeyInfo()
+        {
+            return string.Format("{0}{1}{2}", Id, KeySet.Separator, Label);
+        }
         #endregion
 
         #region Args
@@ -224,21 +275,21 @@ namespace Nistec.Channels
         /// </summary>
         /// <param name="keyValues"></param>
         /// <returns></returns>
-        public static GenericNameValue CreateArgs(params string[] keyValues)
+        public static NameValueArgs CreateArgs(params string[] keyValues)
         {
             if (keyValues == null)
                 return null;
-            GenericNameValue args = new GenericNameValue(keyValues);
+            NameValueArgs args = new NameValueArgs(keyValues);
             return args;
         }
         /// <summary>
         /// Get or create a collection of arguments.
         /// </summary>
         /// <returns></returns>
-        public GenericNameValue GetArgs()
+        public NameValueArgs GetArgs()
         {
             if (Args == null)
-                return new GenericNameValue();
+                return new NameValueArgs();
             return Args;
         }
         #endregion
@@ -279,17 +330,20 @@ namespace Nistec.Channels
         {
             if (streamer == null)
                 streamer = new BinaryStreamer(stream);
-
-            streamer.WriteString(Key);
+            
+            streamer.WriteString(Id);
             streamer.WriteValue(BodyStream);
             streamer.WriteString(TypeName);
             streamer.WriteValue((int)Formatter);
-            streamer.WriteString(Id);
+            streamer.WriteString(Label);
+            streamer.WriteString(GroupId);
             streamer.WriteString(Command);
+            streamer.WriteString(Sender);
             streamer.WriteValue(IsDuplex);
             streamer.WriteValue(Expiration);
             streamer.WriteValue(Modified);
             streamer.WriteValue(Args);
+            streamer.WriteValue((byte)TransformType);
             streamer.Flush();
         }
 
@@ -304,16 +358,19 @@ namespace Nistec.Channels
             if (streamer == null)
                 streamer = new BinaryStreamer(stream);
 
-            Key = streamer.ReadString();
+            Id = streamer.ReadString();
             BodyStream = (NetStream)streamer.ReadValue();
             TypeName = streamer.ReadString();
             Formatter = (Formatters)streamer.ReadValue<int>();
-            Id = streamer.ReadString();
+            Label = streamer.ReadString();
+            GroupId = streamer.ReadString();
             Command = streamer.ReadString();
+            Sender = streamer.ReadString();
             IsDuplex = streamer.ReadValue<bool>();
             Expiration = streamer.ReadValue<int>();
             Modified = streamer.ReadValue<DateTime>();
-            Args = (GenericNameValue)streamer.ReadValue();
+            Args = (NameValueArgs)streamer.ReadValue();
+            TransformType =(TransformType) streamer.ReadValue<byte>();
         }
         /// <summary>
         /// Write the current object include the body and properties to <see cref="ISerializerContext"/> using <see cref="SerializeInfo"/>.
@@ -322,16 +379,19 @@ namespace Nistec.Channels
         public void WriteContext(ISerializerContext context)
         {
             SerializeInfo info = new SerializeInfo();
-            info.Add("Key", Key);
+            info.Add("Id", Id);
             info.Add("BodyStream", BodyStream);
             info.Add("TypeName", TypeName);
             info.Add("Formatter", (int)Formatter);
-            info.Add("Id", Id);
+            info.Add("Label", Label);
+            info.Add("GroupId", GroupId);
             info.Add("Command", Command);
+            info.Add("Sender", Sender);
             info.Add("IsDuplex", IsDuplex);
             info.Add("Expiration", Expiration);
             info.Add("Modified", Modified);
             info.Add("Args",Args);
+            info.Add("TransformType", (byte)TransformType);
             context.WriteSerializeInfo(info);
         }
 
@@ -344,35 +404,54 @@ namespace Nistec.Channels
         {
             SerializeInfo info = context.ReadSerializeInfo();
 
-            Key = info.GetValue<string>("Key");
+            Id = info.GetValue<string>("Id");
             BodyStream = (NetStream)info.GetValue("BodyStream");
             TypeName = info.GetValue<string>("TypeName");
             Formatter = (Formatters)info.GetValue<int>("Formatter");
-            Id = info.GetValue<string>("Id");
+            Label = info.GetValue<string>("Label");
+            GroupId = info.GetValue<string>("GroupId");
             Command = info.GetValue<string>("Command");
+            Sender = info.GetValue<string>("Sender");
             IsDuplex = info.GetValue<bool>("IsDuplex");
             Expiration = info.GetValue<int>("Expiration");
             Modified = info.GetValue<DateTime>("Modified");
-            Args = (GenericNameValue)info.GetValue("Args");
+            Args = (NameValueArgs)info.GetValue("Args");
+            TransformType =(TransformType) info.GetValue<byte>("TransformType");
         }
 
 
         #endregion
 
         #region IMessageStream
-
         /// <summary>
-        /// Get body stream after set the position to first byte in buffer, This method is a part of <see cref="IMessageStream"/> implementation.
+        /// Get body stream ready to read from position 0, is a part of <see cref="IBodyStream"/> implementation.
         /// </summary>
         /// <returns></returns>
-        public NetStream GetBodyStream()
+        public NetStream GetStream()
         {
             if (BodyStream == null)
                 return null;
-            if (BodyStream.Position > 0)
-                BodyStream.Position = 0;
-            return BodyStream;
+            return BodyStream.Ready();
         }
+
+        /// <summary>
+        /// Get copy of body stream, is a part of <see cref="IBodyStream"/> implementation.
+        /// </summary>
+        /// <returns></returns>
+        public NetStream GetCopy()
+        {
+            if (BodyStream == null)
+                return null;
+            return BodyStream.Copy();
+        }
+
+        public byte[] GetBinary()
+        {
+            if (BodyStream == null)
+                return null;
+            return BodyStream.ToArray();
+        }
+
         /// <summary>
         /// Set the given value to body stream using <see cref="BinarySerializer"/>, This method is a part of <see cref="IMessageStream"/> implementation..
         /// </summary>
@@ -417,7 +496,7 @@ namespace Nistec.Channels
         {
             if (BodyStream == null)
                 return null;
-            BodyStream.Position = 0;
+            //BodyStream.Position = 0;
             var ser = new BinarySerializer();
             return ser.Deserialize(BodyStream);
         }
@@ -428,7 +507,7 @@ namespace Nistec.Channels
         /// <returns></returns>
         public T DecodeBody<T>()
         {
-            return GenericTypes.Cast<T>(DecodeBody());
+            return GenericTypes.Cast<T>(DecodeBody(), true);
         }
         /// <summary>
         /// Read stream to object.
@@ -508,143 +587,62 @@ namespace Nistec.Channels
 
         #endregion
 
-        #region ExecuteTask
+        #region Async Task
+  
         /// <summary>
         /// Execute async task request and return the response as<see cref="NetStream"/>.
         /// </summary>
         /// <param name="action"></param>
-        /// <param name="actionName"></param>
+        /// <param name="messageOnError"></param>
+        /// <param name="transform"></param>
         /// <returns></returns>
-        public AckStream AsyncTask(Func<MessageStream> action, string actionName)
+        public TransStream AsyncTransStream(Func<NetStream> action, string messageOnError, TransformType transform = TransformType.Object)
         {
-            using (Task<IMessageStream> task = Task.Factory.StartNew<IMessageStream>(action))
+            Task<NetStream> task = Task.Factory.StartNew<NetStream>(action);
             {
                 task.Wait();
                 if (task.IsCompleted)
                 {
-                    if (task.Result == null)
-                        return AckStream.GetAckStream(false, actionName);//null;
-                    return new AckStream(task.Result.BodyStream,task.Result.TypeName);
+                    return TransStream.Write(task.Result, transform);
                 }
             }
-            return new AckStream(MessageState.ItemNotFound,"ItemNotFound");//null;
-        }
-        /// <summary>
-        /// Execute async task request and return the response as<see cref="NetStream"/>.
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="actionName"></param>
-        /// <returns></returns>
-        public AckStream AsyncTask(Func<ISerialEntity> action, string actionName)//,Formatters formatter)
-        {
-            using (Task<ISerialEntity> task = Task.Factory.StartNew<ISerialEntity>(action))
-            {
-                task.Wait();
-                if (task.IsCompleted)
-                {
-                    if (task.Result == null)
-                        return AckStream.GetAckStream(false,actionName);//null;
-
-                    return new AckStream(task.Result);
-                }
-            }
-            return new AckStream(MessageState.ItemNotFound, "ItemNotFound");// null;
-        }
-
-        /// <summary>
-        /// Execute async one way task request.
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="stream"></param>
-        public void AsyncTask(Func<ISerialEntity> action, Stream stream)
-        {
-            using (Task<ISerialEntity> task = Task.Factory.StartNew<ISerialEntity>(action))
-            {
-                task.Wait();
-                if (task.IsCompleted)
-                {
-                    if (task.Result == null)
-                        return;
-                    task.Result.EntityWrite(stream,null);//..GetEntityStream();
-                }
-            }
-            //return null;
+            task.TryDispose();
+            return TransStream.Write(messageOnError, TransType.Error);
         }
 
         /// <summary>
         /// Execute async task request and return the response as<see cref="NetStream"/>.
         /// </summary>
         /// <param name="action"></param>
-        /// <param name="actionName"></param>
+        /// <param name="messageOnError"></param>
+        /// <param name="transform"></param>
         /// <returns></returns>
-        public AckStream AsyncTask(Func<object> action, string actionName)
+        public TransStream AsyncTransObject(Func<object> action, string messageOnError, TransformType transform= TransformType.Object)
         {
-            using (Task<object> task = Task.Factory.StartNew<object>(action))
+            Task<object> task = Task.Factory.StartNew<object>(action);
             {
                 task.Wait();
                 if (task.IsCompleted)
                 {
-                    if (task.Result == null)
-                        return AckStream.GetAckStream(false, actionName);//null;
-                    return new AckStream(task.Result);
+                    if (task.Result != null)
+                        return TransStream.Write(task.Result, TransStream.ToTransType(TransformType));
                 }
             }
-            return AckStream.GetAckStream(false, actionName);// null;
+            task.TryDispose();
+            return TransStream.Write(messageOnError, TransType.Error);
         }
 
-        
-        /// <summary>
-        /// Execute async task request and return the response as<see cref="NetStream"/>.
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="typeName"></param>
-        /// <param name="actionName"></param>
-        /// <returns></returns>
-        public AckStream AsyncTask(Func<NetStream> action, string typeName, string actionName)
-        {
-            using (Task<NetStream> task = Task.Factory.StartNew<NetStream>(action))
-            {
-                task.Wait();
-                if (task.IsCompleted)
-                {
-                    if (task.Result == null)
-                        return AckStream.GetAckStream(false, actionName);//null;
-                    return new AckStream(task.Result,typeName);
-                }
-            }
-            return AckStream.GetAckStream(false, actionName);// null;
-        }
-
-        /// <summary>
-        /// Execute async task request and return the response as<see cref="AckStream"/>.
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="actionName"></param>
-        /// <returns></returns>
-        public AckStream AsyncAckTask(Func<AckStream> action, string actionName)
-        {
-            using (Task<AckStream> task = Task.Factory.StartNew<AckStream>(action))
-            {
-                task.Wait();
-                if (task.IsCompleted)
-                {
-                    if (task.Result == null)
-                        return AckStream.GetAckStream(false, actionName);//null;
-                    return task.Result;
-                }
-            }
-            return AckStream.GetAckStream(false, actionName);// null;
-        }
-
+   
         public void AsyncTask(Action action)
         {
-            using (Task task = Task.Factory.StartNew(action))
+            Task task = Task.Factory.StartNew(action);
             {
                 task.Wait();
                 if (task.IsCompleted)
                 {
                 }
             }
+            task.TryDispose();
         }
 
         /// <summary>
@@ -652,62 +650,47 @@ namespace Nistec.Channels
         /// </summary>
         /// <param name="action"></param>
         /// <param name="actionName"></param>
+        /// <param name="nullState"></param>
         /// <returns></returns>
-        public AckStream AsyncBinaryTask(Func<byte[]> action, string actionName)
+        public TransStream AsyncBinaryTask(Func<byte[]> action, string actionName, MessageState nullState = MessageState.ItemNotFound)
         {
-            using (Task<byte[]> task = Task.Factory.StartNew<byte[]>(action))
+            Task<byte[]> task = Task.Factory.StartNew<byte[]>(action);
             {
                 task.Wait();
                 if (task.IsCompleted)
                 {
-                    if (task.Result == null)
-                        return AckStream.GetAckStream(false, actionName);//null;
-                    return new AckStream(task.Result);
+                    if (task.Result != null)
+                        return TransStream.Write(task.Result, TransType.Object);// TransWriter.Write(task.Result, TransType.Object);
                 }
             }
-            return AckStream.GetAckStream(false, actionName);//null;
+            task.TryDispose();
+            return TransStream.Write((int)nullState, TransType.State);//TransStream.GetAckStream(nullState, actionName);//null;
         }
         #endregion
-/*
 
-        #region ReadAck tcp
+        #region ReadTransStream
+
+        //public object ReadTransStream(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
+        //{
+        //    return new TransStream(stream, readTimeout, ReceiveBufferSize);
+        //}
 
         /// <summary>
         /// Read response from server.
         /// </summary>
         /// <param name="stream"></param>
         /// <param name="readTimeout"></param>
-        /// <param name="InBufferSize"></param>
-        public object ReadAck(NetworkStream stream, int readTimeout, int InBufferSize)
+        /// <param name="ReceiveBufferSize"></param>
+        public object ReadResponse(NetworkStream stream, int readTimeout, int ReceiveBufferSize, TransformType transformType, bool isTransStream)
         {
-            using (AckStream ack = AckStream.Read(stream,typeof(object), readTimeout, InBufferSize))
+            if (isTransStream)
             {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new MessageException(ack);
-                }
-                return ack.Value;
+                return TransStream.CopyFrom(stream, readTimeout, ReceiveBufferSize);
             }
-        }
 
-        /// <summary>
-        /// Read response from server.
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <param name="type"></param>
-        /// <param name="readTimeout"></param>
-        /// <param name="InBufferSize"></param>
-        /// <returns></returns>
-        public object ReadAck(NetworkStream stream, Type type, int readTimeout, int InBufferSize)
-        {
-
-            using (AckStream ack = AckStream.Read(stream,type, readTimeout, InBufferSize))
+            using (TransStream ts = new TransStream(stream, readTimeout, ReceiveBufferSize, transformType, isTransStream))
             {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new MessageException(ack);
-                }
-                return ack.Value;
+                return ts.ReadValue();
             }
         }
 
@@ -717,86 +700,80 @@ namespace Nistec.Channels
         /// <typeparam name="TResponse"></typeparam>
         /// <param name="stream"></param>
         /// <param name="readTimeout"></param>
-        /// <param name="InBufferSize"></param>
+        /// <param name="ReceiveBufferSize"></param>
         /// <returns></returns>
-        public TResponse ReadAck<TResponse>(NetworkStream stream, int readTimeout, int InBufferSize)
+        public TResponse ReadResponse<TResponse>(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
         {
-
-            using (AckStream ack = AckStream.Read(stream, typeof(TResponse), readTimeout, InBufferSize))
+            if (TransReader.IsTransStream(typeof(TResponse)))
             {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new MessageException(ack);
-                }
-                return ack.GetValue<TResponse>();
+                TransStream ts = TransStream.CopyFrom(stream, readTimeout, ReceiveBufferSize);
+                return GenericTypes.Cast<TResponse>(ts, true);
+            }
+            using (TransStream ts = new TransStream(stream, readTimeout,ReceiveBufferSize, TransReader.ToTransformType(typeof(TResponse)), false))
+            {
+                return ts.ReadValue<TResponse>();
             }
         }
+
+        //public object ReadTransStream(NamedPipeClientStream stream, int ReceiveBufferSize = 8192)
+        //{
+        //    return new TransStream(stream, ReceiveBufferSize);
+        //}
+
+        public object ReadResponse(NamedPipeClientStream stream, int ReceiveBufferSize, TransformType transformType, bool isTransStream)
+        {
+            if (isTransStream)
+            {
+                return TransStream.CopyFrom(stream, ReceiveBufferSize);
+            }
+
+            using (TransStream ts = new TransStream(stream, ReceiveBufferSize, transformType, isTransStream))
+            {
+                return ts.ReadValue();
+            }
+        }
+        public TResponse ReadResponse<TResponse>(NamedPipeClientStream stream, int ReceiveBufferSize = 8192)
+        {
+            if (TransReader.IsTransStream(typeof(TResponse)))
+            {
+                TransStream ts = TransStream.CopyFrom(stream, ReceiveBufferSize);
+                return GenericTypes.Cast<TResponse>(ts, true);
+            }
+            using (TransStream ts = new TransStream(stream, ReceiveBufferSize, TransReader.ToTransformType(typeof(TResponse)), false))
+            {
+                return ts.ReadValue<TResponse>();
+            }
+        }
+
 
         #endregion
 
-        #region ReadAck pipe
-
-        public object ReadAck(NamedPipeClientStream stream, Type type, int InBufferSize = 8192)
-        {
-
-            using (AckStream ack = AckStream.Read(stream, type, InBufferSize))
-            {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new Exception(ack.Message);
-                }
-                return ack.Value;
-            }
-        }
-
-        public TResponse ReadAck<TResponse>(NamedPipeClientStream stream, int InBufferSize = 8192)
-        {
-
-            using (AckStream ack = AckStream.Read(stream, typeof(TResponse), InBufferSize))
-            {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new Exception(ack.Message);
-                }
-                return ack.GetValue<TResponse>();
-            }
-        }
-
- 
-        #endregion
-*/
- 
         #region extension
 
-        internal static string[] SplitArg(IKeyValue dic, string key, string valueIfNull)
+        /// <summary>
+        /// Set the given value to body stream using <see cref="BinarySerializer"/>, This method is a part of <see cref="IMessageStream"/> implementation..
+        /// </summary>
+        /// <param name="value"></param>
+        public static NetStream SerializeBody(object value)
         {
-            string val = dic.Get<string>(key, valueIfNull);
-            if (val == null)
-                return valueIfNull == null ? null : new string[] { valueIfNull };
-            return val.SplitTrim('|');
+
+            if (value != null)
+            {
+                //TypeName = value.GetType().FullName;
+
+                NetStream ns = new NetStream();
+                var ser = new BinarySerializer();
+                ser.Serialize(ns, value);
+                ns.Position = 0;
+                return ns;
+            }
+            else
+            {
+                //TypeName = typeof(object).FullName;
+                return null;
+            }
         }
 
-        internal static TimeSpan TimeArg(IKeyValue dic, string key, string valueIfNull)
-        {
-            string val = dic.Get<string>(key, valueIfNull);
-            TimeSpan time = string.IsNullOrEmpty(val) ? TimeSpan.Zero : TimeSpan.Parse(val);
-            return time;
-        }
-
-        internal static string[] SplitArg(IDictionary dic, string key, string valueIfNull)
-        {
-            string val = dic.Get<string>(key, valueIfNull);
-            if (val == null)
-                return valueIfNull == null ? null : new string[] { valueIfNull };
-            return val.SplitTrim('|');
-        }
-
-        internal static TimeSpan TimeArg(IDictionary dic, string key, string valueIfNull)
-        {
-            string val = dic.Get<string>(key, valueIfNull);
-            TimeSpan time = string.IsNullOrEmpty(val) ? TimeSpan.Zero : TimeSpan.Parse(val);
-            return time;
-        }
         /// <summary>
         /// Convert <see cref="MessageStream"/> to <see cref="IDictionary"/>.
         /// </summary>
@@ -806,13 +783,14 @@ namespace Nistec.Channels
         {
             IDictionary dict = new Dictionary<string, object>();
             dict.Add("Command", message.Command);
-            dict.Add("Key", message.Key);
             dict.Add("Id", message.Id);
+            dict.Add("Label", message.Label);
+            dict.Add("GroupId", message.GroupId);
 
             dict.Add("Expiration", message.Expiration);
             dict.Add("Modified", message.Modified);
             dict.Add("TypeName", message.TypeName);
-
+            dict.Add("TransformType", message.TransformType);
 
             if (message.IsDuplex)
                 dict.Add("IsDuplex", message.IsDuplex);
@@ -821,51 +799,473 @@ namespace Nistec.Channels
                 dict.Add("Args", message.Args);
             if (message.BodyStream != null)
                 dict.Add("Body", message.BodyStream);
-
+            //if (message.ReturnTypeName != null)
+            //    dict.Add("ReturnTypeName", message.ReturnTypeName);
             return dict;
+        }
+
+        public IDictionary<string,object> ToDictionary()
+        {
+            var dic = DictionaryUtil.ToDictionary(this, "");
+            if (BodyStream != null)
+            {
+                dic["Body"] = this.DecodeBody();
+            }
+            return dic;
+        }
+
+        public DynamicEntity ToEntity()
+        {
+            dynamic entity = new DynamicEntity();
+            entity.Id = this.Id;
+            entity.TypeName = this.TypeName;
+            entity.Formatter = this.Formatter;
+            entity.Label = this.Label;
+            entity.GroupId = this.GroupId;
+            entity.Command = this.Command;
+            entity.Sender = this.Sender;
+            entity.IsDuplex = this.IsDuplex;
+            entity.Expiration = this.Expiration;
+            entity.Modified = this.Modified;
+            entity.Args = this.Args;
+            entity.TransformType = (byte)this.TransformType;
+            if (BodyStream != null)
+            {
+                var body = this.DecodeBody();
+                if (body != null)
+                    entity.Body = DictionaryUtil.ToDictionaryOrObject(body, "");
+            }
+            return entity;
+
+        }
+
+        public string ToJson(bool pretty = false)
+        {
+            return EntityWrite(new JsonSerializer(JsonSerializerMode.Write, null), pretty);
         }
 
         #endregion
 
         #region ISerialJson
 
-        public string EntityWrite(IJsonSerializer serializer)
+        public string EntityWrite(IJsonSerializer serializer, bool pretty = false)
         {
             if (serializer == null)
                 serializer = new JsonSerializer(JsonSerializerMode.Write, null);
-            return serializer.Write(this, this.GetType().BaseType);
+
+            object body = null;
+            if (BodyStream != null)
+            {
+                body = BinarySerializer.ConvertFromStream(BodyStream);
+            }
+
+            serializer.WriteToken("Command", Command);
+            serializer.WriteToken("Sender", Sender);
+            serializer.WriteToken("Id", Id);
+            serializer.WriteToken("TypeName", TypeName);
+            serializer.WriteToken("Label", Label, null);
+            serializer.WriteToken("GroupId", GroupId, null);
+            serializer.WriteToken("BodyStream", BodyStream == null ? null : BodyStream.ToBase64String());
+            serializer.WriteToken("Modified", Modified);
+            serializer.WriteToken("Formatter", Formatter);
+            serializer.WriteToken("IsDuplex", IsDuplex);
+            serializer.WriteToken("Expiration", Expiration);
+            serializer.WriteToken("Args", Args);
+            serializer.WriteToken("TransformType", TransformType);
+            serializer.WriteToken("Body", body);
+
+            return serializer.WriteOutput(pretty);
         }
 
         public object EntityRead(string json, IJsonSerializer serializer)
         {
             if (serializer == null)
-                serializer = new JsonSerializer(JsonSerializerMode.Read, null);
+                serializer = new JsonSerializer(JsonSerializerMode.Read, new JsonSettings() { IgnoreCaseOnDeserialize=true });
 
-            object o = serializer.Read<MessageStream>(json);
+            //var queryParams = new Dictionary<string, string>(HtmlPage.Document.QueryString, StringComparer.InvariantCultureIgnoreCase);
 
-            if (o != null)
+            
+            var dic = serializer.Read<Dictionary<string, object>>(json);
+
+            if (dic != null)
             {
-                Copy((MessageStream)o);
+                Command = dic.Get<string>("Command".ToLower());
+                Sender = dic.Get<string>("Sender".ToLower());
+                Id = dic.Get<string>("Id".ToLower());
+                TypeName = dic.Get<string>("TypeName".ToLower());
+                Label = dic.Get<string>("Label".ToLower());
+                GroupId = dic.Get<string>("GroupId".ToLower());
+                var body = dic.Get<string>("BodyStream".ToLower());
+                Modified = dic.Get<DateTime>("Modified".ToLower());
+                Formatter = dic.GetEnum<Formatters>("Formatter".ToLower(), Formatters.BinarySerializer);
+                IsDuplex = dic.Get<bool>("IsDuplex".ToLower());
+                Expiration = dic.Get<int>("Expiration".ToLower());
+                Args = NameValueArgs.Convert((IDictionary<string, object>)dic.Get("Args".ToLower()));// dic.Get<NameValueArgs>("Args".ToLower());
+                TransformType =(TransformType) dic.GetEnum<TransformType>("TransformType".ToLower(), TransformType.Object);
+                if (body != null && body.Length > 0)
+                    BodyStream = NetStream.FromBase64String(body);
             }
-            return o;
+
+            return this;
+        }
+
+        public object EntityRead(NameValueCollection queryString, IJsonSerializer serializer)
+        {
+            if (serializer == null)
+                serializer = new JsonSerializer(JsonSerializerMode.Read, new JsonSettings() { IgnoreCaseOnDeserialize = true });
+
+            if (queryString != null)
+            {
+                Command = queryString.Get<string>("Command".ToLower());
+                Sender = queryString.Get<string>("Sender".ToLower());
+                Id = queryString.Get<string>("Id".ToLower());
+                TypeName = queryString.Get<string>("TypeName".ToLower());
+                Label = queryString.Get<string>("Label".ToLower());
+                GroupId = queryString.Get<string>("GroupId".ToLower());
+                var body = queryString.Get<string>("BodyStream".ToLower());
+                Modified = queryString.Get<DateTime>("Modified".ToLower(), DateTime.Now);
+                Formatter = queryString.GetEnum<Formatters>("Formatter".ToLower(), Formatters.Json);
+                IsDuplex = queryString.Get<bool>("IsDuplex".ToLower());
+                Expiration = queryString.Get<int>("Expiration".ToLower());
+                var args= queryString.Get("Args".ToLower());
+                if(args!=null)
+                {
+                    string[] nameValue= args.SplitTrim(':', ',', ';');
+                    Args = NameValueArgs.Get(nameValue);
+                }
+                //Args = NameValueArgs.Convert((IDictionary<string, object>)queryString.Get("Args".ToLower()));//queryString.Get<NameValueArgs>("Args".ToLower());
+                TransformType = (TransformType)queryString.GetEnum<TransformType>("TransformType".ToLower(), TransformType.Object);
+                if (body != null && body.Length > 0)
+                    BodyStream = NetStream.FromBase64String(body);
+            }
+
+            return this;
         }
 
         #endregion
 
-        void Copy(MessageStream copy)
+        #region Read/Write
+        /// <summary>
+        /// Get message as Stream.
+        /// </summary>
+        /// <returns></returns>
+        public NetStream ToStream()
         {
-            Key = copy.Key;
-            BodyStream = copy.BodyStream;
-            TypeName = copy.TypeName;
-            Formatter = copy.Formatter;
-            Id = copy.Id;
-            Command = copy.Command;
-            IsDuplex = copy.IsDuplex;
-            Expiration = copy.Expiration;
-            Modified = copy.Modified;
-            Args = copy.Args;
+            NetStream stream = new NetStream();
+            EntityWrite(stream, null);
+            return stream;
         }
- 
+        /// <summary>
+        /// Convert stream to <see cref="TcpMessage"/> message.
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <returns></returns>
+        public static MessageStream ParseStream(Stream stream, NetProtocol protocol)
+        {
+            var message = Factory(protocol);
+            message.EntityRead(stream, null);
+            return message;
+        }
+
+        //internal static MessageStream ServerReadRequest(NetProtocol protocol,Stream streamServer, int ReceiveBufferSize = 8192)
+        //{
+        //    var message = Factory(protocol);
+        //    message.EntityRead(streamServer, null);
+
+        //    return message;
+        //}
+
+        internal static void ServerWriteResponse(Stream streamServer, NetStream bResponse)
+        {
+            if (bResponse == null)
+            {
+                return;
+            }
+
+            streamServer.Write(bResponse.ToArray(), 0, bResponse.iLength);
+
+            streamServer.Flush();
+
+        }
+
+        /// <summary>
+        /// Convert <see cref="IDictionary"/> to <see cref="MessageStream"/>.
+        /// </summary>
+        /// <param name="dict"></param>
+        /// <returns></returns>
+        public static MessageStream ConvertFrom(IDictionary<string,object> dict, NetProtocol protocol)
+        {
+            MessageStream message = Factory(protocol);
+
+            message.Command = dict.Get<string>("Command");
+            message.Sender = dict.Get<string>("Sender");
+            message.Id = dict.Get<string>("Id");
+            message.Args = dict.Get<NameValueArgs>("Args");
+            message.BodyStream = dict.Get<NetStream>("Body", null);//, ConvertDescriptor.Implicit),
+            message.Expiration = dict.Get<int>("Expiration", 0);
+            message.IsDuplex = dict.Get<bool>("IsDuplex", true);
+            message.Modified = dict.Get<DateTime>("Modified", DateTime.Now);
+            message.TypeName = dict.Get<string>("TypeName");
+            message.Label = dict.Get<string>("Label");
+            message.GroupId = dict.Get<string>("GroupId");
+            message.TransformType = (TransformType)dict.Get<byte>("TransformType");
+
+            return message;
+        }
+
+
+        #endregion
+
+        #region static
+
+        //internal static IMessageStream Create(NetProtocol protocol,string command, string id, int expiration=0)
+        //{
+        //    return Create(protocol,command, id, null, null, null, expiration);
+        //}
+        //internal static IMessageStream Create(NetProtocol protocol, string command, string id, object value, int expiration = 0)
+        //{
+        //    return Create(protocol, command, id, null, value, null, expiration);
+        //}
+        //internal static IMessageStream Create(NetProtocol protocol, string command, string id, string label, object value, string[] args, int expiration = 0, TransformType transformType = TransformType.Object, bool isDuplex = true)
+        //{
+        //    if (string.IsNullOrEmpty(command))
+        //        throw new ArgumentNullException("CreateMessage.command");
+
+        //    if (expiration < 0)
+        //        expiration = 0;
+        //    IMessageStream message = null;
+        //    switch (protocol)
+        //    {
+        //        case NetProtocol.Tcp:
+        //            message = new TcpMessage(command, id, value, expiration);
+        //            break;
+        //        case NetProtocol.Pipe:
+        //            message = new PipeMessage(command, id, value, expiration);
+        //            break;
+        //        case NetProtocol.Http:
+        //            message = new HttpMessage(command, id, value, expiration);
+        //            break;
+        //        default:
+        //            throw new ArgumentException("Protocol is not supported " + protocol.ToString());
+        //    }
+        //    message.IsDuplex = isDuplex;
+        //    message.TransformType = transformType;
+        //    if (label != null)
+        //        message.Label = label;
+        //    if (args != null)
+        //        message.Args = MessageStream.CreateArgs(args);
+
+        //    return message;
+        //}
+
+        internal static IMessageStream Create(NetProtocol protocol, string command, string id, int expiration = 0)
+        {
+            return Create(protocol, command, id, null, null, expiration);
+        }
+        //internal static IMessageStream Create(NetProtocol protocol, string command, string id, object value, int expiration = 0)
+        //{
+        //    return Create(protocol, command, id, null, value, null, expiration);
+        //}
+
+
+        internal static IMessageStream Create(NetProtocol protocol, string command, string id, string label, object value, int expiration = 0)
+        {
+            if (string.IsNullOrEmpty(command))
+                throw new ArgumentNullException("CreateMessage.command");
+
+            if (expiration < 0)
+                expiration = 0;
+            IMessageStream message = null;
+            switch (protocol)
+            {
+                case NetProtocol.Tcp:
+                    message = new TcpMessage(command, id, value, expiration);
+                    break;
+                case NetProtocol.Pipe:
+                    message = new PipeMessage(command, id, value, expiration);
+                    break;
+                case NetProtocol.Http:
+                    message = new HttpMessage(command, id, value, expiration);
+                    break;
+                default:
+                    throw new ArgumentException("Protocol is not supported " + protocol.ToString());
+            }
+            message.IsDuplex = true;// isDuplex;
+            message.TransformType = TransformType.Object ;// transformType;
+            if (label != null)
+                message.Label = label;
+            //if (args != null)
+            //    message.Args = MessageStream.CreateArgs(args);
+
+            return message;
+        }
+
+
+        /// <summary>
+        /// Create a new message stream.
+        /// </summary>
+        /// <param name="protocol"></param>
+        /// <param name="stream"></param>
+        /// <param name="streamer"></param>
+        /// <returns></returns>
+        public static MessageStream Create(NetProtocol protocol, Stream stream, IBinaryStreamer streamer)
+        {
+            MessageStream message = Factory(protocol);
+            message.EntityRead(stream, streamer);
+            return message;
+        }
+
+        public static MessageStream Factory(NetProtocol protocol)
+        {
+            switch(protocol)
+            {
+                case NetProtocol.Tcp:
+                    return new TcpMessage();
+                case NetProtocol.Pipe:
+                    return new PipeMessage();
+                case NetProtocol.Http:
+                    return new HttpMessage();
+                default:
+                    throw new ArgumentException("Not supported NA Protocol");
+            }
+        }
+
+        public static TransformType GetTransformType(Type type)
+        {
+            if (type==typeof(TransStream))
+                return TransformType.Stream;
+            //if (SerializeTools.IsStream(type))
+            //    return TransformType.Stream;
+            return TransformType.Object;
+        }
+        #endregion
+
+
+
+        #region Read/Write pipe
+
+        public string ReadResponseAsJson(NamedPipeClientStream stream, int ReceiveBufferSize, TransformType transformType, bool isTransStream)
+        {// = 8192
+
+            if (isTransStream)
+            {
+                using (TransStream ts = TransStream.CopyFrom(stream, ReceiveBufferSize))
+                {
+                    return ts.ReadJson();
+                }
+            }
+
+            using (TransStream ack = new TransStream(stream, ReceiveBufferSize, transformType, isTransStream))
+            {
+                return ack.ReadJson();
+            }
+        }
+
+        public static MessageStream ReadRequest(NamedPipeServerStream pipeServer, int ReceiveBufferSize = 8192)
+        {
+            PipeMessage message = new PipeMessage();
+            message.EntityRead(pipeServer, null);
+            return message;
+        }
+
+        internal static void WriteResponse(NamedPipeServerStream pipeServer, NetStream bResponse)
+        {
+            if (bResponse == null)
+            {
+                return;
+            }
+
+            pipeServer.Write(bResponse.ToArray(), 0, bResponse.iLength);
+
+            pipeServer.Flush();
+
+        }
+
+        #endregion
+
+        #region Read/Write tcp
+
+        //internal static NetStream FaultStream(string faultDescription)
+        //{
+        //    var message = new CacheMessage("Fault", "Fault", faultDescription, 0);
+        //    return message.Serialize();
+        //}
+
+        public static MessageStream ReadRequest(NetworkStream streamServer, int ReceiveBufferSize = 8192)
+        {
+            var message = new TcpMessage();
+            message.EntityRead(streamServer, null);
+            return message;
+        }
+
+        internal static void WriteResponse(NetworkStream streamServer, NetStream bResponse)
+        {
+            if (bResponse == null)
+            {
+                return;
+            }
+
+            int cbResponse = bResponse.iLength;
+
+            streamServer.Write(bResponse.ToArray(), 0, cbResponse);
+
+            streamServer.Flush();
+
+        }
+
+
+        #endregion
+
+        #region Read/Write http
+
+        public static MessageStream ReadRequest(HttpRequestInfo request)
+        {
+            if (request.BodyStream != null)
+            {
+                return MessageStream.ParseStream(request.BodyStream, NetProtocol.Http);
+            }
+            else
+            {
+
+                var message = new HttpMessage();
+
+                if (request.QueryString!=null)//request.BodyType == HttpBodyType.QueryString)
+                    message.EntityRead(request.QueryString, null);
+                else if (request.Body != null)
+                    message.EntityRead(request.Body, null);
+                //else if (request.Url.LocalPath != null && request.Url.LocalPath.Length > 1)
+                //    message.EntityRead(request.Url.LocalPath.TrimStart('/').TrimEnd('/'), null);
+
+                return message;
+            }
+        }
+
+        internal static void WriteResponse(HttpListenerContext context, NetStream bResponse)
+        {
+            var response = context.Response;
+            if (bResponse == null)
+            {
+                response.StatusCode = (int)HttpStatusCode.NoContent;
+                response.StatusDescription = "No response";
+                return;
+            }
+
+            int cbResponse = bResponse.iLength;
+            byte[] buffer = bResponse.ToArray();
+
+
+
+            response.StatusCode = (int)HttpStatusCode.OK;
+            response.StatusDescription = HttpStatusCode.OK.ToString();
+            response.ContentLength64 = buffer.Length;
+            response.OutputStream.Write(buffer, 0, buffer.Length);
+            response.OutputStream.Close();
+
+        }
+
+
+        #endregion
+
     }
 
- }
+}

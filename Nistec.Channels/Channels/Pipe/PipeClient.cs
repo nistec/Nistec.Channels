@@ -30,15 +30,16 @@ using Nistec.IO;
 using System.Threading;
 using System.Runtime.Serialization;
 using Nistec.Logging;
-
+using System.Security.Principal;
+using Nistec.Serialization;
 
 namespace Nistec.Channels
 {
 
-    public abstract class PipeClient<TRequest> : IDisposable
+    public abstract class PipeClient<TRequest> : IDisposable where TRequest: ITransformMessage
     {
         #region members
-        protected NamedPipeClientStream pipeClient = null;
+        protected NamedPipeClientStream pipeClientStream = null;
         const int MaxRetry = 3;
 
         ILogger _Logger = Logger.Instance;
@@ -62,8 +63,6 @@ namespace Nistec.Channels
         #endregion
 
         #region ctor
-
-        
 
         /// <summary>
         /// Constractor with extra parameters
@@ -90,22 +89,23 @@ namespace Nistec.Channels
         /// <summary>
         /// Constractor with arguments
         /// </summary>
-        /// <param name="pipeName"></param>
+        /// <param name="hostName"></param>
         /// <param name="inBufferSize"></param>
         /// <param name="outBufferSize"></param>
         /// <param name="isDuplex"></param>
-        /// <param name="isAsync"></param>
-        protected PipeClient(string pipeName, int inBufferSize, int outBufferSize, bool isDuplex, bool isAsync)
+        /// <param name="option"></param>
+        protected PipeClient(string hostName, int inBufferSize, int outBufferSize, bool isDuplex, PipeOptions option)
         {
             Settings = new PipeSettings()
             {
-                PipeName = pipeName,
+                HostName = hostName,
+                PipeName = hostName,
                 ConnectTimeout = (uint)PipeSettings.DefaultConnectTimeout,
-                InBufferSize = inBufferSize,
-                OutBufferSize = outBufferSize,
+                ReceiveBufferSize = inBufferSize,
+                SendBufferSize = outBufferSize,
                 PipeDirection = isDuplex ? PipeDirection.InOut : System.IO.Pipes.PipeDirection.Out,
-                PipeOptions = isAsync ? PipeOptions.Asynchronous | PipeOptions.WriteThrough : PipeOptions.None,
-                VerifyPipe = pipeName
+                PipeOptions = option,// isAsync ? PipeOptions.Asynchronous | PipeOptions.WriteThrough : PipeOptions.None,
+                VerifyPipe = hostName
             };
             this.PipeDirection = isDuplex ? PipeDirection.InOut : System.IO.Pipes.PipeDirection.Out;
 
@@ -114,44 +114,47 @@ namespace Nistec.Channels
         /// <summary>
         /// Constractor with arguments
         /// </summary>
-        /// <param name="pipeName"></param>
+        /// <param name="hostName"></param>
         /// <param name="isDuplex"></param>
-        /// <param name="isAsync"></param>
-        protected PipeClient(string pipeName, bool isDuplex, bool isAsync)
+        /// <param name="option"></param>
+        protected PipeClient(string hostName, bool isDuplex, PipeOptions option)
         {
             this.PipeDirection = isDuplex ? PipeDirection.InOut : System.IO.Pipes.PipeDirection.Out;
 
             Settings = new PipeSettings()
             {
-                PipeName = pipeName,
+                HostName = hostName,
+                PipeName = hostName,
                 ConnectTimeout = (uint)PipeSettings.DefaultConnectTimeout,
-                InBufferSize = PipeSettings.DefaultInBufferSize,
-                OutBufferSize = PipeSettings.DefaultOutBufferSize,
+                ReceiveBufferSize = PipeSettings.DefaultReceiveBufferSize,
+                SendBufferSize = PipeSettings.DefaultSendBufferSize,
                 PipeDirection = isDuplex ? PipeDirection.InOut : System.IO.Pipes.PipeDirection.Out,
-                PipeOptions = isAsync ? PipeOptions.Asynchronous | PipeOptions.WriteThrough : PipeOptions.None,
-                VerifyPipe = pipeName
+                PipeOptions = option,// isAsync ? PipeOptions.Asynchronous | PipeOptions.WriteThrough : PipeOptions.None,
+                VerifyPipe = hostName,
             };
         }
 
         /// <summary>
         /// Constractor with arguments
         /// </summary>
-        /// <param name="pipeName"></param>
+        /// <param name="hostName"></param>
         /// <param name="isDuplex"></param>
+        /// <param name="option"></param>
         /// <param name="connectTimeout"></param>
-        protected PipeClient(string pipeName, bool isDuplex, int connectTimeout)
+        protected PipeClient(string hostName, bool isDuplex, PipeOptions option, int connectTimeout)
         {
             this.PipeDirection = isDuplex ? PipeDirection.InOut : System.IO.Pipes.PipeDirection.Out;
 
             Settings = new PipeSettings()
             {
-                PipeName = pipeName,
+                HostName= hostName,
+                PipeName = hostName,
                 ConnectTimeout = (uint)connectTimeout,
-                InBufferSize = PipeSettings.DefaultInBufferSize,
-                OutBufferSize = PipeSettings.DefaultOutBufferSize,
+                ReceiveBufferSize = PipeSettings.DefaultReceiveBufferSize,
+                SendBufferSize = PipeSettings.DefaultSendBufferSize,
                 PipeDirection = isDuplex ? PipeDirection.InOut : System.IO.Pipes.PipeDirection.Out,
-                PipeOptions = PipeOptions.Asynchronous | PipeOptions.WriteThrough, //PipeOptions.None,
-                VerifyPipe = pipeName
+                PipeOptions = option,// PipeOptions.Asynchronous | PipeOptions.WriteThrough, //PipeOptions.None,
+                VerifyPipe = hostName
             };
         }
         #endregion
@@ -160,21 +163,23 @@ namespace Nistec.Channels
 
         public void Dispose()
         {
-            if (pipeClient != null)
+            if (pipeClientStream != null)
             {
-                pipeClient.Dispose();
-                pipeClient = null;
+                pipeClientStream.Dispose();
+                pipeClientStream = null;
             }
         }
         #endregion
 
         #region Read/Write
+       
+        protected abstract void ExecuteOneWay(TRequest message);
 
-        protected abstract object ExecuteMessage(TRequest message, Type type);
+        protected abstract object ExecuteMessage(TRequest message);
 
         protected abstract TResponse ExecuteMessage<TResponse>(TRequest message);
-
-
+        //protected abstract TransStream ExecuteMessageStream(TRequest message);
+        
         #endregion
 
         #region Run
@@ -182,7 +187,7 @@ namespace Nistec.Channels
         NamedPipeClientStream CreatePipe()
         {
             return new NamedPipeClientStream(
-                    ServerName,                 // The server name
+                    ServerName,                           // The server name
                     Settings.PipeName,                   // The unique pipe name
                     Settings.PipeDirection,              // The pipe is duplex
                     Settings.PipeOptions                 // No additional parameters
@@ -198,8 +203,8 @@ namespace Nistec.Channels
 
                 try
                 {
-                    pipeClient.Connect((int)Settings.ConnectTimeout);
-                    if (!pipeClient.IsConnected)
+                    pipeClientStream.Connect((int)Settings.ConnectTimeout);
+                    if (!pipeClientStream.IsConnected)
                     {
                         retry++;
                         if (retry >= MaxRetry)
@@ -235,21 +240,21 @@ namespace Nistec.Channels
                 }
             }
 
-            return pipeClient.IsConnected;
+            return pipeClientStream.IsConnected;
         }
 
         /// <summary>
         /// connect to the named pipe and execute request.
         /// </summary>
-        public void ExecuteOut(TRequest message, Type type, bool enableException = false)
+        public void ExecuteOut(TRequest message,  bool enableException = false)
         {
-            Execute(message, type, enableException);
+            Execute(message, enableException);
         }
 
         /// <summary>
         /// connect to the named pipe and execute request.
         /// </summary>
-        public object Execute(TRequest message, Type type, bool enableException=false)
+        public object Execute(TRequest message, bool enableException=false)
         {
 
             object response = null;// default(TResponse);
@@ -258,7 +263,7 @@ namespace Nistec.Channels
             {
                 // Try to open the named pipe identified by the pipe name.
 
-                pipeClient = new NamedPipeClientStream(
+                pipeClientStream = new NamedPipeClientStream(
                     ServerName,                          // The server name
                     Settings.PipeName,                   // The unique pipe name
                     Settings.PipeDirection,              // The pipe is duplex
@@ -273,11 +278,17 @@ namespace Nistec.Channels
 
 
                 // Set the read mode and the blocking mode of the named pipe.
-                pipeClient.ReadMode = PipeTransmissionMode.Message;
+                pipeClientStream.ReadMode = PipeTransmissionMode.Message;
 
-
-                return ExecuteMessage(message, type);
-
+                if (message.IsDuplex)
+                {
+                    return ExecuteMessage(message);
+                }
+                else
+                {
+                    ExecuteOneWay(message);
+                    return null;
+                }
             }
             catch (TimeoutException toex)
             {
@@ -295,7 +306,7 @@ namespace Nistec.Channels
             }
             catch (MessageException mex)
             {
-                Log.Exception("The tcp client throws the MessageException : ", mex, true);
+                Log.Exception("The client throws the MessageException : ", mex, true);
                 if (enableException)
                     throw mex;
                 return response;
@@ -312,10 +323,10 @@ namespace Nistec.Channels
             finally
             {
                 // Close the pipe.
-                if (pipeClient != null)
+                if (pipeClientStream != null)
                 {
-                    pipeClient.Close();
-                    pipeClient = null;
+                    pipeClientStream.Close();
+                    pipeClientStream = null;
                 }
             }
         }
@@ -332,7 +343,7 @@ namespace Nistec.Channels
             {
                 // Try to open the named pipe identified by the pipe name.
 
-                pipeClient = new NamedPipeClientStream(
+                pipeClientStream = new NamedPipeClientStream(
                     ServerName,                 // The server name
                     Settings.PipeName,                   // The unique pipe name
                     Settings.PipeDirection,              // The pipe is duplex
@@ -343,11 +354,15 @@ namespace Nistec.Channels
                 Connect();
 
                 // Set the read mode and the blocking mode of the named pipe.
-                pipeClient.ReadMode = PipeTransmissionMode.Message;
+                pipeClientStream.ReadMode = PipeTransmissionMode.Message;
 
- 
-                return ExecuteMessage<TResponse>(message);
-
+                if (message.IsDuplex)
+                    return ExecuteMessage<TResponse>(message);
+                else
+                {
+                    ExecuteOneWay(message);
+                    return default(TResponse);
+                }
 
             }
             catch (TimeoutException toex)
@@ -383,15 +398,14 @@ namespace Nistec.Channels
             finally
             {
                 // Close the pipe.
-                if (pipeClient != null)
+                if (pipeClientStream != null)
                 {
-                    pipeClient.Close();
-                    pipeClient = null;
+                    pipeClientStream.Close();
+                    pipeClientStream = null;
                 }
             }
         }
 
- 
         #endregion
     }
 
@@ -399,49 +413,86 @@ namespace Nistec.Channels
     /// <summary>
     /// Represent pipe client channel
     /// </summary>
-    public class PipeClient : PipeClient<PipeMessage>, IDisposable
+    public class PipeClient : PipeClient<MessageStream>, IDisposable
     {
         #region static send methods
 
-        public static object SendDuplex(PipeMessage request, string PipeName, bool IsAsync ,bool enableException=false)
+
+        /// <summary>
+        /// Send Duplex message with return value.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="hostName"></param>
+        /// <param name="option"></param>
+        /// <param name="enableException"></param>
+        /// <returns></returns>
+        public static TransStream SendDuplexStream(MessageStream request, string hostName, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
-            Type type = request.BodyType;
             request.IsDuplex = true;
-            PipeDirection direction = request.IsDuplex ? PipeDirection.InOut : PipeDirection.Out;
-            using (PipeClient client = new PipeClient(PipeName, true, IsAsync))
+            request.TransformType = TransformType.Stream;
+            using (PipeClient client = new PipeClient(hostName, true, option))
             {
-                return client.Execute(request, type, enableException);
+                return client.Execute<TransStream>(request, enableException);
             }
         }
 
-        public static T SendDuplex<T>(PipeMessage request, string PipeName, bool IsAsync, bool enableException = false)
+        public static string SendJsonDuplex(string request, string hostName, bool enableException = false, PipeOptions option = PipeOptions.None)
+        {
+            PipeMessage msg = new PipeMessage();
+            msg.EntityRead(request, new JsonSerializer(JsonSerializerMode.Read, JsonSerializer.DefaultOption));
+            using (PipeClient client = new PipeClient(hostName, true, option))
+            {
+                client.PipeDirection = PipeDirection.InOut;
+                var o= client.Execute(msg, enableException);
+                return o == null ? null : JsonSerializer.Serialize(o);
+            }
+        }
+        public static void SendJsonOut(string request, string hostName, bool enableException = false, PipeOptions option = PipeOptions.None)
+        {
+            PipeMessage msg = new PipeMessage();
+            msg.EntityRead(request, new JsonSerializer(JsonSerializerMode.Read, JsonSerializer.DefaultOption));
+            using (PipeClient client = new PipeClient(hostName, true, option))
+            {
+                client.PipeDirection = PipeDirection.Out;
+                client.ExecuteOut(msg, enableException);
+            }
+        }
+
+        public static object SendDuplex(MessageStream request, string hostName, bool enableException=false, PipeOptions option = PipeOptions.None)
         {
             request.IsDuplex = true;
-            PipeDirection direction = request.IsDuplex ? PipeDirection.InOut : PipeDirection.Out;
-            using (PipeClient client = new PipeClient(PipeName, true, IsAsync))
+            using (PipeClient client = new PipeClient(hostName, true, option))
+            {
+                return client.Execute(request, enableException);
+            }
+        }
+
+        public static T SendDuplex<T>(MessageStream request, string hostName, bool enableException = false, PipeOptions option = PipeOptions.None)
+        {
+            request.IsDuplex = true;
+            using (PipeClient client = new PipeClient(hostName, true, option))
             {
                 return client.Execute<T>(request, enableException);
             }
         }
 
-        public static void SendOut(PipeMessage request, string PipeName, bool IsAsync, bool enableException = false)
+      
+        public static void SendOut(MessageStream request, string hostName, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
-            Type type = request.BodyType;
             request.IsDuplex = false;
-            using (PipeClient client = new PipeClient(PipeName, false, IsAsync))
+            using (PipeClient client = new PipeClient(hostName, false, option))
             {
-                client.Execute(request, type, enableException);
+                client.ExecuteOut(request, enableException);
             }
         }
 
-        public static void SendIn(PipeMessage request, string PipeName, bool IsAsync, bool enableException = false)
+        public static void SendIn(MessageStream request, string hostName, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
-            Type type = request.BodyType;
             request.IsDuplex = false;
-            using (PipeClient client = new PipeClient(PipeName, false, IsAsync))
+            using (PipeClient client = new PipeClient(hostName, false, option))
             {
                 client.PipeDirection = PipeDirection.In;
-                client.Execute(request, type, enableException);
+                client.Execute(request, enableException);
             }
         }
 
@@ -452,11 +503,11 @@ namespace Nistec.Channels
         /// <summary>
         /// Constractor with arguments
         /// </summary>
-        /// <param name="pipeName"></param>
+        /// <param name="hostName"></param>
         /// <param name="isDuplex"></param>
-        /// <param name="isAsync"></param>
-        public PipeClient(string pipeName, bool isDuplex, bool isAsync)
-            : base(pipeName, isDuplex, isAsync)
+        /// <param name="option"></param>
+        public PipeClient(string hostName, bool isDuplex,PipeOptions option)
+            : base(hostName, isDuplex, option)
         {
 
         }
@@ -464,13 +515,13 @@ namespace Nistec.Channels
         /// <summary>
         /// Constractor with arguments
         /// </summary>
-        /// <param name="pipeName"></param>
+        /// <param name="hostName"></param>
         /// <param name="inBufferSize"></param>
         /// <param name="outBufferSize"></param>
         /// <param name="isDuplex"></param>
-        /// <param name="isAsync"></param>
-        public PipeClient(string pipeName, int inBufferSize, int outBufferSize, bool isDuplex, bool isAsync)
-            : base(pipeName, inBufferSize, outBufferSize, isDuplex, isAsync)
+        /// <param name="option"></param>
+        public PipeClient(string hostName, int inBufferSize, int outBufferSize, bool isDuplex, PipeOptions option)
+            : base(hostName, inBufferSize, outBufferSize, isDuplex, option)
         {
 
         }
@@ -510,14 +561,20 @@ namespace Nistec.Channels
 
         #region override
 
-        protected override object ExecuteMessage(PipeMessage message, Type type)
+        protected override void ExecuteOneWay(MessageStream message)
+        {
+            // Send a request from client to server
+            message.EntityWrite(pipeClientStream, null);
+        }
+
+        protected override object ExecuteMessage(MessageStream message)//, Type type)
         {
             object response = null;
 
             if (PipeDirection != System.IO.Pipes.PipeDirection.In)
             {
                 // Send a request from client to server
-                message.EntityWrite(pipeClient, null);
+                message.EntityWrite(pipeClientStream, null);
             }
 
             if (PipeDirection == System.IO.Pipes.PipeDirection.Out)
@@ -526,20 +583,20 @@ namespace Nistec.Channels
             }
 
             // Receive a response from server.
-            response = message.ReadAck(pipeClient, type,  Settings.InBufferSize);
-
+            response = message.ReadResponse(pipeClientStream,  Settings.ReceiveBufferSize, message.TransformType, false);
+            
             return response;
         }
 
-        protected override TResponse ExecuteMessage<TResponse>(PipeMessage message)
+        protected override TResponse ExecuteMessage<TResponse>(MessageStream message)
         {
             TResponse response = default(TResponse);
 
             if (PipeDirection != System.IO.Pipes.PipeDirection.In)
             {
                 // Send a request from client to server
-                message.EntityWrite(pipeClient, null);
-            }
+                message.EntityWrite(pipeClientStream, null);
+           }
 
             if (PipeDirection == System.IO.Pipes.PipeDirection.Out)
             {
@@ -547,22 +604,42 @@ namespace Nistec.Channels
             }
 
             // Receive a response from server.
-            response = message.ReadAck<TResponse>(pipeClient, Settings.InBufferSize);
+            response = message.ReadResponse<TResponse>(pipeClientStream, Settings.ReceiveBufferSize);
 
             return response;
         }
 
-        /// <summary>
-        /// connect to the named pipe and execute request.
-        /// </summary>
-        public MessageAck Execute(PipeMessage message, bool enableException = false)
-        {
-            return Execute<MessageAck>(message, enableException);
-        }
-       
+        //protected override TransStream ExecuteMessageStream(PipeMessage message)//, Type type)
+        //{
+        //    TransStream response = null;
+
+        //    if (PipeDirection != System.IO.Pipes.PipeDirection.In)
+        //    {
+        //        // Send a request from client to server
+        //        message.EntityWrite(pipeClientStream, null);
+        //    }
+
+        //    if (PipeDirection == System.IO.Pipes.PipeDirection.Out)
+        //    {
+        //        return response;
+        //    }
+
+        //    // Receive a response from server.
+        //    response = new TransStream(pipeClientStream, message.TransformType, Settings.ReceiveBufferSize);// message.ReadAck(pipeClientStream, message.TransformType, Settings.ReceiveBufferSize);
+
+        //    return response;
+        //}
+
+        ///// <summary>
+        ///// connect to the named pipe and execute request.
+        ///// </summary>
+        //public MessageAck Execute(PipeMessage message, bool enableException = false)
+        //{
+        //    return Execute<MessageAck>(message, enableException);
+        //}
+
         #endregion
 
     }
 
-    
 }

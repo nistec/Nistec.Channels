@@ -21,6 +21,7 @@
 using Nistec.Generic;
 using Nistec.IO;
 using Nistec.Logging;
+using Nistec.Runtime;
 using System;
 using System.Collections.Generic;
 using System.IO.Pipes;
@@ -38,7 +39,7 @@ namespace Nistec.Channels.Tcp
    /// Represent a base class for tcp server listner.
    /// </summary>
    /// <typeparam name="TRequest"></typeparam>
-    public abstract class TcpServer<TRequest>
+    public abstract class TcpServer<TRequest> where TRequest : ITransformMessage
     {
 
         #region membrs
@@ -114,7 +115,7 @@ namespace Nistec.Channels.Tcp
 
         ManualResetEvent tcpClientConnected = new ManualResetEvent(false);
         IPEndPoint endpoint;
-        bool connected = false;
+        //bool connected = false;
         int sockeErrors = 0;
         int MAX_SOCKET_ERRORS = TcpSettings.DefaultMaxSocketError;
         private Thread _listenerThread;
@@ -156,7 +157,7 @@ namespace Nistec.Channels.Tcp
 
         protected virtual void OnFault(string message, Exception ex)
         {
-            Log.Exception(message, ex, true, true);
+            Log.Exception(message, ex, true);
         }
 
         
@@ -207,7 +208,7 @@ namespace Nistec.Channels.Tcp
             }
             catch (Exception ex)
             {
-                Log.Exception("The tcp server async listener on Start throws the error: ", ex, true, true);
+                OnFault("The tcp server async listener on Start throws the error: ", ex);
                 return;
             }
         }
@@ -234,7 +235,7 @@ namespace Nistec.Channels.Tcp
         internal void ExecFault(TCP.TcpClient client, string reason)
         {
             Log.Error("Tcp listener fault error: " + reason);
-            if (client != null)
+            if (client != null && client.Connected)
             {
                 try
                 {
@@ -243,11 +244,16 @@ namespace Nistec.Channels.Tcp
                     {
                         var ack = FaultAck(reason);
                         WriteResponse(stream, ack);
+                        Close(client);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.Error("Tcp listener ExecFault error: " + ex.Message);
+                    OnFault("Tcp listener ExecFault error: ", ex);
+                }
+                finally
+                {
+                    Close(client);
                 }
             }
         }
@@ -256,9 +262,9 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         /// <param name="reason"></param>
         /// <returns></returns>
-        protected virtual NetStream FaultAck(string reason)
+        protected virtual TransStream FaultAck(string reason)
         {
-            return new TcpMessage("Fault", "ack", reason, 0).ToStream();
+            return TransStream.Write(new TcpMessage("Fault", "ack", reason, 0), TransType.Object);//.ToStream();
         }
         /// <summary>
         /// Read Request from client.
@@ -272,23 +278,27 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
-        protected abstract NetStream ExecRequset(TRequest request);
+        protected abstract TransStream ExecRequset(TRequest request);
 
         /// <summary>
         /// Write response to client.
         /// </summary>
         /// <param name="stream"></param>
         /// <param name="bResponse"></param>
-        protected virtual void WriteResponse(NetworkStream stream, NetStream bResponse)
+        protected virtual void WriteResponse(NetworkStream stream, TransStream bResponse)
         {
             if (bResponse == null)
             {
                 return;
             }
-
-            int cbResponse = bResponse.iLength;
-
-            stream.Write(bResponse.ToArray(), 0, cbResponse);
+            var ns = bResponse.GetStream();
+            if(ns==null)
+            {
+                return;
+            }
+            int lenth = ns.iLength;
+            //stream.WriteValue(cbResponse);
+            stream.Write(ns.ToArray(), 0, lenth);
 
         }
 
@@ -297,52 +307,62 @@ namespace Nistec.Channels.Tcp
 
         #region Run
 
+        /// <summary>
+        /// Occured when client is connected.
+        /// </summary>
+        protected virtual void OnClientConnected()
+        {
+            //Console.WriteLine("Debuger-OnTcpClientConnected : " + Thread.CurrentThread.ManagedThreadId.ToString());
+        }
+
         private void Run()
         {
-            int timeout=Settings.SendTimeout;
-            bool hasFault = false;
+            int timeout=Settings.ProcessTimeout;
+            //bool hasFault = false;
 
             while (Listen)
             {
-                TCP.TcpClient client = null;
+                //TCP.TcpClient client = null;
                 try
                 {
-                    hasFault = false;
+                    //hasFault = false;
                     if (_State == ChannelServiceState.Paused)
                     {
                         Thread.Sleep(10000);
                         continue;
                     }
 
-                    client = _listener.AcceptTcpClient();
-                    connected = true;
-
+                    TCP.TcpClient client = _listener.AcceptTcpClient();
+                   
                     if (IsReady == false)
                     {
-                        hasFault = true;
+                        //hasFault = true;
                         ExecFault(client, "The tcp server is not ready to accept client requests, please wait for server to be ready.");
                         Thread.Sleep(1000);
                         continue;
                     }
+                    //connected = true;
+                    OnClientConnected();
 
-                    using (Task task = Task.Factory.StartNew(()=>ProcessIncomingData(client)))
+                    Task task = Task.Factory.StartNew(() => ProcessIncomingData(client));
                     {
                         task.Wait(timeout);
                         if (task.IsCompleted)
                         {
-                            //
+                            Console.WriteLine("ProcessIncomingData completed");
                         }
                     }
-                    
-                    connected = false;
+                    task.TryDispose();
+
+                    //connected = false;
                     sockeErrors = 0;
                 }
                 catch (SocketException se)
                 {
-                    hasFault = true;
+                    //hasFault = true;
                     sockeErrors++;
                     OnFault("The tcp server throws SocketException: ", se);
-                    ExecFault(client, "The tcp server throws SocketException: " + se.Message);
+                    //ExecFault(client, "The tcp server throws SocketException: " + se.Message);
                     if (sockeErrors > MAX_SOCKET_ERRORS)
                     {
                         Log.Error("The tcp server shutdown after {0} errors ", MAX_SOCKET_ERRORS);
@@ -351,24 +371,43 @@ namespace Nistec.Channels.Tcp
                 }
                 catch (Exception ex)
                 {
-                    hasFault = true;
+                    //hasFault = true;
                     OnFault("The tcp server throws the error: ", ex);
-                    ExecFault(client, "The tcp server throws Exception: " + ex.Message);
+                    //ExecFault(client, "The tcp server throws Exception: " + ex.Message);
                 }
-                finally
-                {
-                    if (client != null && hasFault)
-                    {
-                        if (connected && client.Connected)
-                        {
-                            //client.EndConnect();
-                        }
-                        client.Close();
-                        client = null;
-                    }
-                }
+                //finally
+                //{
+                //    Close(client);
+                //}
             }
 
+        }
+
+        private class ServerCom : IDisposable
+        {
+            public long Uid;
+            public TCP.TcpClient client;
+            public ManualResetEvent ManualReset;
+
+            public void Dispose()
+            {
+                if (ManualReset != null)
+                {
+                    ManualReset.Close();
+                    ManualReset.Dispose();
+                    ManualReset = null;
+                }
+
+                if (client != null)
+                {
+                    //if (client.Connected)
+                    //{
+                    //    client.Close();
+                    //}
+                    client.Close();
+                    client = null;
+                }
+            }
         }
 
         private void RunAsync()
@@ -382,7 +421,8 @@ namespace Nistec.Channels.Tcp
 
                     tcpClientConnected.Reset();
                     _listener.BeginAcceptTcpClient(new AsyncCallback(ProcessIncomingConnection), _listener);
-                    connected = true;
+                    //connected = true;
+                    //OnClientConnected();
                     tcpClientConnected.WaitOne();
 
                 }
@@ -407,13 +447,30 @@ namespace Nistec.Channels.Tcp
         {
             TcpListener listener = null;
             TCP.TcpClient client = null;
-
+            int timeout = Settings.ProcessTimeout;
             try
             {
                 listener = (TcpListener)ar.AsyncState;
                 client = listener.EndAcceptTcpClient(ar);
 
-                ThreadPool.QueueUserWorkItem(ProcessIncomingData, client);
+                if (IsReady == false)
+                {
+                    //hasFault = true;
+                    ExecFault(client, "The tcp server is not ready to accept client requests, please wait for server to be ready.");
+                    Thread.Sleep(1000);
+                    return;
+                }
+                OnClientConnected();
+
+                Task task = Task.Factory.StartNew(() => ProcessIncomingData(client));
+                {
+                    task.Wait(timeout);
+                    if(task.IsCompleted)
+                    {
+                        Console.WriteLine("ProcessIncomingConnection completed");
+                    }
+                }
+                task.TryDispose();
             }
             catch (SocketException se)
             {
@@ -438,32 +495,39 @@ namespace Nistec.Channels.Tcp
             }
         }
 
-        void ProcessIncomingData(object obj)
+        void ProcessIncomingData(TCP.TcpClient client)
         {
-            TCP.TcpClient client = (TCP.TcpClient)obj;
             try
             {
+
                 using (NetworkStream stream = client.GetStream())
                 {
                     TRequest req = ReadRequest(stream);
 
                     var res = ExecRequset(req);
-
-                    WriteResponse(stream, res);
+                    if (req.IsDuplex)
+                        WriteResponse(stream, res);
                 }
                 sockeErrors = 0;
-                connected = false;
+                //connected = false;
             }
             catch (Exception ex)
             {
-                ExecFault(client, "The tcp server throws Exception: " + ex.Message);
                 OnFault("The tcp server async ProcessIncomingData throws the error: ", ex);
             }
             finally
             {
+                Close(client);
+            }
+        }
+
+        void Close(TCP.TcpClient client)
+        {
+            try
+            {
                 if (client != null)
                 {
-                    if (connected && client.Connected)
+                    if (client.Connected)
                     {
                         //client.EndConnect();
                     }
@@ -471,18 +535,9 @@ namespace Nistec.Channels.Tcp
                     client = null;
                 }
             }
-        }
-
-        void Close(TCP.TcpClient client)
-        {
-            if (client != null)
+            catch (Exception ex)
             {
-                if (connected && client.Connected)
-                {
-                    //client.EndConnect();
-                }
-                client.Close();
-                client = null;
+                OnFault("Close TcpClient error ", ex);
             }
         }
         #endregion

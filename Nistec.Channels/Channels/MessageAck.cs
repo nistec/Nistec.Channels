@@ -136,5 +136,10 @@ namespace Nistec.Channels
         }
         #endregion
 
+        public override string ToString()
+        {
+            return string.Format("State: {0}, Message: {1}", State.ToString(),Message);
+        }
+
     }
 }

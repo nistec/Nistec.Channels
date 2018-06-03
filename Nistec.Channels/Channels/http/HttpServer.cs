@@ -117,16 +117,31 @@ namespace Nistec.Channels.Http
             if (Initilized)
                 return;
             IsReady = false;
-            _maxThread= Settings.MaxThreads;
+            _maxThread = Settings.MaxThreads;
             if (_maxThread <= 0)
                 _maxThread = 1;
-            if (Settings.Address == null || Settings.Address.Length == 0)
-                throw new ArgumentException("Invalid Host Address");
-            if (!_listener.Prefixes.Contains(Settings.Address))
+
+            //if (Settings.HostAddress == null || Settings.HostAddress.Length == 0)
+            //    throw new ArgumentException("Invalid Host Address");
+
+            //var prefixes = { "http://localhost:8080/app/root", "https://localhost:8443/app/root" };
+
+            _listener.Prefixes.Clear();
+            if (Settings.IsValidHostAddress())
+                _listener.Prefixes.Add(Settings.HostAddress);
+            if (Settings.IsValidSslHostAddress())
+                _listener.Prefixes.Add(Settings.SslHostAddress);
+
+            if (_listener.Prefixes.Count == 0)
             {
-                _listener.Prefixes.Add(Settings.Address);
+                throw new ArgumentException("Invalid Host Address");
             }
-            _timeout = Settings.SendTimeout;
+            
+            //if (!_listener.Prefixes.Contains(Settings.HostAddress))
+            //{
+            //    _listener.Prefixes.Add(Settings.HostAddress);
+            //}
+            _timeout = Settings.ConnectTimeout;
             Initilized = true;
 
             MAX_ERRORS = Settings.MaxErrors;
@@ -236,9 +251,10 @@ namespace Nistec.Channels.Http
         /// </summary>
         /// <param name="reason"></param>
         /// <returns></returns>
-        protected virtual NetStream FaultAck(string reason)
+        protected virtual TransStream FaultAck(string reason)
         {
-            return new HttpMessage("Fault", "ack", reason, 0).ToStream();
+            return TransStream.Write(new HttpMessage("Fault", "ack", reason, 0), TransType.Object);
+            //return new HttpMessage("Fault", "ack", reason, 0).ToStream();
         }
         /// <summary>
         /// Read Request from client.
@@ -252,14 +268,21 @@ namespace Nistec.Channels.Http
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
-        protected abstract NetStream ExecRequset(TRequest request);
+        protected abstract TransStream ExecTransStream(TRequest request);
+
+        /// <summary>
+        /// Exec client requset.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        protected abstract string ExecString(TRequest request);
 
         /// <summary>
         /// Write response to client.
         /// </summary>
         /// <param name="context"></param>
         /// <param name="bResponse"></param>
-        protected virtual void WriteResponse(HttpListenerContext context, NetStream bResponse)
+        protected virtual void WriteResponse(HttpListenerContext context, TransStream bResponse)
         {
             var response = context.Response;
             if (bResponse == null)
@@ -268,9 +291,19 @@ namespace Nistec.Channels.Http
                 response.StatusDescription = "No response";
                 return;
             }
+            byte[] buffer = null;
 
-            int cbResponse = bResponse.iLength;
-            byte[] buffer = bResponse.ToArray();
+            if (bResponse.PeekTransType() == TransType.Json)
+            {
+                var json = bResponse.ReadJson();
+                buffer=Encoding.UTF8.GetBytes(json);
+            }
+            else
+            {
+                var ns = bResponse.GetStream();
+                int cbResponse = ns.iLength;
+                buffer = ns.ToArray();
+            }
 
             response.StatusCode = (int)HttpStatusCode.OK;
             response.StatusDescription = HttpStatusCode.OK.ToString();
@@ -279,6 +312,30 @@ namespace Nistec.Channels.Http
             response.OutputStream.Close();
         }
 
+        /// <summary>
+        /// Write response to client.
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="strResponse"></param>
+        protected virtual void WriteResponse(HttpListenerContext context, string strResponse)
+        {
+            var response = context.Response;
+            if (strResponse == null)
+            {
+                response.StatusCode = (int)HttpStatusCode.NoContent;
+                response.StatusDescription = "No response";
+                return;
+            }
+            response.ContentType = "text/plain";
+            byte[] buffer = System.Text.Encoding.UTF8.GetBytes(strResponse);
+            int cbResponse = buffer.Length;
+
+            response.StatusCode = (int)HttpStatusCode.OK;
+            response.StatusDescription = HttpStatusCode.OK.ToString();
+            response.ContentLength64 = buffer.Length;
+            response.OutputStream.Write(buffer, 0, buffer.Length);
+            response.OutputStream.Close();
+        }
 
         #endregion
 
@@ -318,7 +375,7 @@ namespace Nistec.Channels.Http
                 catch (HttpException se)
                 {
                     httpErrors++;
-                    OnFault("The http server throws SocketException: ", se);
+                    //OnFault("The http server throws SocketException: ", se);
                     ExecFault(context, "The http server throws SocketException: " + se.Message);
                     if (httpErrors > MAX_ERRORS)
                     {
@@ -328,7 +385,7 @@ namespace Nistec.Channels.Http
                 }
                 catch (Exception ex)
                 {
-                    OnFault("The http server throws the error: ", ex);
+                    //OnFault("The http server throws the error: ", ex);
                     ExecFault(context, "The http server throws Exception: " + ex.Message);
                 }
             }
@@ -368,7 +425,7 @@ namespace Nistec.Channels.Http
                 try
                 {
                     //ProcessRequest(context);
-                    using (Task task = Task.Factory.StartNew(() => ProcessRequest(context)))
+                    Task task = Task.Factory.StartNew(() => ProcessRequest(context));
                     {
                         task.Wait(_timeout);
                         if (task.IsCompleted)
@@ -376,7 +433,7 @@ namespace Nistec.Channels.Http
                             //
                         }
                     }
-                    
+                    task.TryDispose();
                 }
                 catch (Exception e)
                 {
@@ -394,6 +451,7 @@ namespace Nistec.Channels.Http
                 _listenerThread = new Thread(HandleRequests);
 
                 _listener.Start();
+
                 _listenerThread.Start();
 
                 for (int i = 0; i < _workers.Length; i++)
@@ -421,16 +479,24 @@ namespace Nistec.Channels.Http
                 HttpRequestInfo requestInfo = HttpRequestInfo.Read(context.Request);
 
                 TRequest req = ReadRequest(requestInfo);
-                var res = ExecRequset(req);
-                WriteResponse(context, res);
 
+                if (requestInfo.BodyType == HttpBodyType.Body)
+                {
+                    var res = ExecTransStream(req);
+                    WriteResponse(context, res);
+                }
+                else
+                {
+                    var response = ExecString(req);
+                    WriteResponse(context, response);
+                }
                 httpErrors = 0;
                 //connected = false;
             }
             catch (Exception ex)
             {
                 ExecFault(context, "The http server throws Exception: " + ex.Message);
-                OnFault("The http server async ProcessIncomingData throws the error: ", ex);
+                //OnFault("The http server async ProcessIncomingData throws the error: ", ex);
             }
         }
 
@@ -438,7 +504,7 @@ namespace Nistec.Channels.Http
     }
 
   
-
+/*
     /// <summary>
     /// Represent a http server listner.
     /// </summary>
@@ -477,10 +543,11 @@ namespace Nistec.Channels.Http
         /// <returns></returns>
         protected override HttpMessage ReadRequest(HttpRequestInfo request)
         {
-            return HttpMessage.ServerReadRequest(request);
+            return HttpMessage.ReadRequest(request);
         }
 
         #endregion
 
     }
+ */  
 }

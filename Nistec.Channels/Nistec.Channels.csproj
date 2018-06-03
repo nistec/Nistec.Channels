@@ -48,14 +48,14 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\..\References\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\Nistec.Channels.xml</DocumentationFile>
+    <DocumentationFile>..\..\References\Debug\Nistec.Channels.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -70,6 +70,7 @@
     <DocumentationFile>..\..\References\Release\Nistec.Channels.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System" />
     <Reference Include="System.configuration" />
     <Reference Include="System.Data" />
@@ -87,6 +88,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Channels\http\HttpRequestInfo.cs" />
+    <Compile Include="Channels\http\HttpRequest.cs" />
+    <Compile Include="Channels\GenericMessage.cs" />
+    <Compile Include="Channels\TransStream.cs" />
     <Compile Include="Channels\AnonymousPipe\AnonymousPipeClient.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -94,14 +99,24 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Channels\AnonymousPipe\AnonymousMessage.cs" />
+    <Compile Include="Channels\IMessageChannel.cs" />
+    <Compile Include="Channels\RemoteCache\CacheApi.cs" />
+    <Compile Include="Channels\StreamExtension.cs" />
+    <Compile Include="Channels\Config\HttpConfigItem.cs" />
+    <Compile Include="Channels\Config\HttpServerConfigItem.cs" />
+    <Compile Include="Channels\Config\HttpServerConfigItems.cs" />
+    <Compile Include="Channels\http\HttpJsonClient.cs" />
     <Compile Include="Channels\http\HttpClient.cs" />
     <Compile Include="Channels\http\HttpServer.cs" />
     <Compile Include="Channels\http\HttpSettings.cs" />
     <Compile Include="Channels\http\HttpMessage.cs" />
+    <Compile Include="Channels\Config\PipeConfigItem.cs" />
+    <Compile Include="Channels\Config\PipeServerConfigItem.cs" />
+    <Compile Include="Channels\Config\PipeServerConfigItems.cs" />
+    <Compile Include="Channels\Pipe\PipeJsonClient.cs" />
+    <Compile Include="Channels\Pipe\PipeJsonServer.cs" />
+    <Compile Include="Channels\HostChannel.cs" />
     <Compile Include="Channels\RemoteCache\CacheSettings.cs" />
-    <Compile Include="Channels\RemoteCache\SessionCacheApi.cs" />
-    <Compile Include="Channels\RemoteCache\SyncCacheApi.cs" />
-    <Compile Include="Channels\RemoteCache\CacheApi.cs" />
     <Compile Include="Channels\RemoteTrace\TraceApi.cs" />
     <Compile Include="Channels\RemoteTrace\TraceCmd.cs" />
     <Compile Include="Channels\RemoteTrace\TraceSettings.cs" />
@@ -109,7 +124,7 @@
     <Compile Include="Channels\RemoteCache\CacheCmd.cs" />
     <Compile Include="Channels\AppDomainStarter.cs" />
     <Compile Include="Channels\MessageAck.cs" />
-    <Compile Include="Channels\MessageKey.cs" />
+    <Compile Include="Channels\ComplexKey.cs" />
     <Compile Include="Channels\MessageStream.cs" />
     <Compile Include="Channels\Enums.cs" />
     <Compile Include="Channels\Pipe\PipeMessage.cs" />
@@ -117,11 +132,17 @@
     <Compile Include="Channels\Pipe\PipeServer.cs" />
     <Compile Include="Channels\Pipe\PipeSettings.cs" />
     <Compile Include="Channels\MessageRequest.cs" />
+    <Compile Include="Channels\Config\TcpConfigItem.cs" />
+    <Compile Include="Channels\Config\TcpServerConfigItem.cs" />
+    <Compile Include="Channels\Config\TcpServerConfigItems.cs" />
+    <Compile Include="Channels\Tcp\TcpJsonClient.cs" />
+    <Compile Include="Channels\Tcp\TcpJsonServer.cs" />
     <Compile Include="Channels\Tcp\TcpServerPool.cs" />
     <Compile Include="Channels\Tcp\TcpClient.cs" />
     <Compile Include="Channels\Tcp\TcpMessage.cs" />
     <Compile Include="Channels\Tcp\TcpServer.cs" />
     <Compile Include="Channels\Tcp\TcpSettings.cs" />
+    <Compile Include="Channels\StringMessage.cs" />
     <Compile Include="Diagnostics\ProcessExtensions.cs" />
     <Compile Include="Diagnostics\ProcessTree.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -155,6 +176,9 @@
       <Project>{e510dd2c-859c-476c-9901-60edfc5e71f1}</Project>
       <Name>Nistec.Logger</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="AsyncPipe.txt" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

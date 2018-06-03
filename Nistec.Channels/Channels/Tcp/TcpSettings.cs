@@ -71,7 +71,7 @@ namespace Nistec.Channels.Tcp
     ///     ReadTimeout="1000" 
     ///     ReceiveBufferSize="1024" 
     ///     SendBufferSize="1024"/>
-    /// </tcpClientSettings>
+    /// </TcpClientSettings>
     /// tcpServerSettings
     /// <TcpServerSettings>
     ///     <host HostName="localhost" 
@@ -85,7 +85,7 @@ namespace Nistec.Channels.Tcp
     ///     SendBufferSize="1024" 
     ///     MaxSocketError="50" 
     ///     MaxServerConnections="0" 
-    /// </pipeServerSettings>
+    /// </TcpServerSettings>
     /// </example>
     public class TcpSettings
     {
@@ -100,7 +100,7 @@ namespace Nistec.Channels.Tcp
         /// <summary>
         /// DefaultPort
         /// </summary>
-        public const int DefaultPort = 13000;
+        public const int DefaultPort = 15000;
         /// <summary>
         /// DefaultReceiveBufferSize
         /// </summary>
@@ -110,17 +110,17 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         public const int DefaultSendBufferSize = 4096;
         /// <summary>
-        /// DefaultSendTimeout
+        /// DefaultConnectTimeout
         /// </summary>
-        public const int DefaultSendTimeout = 5000;
+        public const int DefaultConnectTimeout = 5000;
         /// <summary>
         /// DefaultProcessTimeout
         /// </summary>
         public const int DefaultProcessTimeout = 5000;
-        /// <summary>
-        /// DefaultReadTimeout
-        /// </summary>
-        public const int DefaultReadTimeout = 1000;
+        ///// <summary>
+        ///// DefaultReadTimeout
+        ///// </summary>
+        //public const int DefaultReadTimeout = 1000;
         /// <summary>
         /// DefaultMaxSocketError
         /// </summary>
@@ -155,13 +155,13 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         public int ProcessTimeout { get; set; }
         /// <summary>
-        /// Get or Set SendTimeout (Default=5000).
+        /// Get or Set ConnectTimeout (Default=5000).
         /// </summary>
-        public int SendTimeout { get; set; }
-        /// <summary>
-        /// Get or Set ReadTimeout (Default=5000).
-        /// </summary>
-        public int ReadTimeout { get; set; }
+        public int ConnectTimeout { get; set; }
+        ///// <summary>
+        ///// Get or Set ReadTimeout (Default=5000).
+        ///// </summary>
+        //public int ReadTimeout { get; set; }
         /// <summary>
         /// Get or Set ReceiveBufferSize (Default=8192).
         /// </summary>
@@ -196,9 +196,9 @@ namespace Nistec.Channels.Tcp
             Address = DefaultAddress;
             Port=DefaultPort;
             IsAsync = true;
-            SendTimeout = DefaultSendTimeout;
+            ConnectTimeout = DefaultConnectTimeout;
             ProcessTimeout = DefaultProcessTimeout;
-            ReadTimeout = DefaultReadTimeout;
+            //ReadTimeout = DefaultReadTimeout;
             ReceiveBufferSize = DefaultReceiveBufferSize;
             SendBufferSize = DefaultSendBufferSize;
             MaxServerConnections = 0;
@@ -252,9 +252,9 @@ namespace Nistec.Channels.Tcp
             Address = EnsureHostAddress(table.GetValue("Address"));
             Port = table.Get<int>("Port");
             IsAsync = (bool)table.Get<bool>("IsAsync", true);
-            SendTimeout = (int)table.Get<int>("SendTimeout", DefaultSendTimeout);
+            ConnectTimeout = (int)table.Get<int>("ConnectTimeout", DefaultConnectTimeout);
             ProcessTimeout = (int)table.Get<int>("ProcessTimeout", DefaultProcessTimeout);
-            ReadTimeout = (int)table.Get<int>("ReadTimeout", DefaultReadTimeout);
+            //ReadTimeout = (int)table.Get<int>("ReadTimeout", DefaultReadTimeout);
             ReceiveBufferSize = table.Get<int>("ReceiveBufferSize", DefaultReceiveBufferSize);
             SendBufferSize = table.Get<int>("SendBufferSize", DefaultSendBufferSize);
             if (isServer)
@@ -359,6 +359,8 @@ namespace Nistec.Channels.Tcp
             }
 
         }
+
+        #region host settings
 
         /// <summary>
         /// Get host adress as <see cref="IPAddress"/>.
@@ -468,6 +470,6 @@ namespace Nistec.Channels.Tcp
             }
             return hostEndPoint;
         }
-
+        #endregion
     }
 }

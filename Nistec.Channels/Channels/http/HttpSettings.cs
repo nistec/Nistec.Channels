@@ -65,25 +65,27 @@ namespace Nistec.Channels.Http
     /// HttpClientSettings
     /// <HttpClientSettings>
     ///     <host HostName="localhost" 
-    ///     Address="127.0.0.1:13100"
+    ///     Address="127.0.0.1"
+    ///     Port="13100"
     ///     Method="post"
-    ///     SendTimeout="5000" 
-    ///     ReadTimeout="1000" 
+    ///     ConnectTimeout="5000" 
+    ///     ProcessTimeout="5000" 
     /// </HttpClientSettings>
     /// HttpServerSettings
     /// <HttpServerSettings>
     ///     <host HostName="localhost" 
-    ///     Address="127.0.0.1:13100"
+    ///     Address="127.0.0.1"
+    ///     Port="13100"
     ///     Method="post"
-    ///     SendTimeout="5000" 
+    ///     ConnectTimeout="5000" 
     ///     ProcessTimeout="5000" 
-    ///     ReadTimeout="1000" 
     ///     MaxErrors="50" 
     ///     MaxServerConnections="0" 
-    /// </pipeServerSettings>
+    /// </HttpServerSettings>
     /// </example>
     public class HttpSettings
     {
+
         /// <summary>
         /// DefaultHostName
         /// </summary>
@@ -99,24 +101,28 @@ namespace Nistec.Channels.Http
         /// <summary>
         /// DefaultPort
         /// </summary>
-        public const int DefaultPort = 13000;
+        public const int DefaultPort = 13010;
+        /// <summary>
+        /// DefaultSslPort
+        /// </summary>
+        public const int DefaultSslPort = 13043;
         /// <summary>
         /// DefaultSendTimeout
         /// </summary>
-        public const int DefaultSendTimeout = 5000;
+        public const int DefaultConnectTimeout = 5000;
         /// <summary>
         /// DefaultProcessTimeout
         /// </summary>
         public const int DefaultProcessTimeout = 5000;
-        /// <summary>
-        /// DefaultReadTimeout
-        /// </summary>
-        public const int DefaultReadTimeout = 1000;
+        ///// <summary>
+        ///// DefaultReadTimeout
+        ///// </summary>
+        //public const int DefaultReadTimeout = 1000;
         /// <summary>
         /// DefaultMaxSocketError
         /// </summary>
         public const int DefaultMaxErrors = 50;
-       
+
 
         /// <summary>
         ///  Get or Set HostName.
@@ -126,12 +132,24 @@ namespace Nistec.Channels.Http
         ///  Get or Set Host Address.
         /// </summary>
         public string Address { get; set; }
-       
+        /// <summary>
+        ///  Get or Set Port.
+        /// </summary>
+        public int Port { get; set; }
+        /// <summary>
+        ///  Get or Set SslPort.
+        /// </summary>
+        public int SslPort { get; set; }
         /// <summary>
         ///  Get or Set request method.
         /// </summary>
         public string Method { get; set; }
-       
+
+        /// <summary>
+        ///  Get or Set if ssl is enabled.
+        /// </summary>
+        public bool SslEnabled { get; set; }
+
         /// <summary>
         /// Get or Set MaxServerConnections (Only for server side) (Default=1).
         /// </summary>
@@ -141,14 +159,14 @@ namespace Nistec.Channels.Http
         /// </summary>
         public int ProcessTimeout { get; set; }
         /// <summary>
-        /// Get or Set SendTimeout (Default=5000).
+        /// Get or Set ConnectTimeout (Default=5000).
         /// </summary>
-        public int SendTimeout { get; set; }
-        /// <summary>
-        /// Get or Set ReadTimeout (Default=5000).
-        /// </summary>
-        public int ReadTimeout { get; set; }
-        
+        public int ConnectTimeout { get; set; }
+        ///// <summary>
+        ///// Get or Set ReadTimeout (Default=5000).
+        ///// </summary>
+        //public int ReadTimeout { get; set; }
+
         /// <summary>
         /// Get or Set the max errors befor service shut down.
         /// </summary>
@@ -168,7 +186,82 @@ namespace Nistec.Channels.Http
             return host == null || host == "" ? "Any" : host == "localhost" ? "127.0.0.1" : host;
         }
 
+        /// <summary>
+        ///  Get or Set Full Host Address like "site.com:13010".
+        /// </summary>
+        public string HostAddress { get; private set; }
 
+        /// <summary>
+        ///  Get or Set Host Address ssl.
+        /// </summary>
+        public string SslHostAddress { get; private set; }
+
+        /// <summary>
+        /// Get host adress.
+        /// </summary>
+        public string GetHostAddress()
+        {
+            if (Port <= 0)
+                Port = DefaultPort;
+                return Address.TrimEnd('/') + ":" + Port.ToString() + "/";
+        }
+
+        public static void SplitHostAddress(string hostAddress,out string address, out int port)
+        {
+            if(hostAddress==null)
+            {
+                address = null;
+                port = 0;
+            }
+            string[] args= hostAddress.SplitTrim(':');
+
+            if (args.Length == 1)
+            {
+                address = args[0];
+                port = 0;
+            }
+            else if (args.Length ==2)
+            {
+                address = args[0];
+                port = Types.ToInt(args[1]);
+            }
+            else
+            {
+                address = null;
+                port = 0;
+            }
+        }
+        /// <summary>
+        /// Get host adress ssl.
+        /// </summary>
+        public string GetSslHostAddress()
+        {
+            //if (SslEnabled == false)
+            //    return null;
+            if (SslPort <= 0)
+                Port = DefaultSslPort;
+            return Address.TrimEnd('/') + ":" + SslPort.ToString() + "/";
+        }
+
+        public bool IsValidHostAddress()
+        {
+            if (HostAddress == null || HostAddress.Length == 0 || !HostAddress.ToLower().StartsWith("http://"))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        public bool IsValidSslHostAddress()
+        {
+            if (!SslEnabled)
+                return false;
+            if (HostAddress == null || HostAddress.Length == 0 || !HostAddress.ToLower().StartsWith("https://"))
+            {
+                return false;
+            }
+            return true;
+        }
 
         /// <summary>
         /// Default constractor.
@@ -177,12 +270,17 @@ namespace Nistec.Channels.Http
         {
             HostName = DefaultHostName;
             Address = DefaultAddress;
+            Port = DefaultPort;
+            SslPort = DefaultSslPort;
+            SslEnabled = false;
             Method = DefaultMethod;
-            SendTimeout = DefaultSendTimeout;
+            ConnectTimeout = DefaultConnectTimeout;
             ProcessTimeout = DefaultProcessTimeout;
-            ReadTimeout = DefaultReadTimeout;
+            //ReadTimeout = DefaultReadTimeout;
             MaxServerConnections = 0;
             MaxErrors = DefaultMaxErrors;
+            HostAddress = GetHostAddress();
+            SslHostAddress = GetSslHostAddress();
         }
 
         /// <summary>
@@ -190,12 +288,18 @@ namespace Nistec.Channels.Http
         /// </summary>
         /// <param name="hostAddress"></param>
         /// <param name="port"></param>
-        public HttpSettings(string hostAddress, string method)
+        /// <param name="method"></param>
+        public HttpSettings(string hostAddress,int port, string method)
             : this()
         {
             HostName = hostAddress;
             Address = hostAddress;
+            Port = port;
+            SslPort = DefaultSslPort;
+            SslEnabled = false;
             Method = method;
+            HostAddress = GetHostAddress();
+            SslHostAddress = GetSslHostAddress();
         }
 
         /// <summary>
@@ -230,15 +334,20 @@ namespace Nistec.Channels.Http
             XmlTable table = new XmlTable(node);
             HostName = table.GetValue("HostName");
             Address = table.GetValue("Address");
+            Port = table.Get<int>("Port");
+            SslPort = table.Get<int>("SslPort");
+            SslEnabled = table.Get<bool>("SslEnabled",false);
             Method = table.GetValue("Method");
-            SendTimeout = (int)table.Get<int>("SendTimeout", DefaultSendTimeout);
+            ConnectTimeout = (int)table.Get<int>("ConnectTimeout", DefaultConnectTimeout);
             ProcessTimeout = (int)table.Get<int>("ProcessTimeout", DefaultProcessTimeout);
-            ReadTimeout = (int)table.Get<int>("ReadTimeout", DefaultReadTimeout);
+            //ReadTimeout = (int)table.Get<int>("ReadTimeout", DefaultReadTimeout);
             if (isServer)
             {
                 MaxErrors = table.Get<int>("MaxErrors", DefaultMaxErrors);
                 MaxServerConnections = table.Get<int>("MaxServerConnections", 1);
             }
+            HostAddress = GetHostAddress();
+            SslHostAddress = GetSslHostAddress();
         }
 
         /// <summary>
@@ -277,6 +386,11 @@ namespace Nistec.Channels.Http
             XmlNode root = doc.SelectSingleNode(xpath);
             XmlNode node = null;
             bool found = false;
+
+            if(root==null)
+            {
+                throw new ArgumentException("Invalid "+ xpath);
+            }
 
             foreach (XmlNode n in root.ChildNodes)
             {

@@ -32,104 +32,15 @@ using System.IO.Pipes;
 using System.Threading.Tasks;
 using System.Net.Sockets;
 using System.Net;
+using System.Collections.Specialized;
 
 namespace Nistec.Channels.Http
 {
-
-    public class HttpRequestInfo
-    {
-        public string Body { get; set; }
-        public long ContentLength { get; set; }
-        public string ContentType { get; set; }
-        public string HttpMethod { get; set; }
-        public Uri Url { get; set; }
-
-        public override string ToString()
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine(string.Format("HttpMethod {0}", HttpMethod));
-            sb.AppendLine(string.Format("Url {0}", Url));
-            sb.AppendLine(string.Format("ContentType {0}", ContentType));
-            sb.AppendLine(string.Format("ContentLength {0}", ContentLength));
-            sb.AppendLine(string.Format("Body {0}", Body));
-            return sb.ToString();
-        }
-
-        public static HttpRequestInfo Read(HttpListenerRequest request)
-        {
-            var info = new HttpRequestInfo();
-            info.HttpMethod = request.HttpMethod;
-            info.Url = request.Url;
-
-            if (request.HasEntityBody)
-            {
-                Encoding encoding = request.ContentEncoding;
-                using (var bodyStream = request.InputStream)
-                using (var streamReader = new StreamReader(bodyStream, encoding))
-                {
-                    if (request.ContentType != null)
-                        info.ContentType = request.ContentType;
-
-                    info.ContentLength = request.ContentLength64;
-                    info.Body = streamReader.ReadToEnd();
-                }
-            }
-
-            return info;
-        }
-    }
-
-    public class HttpResponseInfo
-    {
-        public string Body { get; set; }
-        public string ContentEncoding { get; set; }
-        public long ContentLength { get; set; }
-        public string ContentType { get; set; }
-        public HttpStatusCode StatusCode { get; set; }
-        public string StatusDescription { get; set; }
-
-        public override string ToString()
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine(string.Format("StatusCode {0} StatusDescripton {1}", StatusCode, StatusDescription));
-            sb.AppendLine(string.Format("ContentType {0} ContentEncoding {1} ContentLength {2}", ContentType, ContentEncoding, ContentLength));
-            sb.AppendLine(string.Format("Body {0}", Body));
-            return sb.ToString();
-        }
-        public static HttpResponseInfo Read(HttpWebResponse response)
-        {
-            var info = new HttpResponseInfo();
-            info.StatusCode = response.StatusCode;
-            info.StatusDescription = response.StatusDescription;
-            info.ContentEncoding = response.ContentEncoding;
-            info.ContentLength = response.ContentLength;
-            info.ContentType = response.ContentType;
-
-            using (var bodyStream = response.GetResponseStream())
-            using (var streamReader = new StreamReader(bodyStream, Encoding.UTF8))
-            {
-                info.Body = streamReader.ReadToEnd();
-            }
-
-            return info;
-        }
-
-        private static void CreateResponse(HttpListenerResponse response, string body)
-        {
-            response.StatusCode = (int)HttpStatusCode.OK;
-            response.StatusDescription = HttpStatusCode.OK.ToString();
-            byte[] buffer = Encoding.UTF8.GetBytes(body);
-            response.ContentLength64 = buffer.Length;
-            response.OutputStream.Write(buffer, 0, buffer.Length);
-            response.OutputStream.Close();
-        }
-    }
-
     /// <summary>
     /// Represent a message for named tcp communication.
     /// </summary>
     [Serializable]
-    public class HttpMessage : MessageStream,IMessage, IDisposable
+    public class HttpMessage : MessageStream, ITransformMessage, IDisposable
     {
 
         #region ctor
@@ -153,7 +64,7 @@ namespace Nistec.Channels.Http
             : this()
         {
             Command = command;
-            Key = key;
+            Id = key;
             Expiration = expiration;
             SetBody(value);
         }
@@ -169,9 +80,9 @@ namespace Nistec.Channels.Http
             : this()
         {
             Command = command;
-            Key = key;
+            Id = key;
             Expiration = expiration;
-            Id = sessionId;
+            Label = sessionId;
             SetBody(value);
         }
         #endregion
@@ -187,6 +98,7 @@ namespace Nistec.Channels.Http
         #endregion
 
         #region static
+        /*
         /// <summary>
         /// Create a new message stream.
         /// </summary>
@@ -199,47 +111,114 @@ namespace Nistec.Channels.Http
             message.EntityRead(stream, streamer);
             return message;
         }
-
+        */
         #endregion
 
         #region send methods
         /// <summary>
         /// Send duplex message to tcp server using the host name and port arguments.
         /// </summary>
-        /// <param name="HostAddress"></param>
+        /// <param name="address"></param>
+        /// <param name="port"></param>
         /// <param name="method"></param>
-        /// <param name="ReadTimeOut"></param>
+        /// <param name="timeout"></param>
         /// <returns></returns>
-        public object SendDuplex(string HostAddress,string method, int ReadTimeOut)
+        public object SendDuplex(string address, int port, string method, int timeout)
         {
-            return HttpClient.SendDuplex(this, HostAddress, method,ReadTimeOut);
+            return HttpClient.SendDuplex(this, address, port, method, timeout);
         }
         /// <summary>
         /// Send duplex message to tcp server using the host name and port arguments.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="HostAddress"></param>
+        /// <param name="address"></param>
+        /// <param name="port"></param>
         /// <param name="method"></param>
-        /// <param name="ReadTimeOut"></param>
+        /// <param name="timeout"></param>
         /// <returns></returns>
-        public T SendDuplex<T>(string HostAddress, string method, int ReadTimeOut)
+        public T SendDuplex<T>(string address, int port, string method, int timeout)
         {
-            return HttpClient.SendDuplex<T>(this, HostAddress, method, ReadTimeOut);
+            return HttpClient.SendDuplex<T>(this, address, port, method, timeout);
         }
         /// <summary>
         /// Send one way message to tcp server using the host name and port arguments.
         /// </summary>
-        /// <param name="HostAddress"></param>
+        /// <param name="address"></param>
+        /// <param name="port"></param>
         /// <param name="method"></param>
-        /// <param name="ReadTimeOut"></param>
-        public void SendOut(string HostAddress, string method, int ReadTimeOut)
+        /// <param name="timeout"></param>
+        public void SendOut(string address, int port, string method, int timeout)
         {
-            HttpClient.SendOut(this, HostAddress, method, ReadTimeOut);
+            HttpClient.SendOut(this, address, port, method, timeout);
         }
 
         #endregion
 
+        #region Read/Write http
+
+        internal static HttpMessage ReadRequest(HttpRequestInfo request)
+        {
+            if (request.BodyStream != null)
+            {
+                return ParseStream(request.BodyStream);
+            }
+            else
+            {
+
+                var message = new HttpMessage();
+                if (request.BodyType == HttpBodyType.QueryString)
+                    message.EntityRead(request.QueryString, null);
+                else if (request.Body != null)
+                    message.EntityRead(request.Body, null);
+                else if (request.Url.LocalPath != null && request.Url.LocalPath.Length > 1)
+                    message.EntityRead(request.Url.LocalPath.TrimStart('/').TrimEnd('/'), null);
+
+                return message;
+            }
+        }
+
+        internal static void WriteResponse(HttpListenerContext context, NetStream bResponse)
+        {
+            var response = context.Response;
+            if (bResponse == null)
+            {
+                response.StatusCode = (int)HttpStatusCode.NoContent;
+                response.StatusDescription = "No response";
+                return;
+            }
+
+            int cbResponse = bResponse.iLength;
+            byte[] buffer = bResponse.ToArray();
+
+
+
+            response.StatusCode = (int)HttpStatusCode.OK;
+            response.StatusDescription = HttpStatusCode.OK.ToString();
+            response.ContentLength64 = buffer.Length;
+            response.OutputStream.Write(buffer, 0, buffer.Length);
+            response.OutputStream.Close();
+
+        }
+
+
+        #endregion
+
         #region Read/Write
+
+        //internal static HttpMessage ServerReadRequest(HttpRequestInfo request)
+        //{
+        //    var message = new HttpMessage();
+
+        //    if (request.BodyType == HttpBodyType.QueryString)
+        //        message.EntityRead(request.QueryString, null);
+        //    else if(request.BodyType== HttpBodyType.Body)
+        //        message.EntityRead(request.Body, null);
+        //    else
+
+        //    return message;
+        //}
+
+        /*
         /// <summary>
         /// Get <see cref="HttpMessage"/> as <see cref="NetStream"/> Stream.
         /// </summary>
@@ -261,17 +240,7 @@ namespace Nistec.Channels.Http
             message.EntityRead(stream, null);
             return message;
         }
-
-
-        internal static HttpMessage ServerReadRequest(HttpRequestInfo request)
-        {
-            var message = new HttpMessage();
-            message.EntityRead(request.Body, null);
-            return message;
-        }
-
- 
-
+       
         /// <summary>
         /// Convert <see cref="IDictionary"/> to <see cref="MessageStream"/>.
         /// </summary>
@@ -282,35 +251,56 @@ namespace Nistec.Channels.Http
             HttpMessage message = new HttpMessage()
             {
                 Command = dict.Get<string>("Command"),
-                Key = dict.Get<string>("Key"),
+                Id = dict.Get<string>("Id"),
                 Args = dict.Get<GenericNameValue>("Args"),
                 BodyStream = dict.Get<NetStream>("Body", null),//, ConvertDescriptor.Implicit),
                 Expiration = dict.Get<int>("Expiration", 0),
                 IsDuplex = dict.Get<bool>("IsDuplex", true),
                 Modified = dict.Get<DateTime>("Modified", DateTime.Now),
                 TypeName = dict.Get<string>("TypeName"),
-                Id = dict.Get<string>("Id")
+                Id = dict.Get<string>("Id"),
+                ReturnTypeName = dict.Get<string>("ReturnTypeName")
             };
 
             return message;
         }
+        */
         #endregion
-        public static string SendRequest(string address, string method, string jsonRequest)
+
+        //public static string SendRequest(string address, int port, string method, string jsonRequest)
+        //{
+
+        //    string response = null;
+
+
+        //    using (var ClientContext = new WebClient())
+        //    {
+        //        ClientContext.Headers["Content-type"] = "application/json";
+        //        ClientContext.Encoding = Encoding.UTF8;
+        //        response = ClientContext.UploadString(GetHostAddress(address,port), method, jsonRequest);
+
+        //        Console.WriteLine("Send messsage result:" + response);
+
+        //        return response;
+        //    }
+        //}
+
+        /// <summary>
+        /// Get host adress.
+        /// </summary>
+        public static string GetHostAddress(string address, int port)
         {
-
-            string response = null;
-
-
-            using (var ClientContext = new WebClient())
-            {
-                ClientContext.Headers["Content-type"] = "application/json";
-                ClientContext.Encoding = Encoding.UTF8;
-                response = ClientContext.UploadString(address, method, jsonRequest);
-
-                Console.WriteLine("Send messsage result:" + response);
-
-                return response;
-            }
+            if (port > 0)
+                return address + ":" + port.ToString();
+            return address;
         }
+
+        internal static HttpMessage ParseStream(Stream stream)
+        {
+            var message = new HttpMessage() ;
+            message.EntityRead(stream, null);
+            return message;
+        }
+
     }
 }

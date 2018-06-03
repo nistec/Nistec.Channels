@@ -40,25 +40,25 @@ namespace Nistec.Channels.RemoteTrace
         ///// <summary>EnableLog.</summary>
         //public readonly static bool EnableLog = false;
 
-        /// <summary>InBufferSize.</summary>
+        /// <summary>ReceiveBufferSize.</summary>
         public const int DefaultInBufferSize = 8192;
-        /// <summary>OutBufferSize.</summary>
+        /// <summary>SendBufferSize.</summary>
         public const int DefaultOutBufferSize = 8192;
 
-        /// <summary>InBufferSize.</summary>
-        public static int InBufferSize
+        /// <summary>ReceiveBufferSize.</summary>
+        public static int ReceiveBufferSize
         {
             get
             {
-                return NetConfig.Get<int>("InBufferSize", DefaultInBufferSize);
+                return NetConfig.Get<int>("ReceiveBufferSize", DefaultInBufferSize);
             }
         }
-        /// <summary>OutBufferSize.</summary>
-        public static int OutBufferSize
+        /// <summary>SendBufferSize.</summary>
+        public static int SendBufferSize
         {
             get
             {
-                return NetConfig.Get<int>("OutBufferSize", DefaultOutBufferSize);
+                return NetConfig.Get<int>("SendBufferSize", DefaultOutBufferSize);
             }
         }
  

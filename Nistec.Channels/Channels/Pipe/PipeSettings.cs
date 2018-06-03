@@ -65,8 +65,8 @@ namespace Nistec.Channels
     ///     PipeOptions="None|WriteThrough|Asynchronous" 
     ///     VerifyPipe="myPipe" 
     ///     ConnectTimeout="5000" 
-    ///     InBufferSize="1024" 
-    ///     OutBufferSize="1024"/>
+    ///     ReceiveBufferSize="1024" 
+    ///     SendBufferSize="1024"/>
     /// </pipeClientSettings>
     /// pipeServerSettings
     /// <pipeServerSettings>
@@ -75,8 +75,8 @@ namespace Nistec.Channels
     ///     PipeOptions="None|WriteThrough|Asynchronous" 
     ///     VerifyPipe="myPipe" 
     ///     ConnectTimeout="5000" 
-    ///     InBufferSize="1024" 
-    ///     OutBufferSize="1024" 
+    ///     ReceiveBufferSize="1024" 
+    ///     SendBufferSize="1024" 
     ///     MaxServerConnections="5" 
     ///     MaxAllowedServerInstances="255"/>
     /// </pipeServerSettings>
@@ -91,15 +91,23 @@ namespace Nistec.Channels
         /// <summary>
         /// DefaultInBufferSize
         /// </summary>
-        public const int DefaultInBufferSize = 8192;
+        public const int DefaultReceiveBufferSize = 8192;
         /// <summary>
         /// DefaultOutBufferSize
         /// </summary>
-        public const int DefaultOutBufferSize = 8192;
+        public const int DefaultSendBufferSize = 8192;
         /// <summary>
         /// DefaultConnectTimeout
         /// </summary>
         public const int DefaultConnectTimeout = 5000;
+        /// <summary>
+        /// DefaultConnectTimeout
+        /// </summary>
+        public const int DefaultProcessTimeout = 5000;
+        /// <summary>
+        ///  Get or Set HostName.
+        /// </summary>
+        public string HostName { get; set; }
         /// <summary>
         ///  Get or Set PipeName.
         /// </summary>
@@ -129,51 +137,61 @@ namespace Nistec.Channels
         /// </summary>
         public uint ConnectTimeout { get; set; }
         /// <summary>
-        /// Get or Set InBufferSize (Default=8192).
+        /// Get or Set ProcessTimeout (Default=5000).
         /// </summary>
-        public int InBufferSize { get; set; }
+        public int ProcessTimeout { get; set; }
         /// <summary>
-        /// Get or Set OutBufferSize (Default=8192).
+        /// Get or Set ReceiveBufferSize (Default=8192).
         /// </summary>
-        public int OutBufferSize { get; set; }
+        public int ReceiveBufferSize { get; set; }
+        /// <summary>
+        /// Get or Set SendBufferSize (Default=8192).
+        /// </summary>
+        public int SendBufferSize { get; set; }
         /// <summary>
         /// ServerName constant.
         /// </summary>
-        public const string ServerName = ".";
+        public string ServerName { get; set; } = ".";
         /// <summary>
         /// Get Full Pipe Name.
         /// </summary>
         public string FullPipeName { get { return @"\\" + ServerName + @"\pipe\" + PipeName; } }
-
+        /// <summary>
+        ///  Get or Set Indicates that the channel can be used for asynchronous reading and writing..
+        /// </summary>
+        public bool IsAsync { get; set; }
 
         /// <summary>
         /// Default constractor.
         /// </summary>
         public PipeSettings()
         {
+            ServerName = ".";
             PipeDirection = System.IO.Pipes.PipeDirection.InOut;
             PipeOptions = System.IO.Pipes.PipeOptions.None;
             MaxServerConnections = 1;
             MaxAllowedServerInstances = 255;
             ConnectTimeout = 5000;
-            InBufferSize = DefaultInBufferSize;
-            OutBufferSize = DefaultOutBufferSize;
+            ReceiveBufferSize = DefaultReceiveBufferSize;
+            SendBufferSize = DefaultSendBufferSize;
+            IsAsync = true;
         }
 
         /// <summary>
         /// Constractor with extra parameters
         /// </summary>
-        /// <param name="name"></param>
+        /// <param name="hostName"></param>
         /// <param name="isServer"></param>
         /// <param name="loadFromSettings"></param>
-        public PipeSettings(string name, bool isServer, bool loadFromSettings)
+        public PipeSettings(string hostName, bool isServer, bool loadFromSettings)
             : this()
         {
-            PipeName = name;
-            VerifyPipe = name;
+            //HostName = hostName;
+            //PipeName = hostName;
+            //VerifyPipe = hostName;
             if (loadFromSettings)
             {
-                LoadPipeSttingsInternal(name, isServer);
+                LoadPipeSttingsInternal(hostName, isServer);
             }
         }
         /// <summary>
@@ -195,17 +213,19 @@ namespace Nistec.Channels
                        
 
             XmlTable table = new XmlTable(node);
-
-           
+            ServerName= table.Get<string>("ServerName", ".");
+            HostName = table.GetValue("HostName");
             PipeName = table.GetValue("PipeName");
             PipeDirection = EnumExtension.Parse<PipeDirection>(table.Get<string>("PipeDirection"), PipeDirection.InOut);
             PipeOptions = EnumExtension.Parse<PipeOptions>(table.Get<string>("PipeOptions"), PipeOptions.None);
             VerifyPipe = table.Get<string>("VerifyPipe", PipeName);
             ConnectTimeout = (uint)table.Get<int>("ConnectTimeout", 5000);
-            InBufferSize = table.Get<int>("InBufferSize", DefaultInBufferSize);
-            OutBufferSize = table.Get<int>("OutBufferSize", DefaultOutBufferSize);
+            ProcessTimeout = (int)table.Get<int>("ProcessTimeout", 5000);
+            ReceiveBufferSize = table.Get<int>("ReceiveBufferSize", DefaultReceiveBufferSize);
+            SendBufferSize = table.Get<int>("SendBufferSize", DefaultSendBufferSize);
             if (isServer)
             {
+                IsAsync = table.Get<bool>("IsAsync", true);
                 MaxServerConnections = table.Get<int>("MaxServerConnections", 1);
                 MaxAllowedServerInstances = table.Get<int>("MaxAllowedServerInstances", NamedPipeServerStream.MaxAllowedServerInstances);
             }
@@ -254,7 +274,7 @@ namespace Nistec.Channels
                 if (n.NodeType == XmlNodeType.Comment)
                     continue;
 
-                XmlAttribute attr = n.Attributes["PipeName"];
+                XmlAttribute attr = n.Attributes["HostName"];
                 if (attr != null && attr.Value == name)
                 {
                     node = n;

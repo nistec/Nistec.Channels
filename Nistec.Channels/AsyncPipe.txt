@@ -1,0 +1,79 @@
+﻿
+
+using System;
+using System.IO;
+using System.IO.Pipes;
+using System.Threading.Tasks;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            const string pipeName = @"testpipe";
+
+            Task serverTask = RunServerAsync(pipeName);
+            Task clientTask = RunClientAsync(pipeName);
+
+            Task.WaitAll(serverTask, clientTask);
+        }
+
+        private static async Task RunServerAsync(string pipeName)
+        {
+            PipeSecurity security = new PipeSecurity();
+            security.AddAccessRule(new PipeAccessRule($"{Environment.UserDomainName}\\{Environment.UserName}", PipeAccessRights.ReadWrite, System.Security.AccessControl.AccessControlType.Allow));
+            var serverPipe = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous, 4096, 4096, security);
+            await Task.Factory.FromAsync(
+                (cb, state) => serverPipe.BeginWaitForConnection(cb, state),
+                ar => serverPipe.EndWaitForConnection(ar),
+                null);
+
+            var writer = new StreamWriter(serverPipe);
+            writer.AutoFlush = true;
+            var reader = new StreamReader(serverPipe);
+
+            await writer.WriteLineAsync("HELLO");
+            do
+            {
+                string line = await reader.ReadLineAsync();
+                if (line == "BYE" || line == null)
+                {
+                    break;
+                }
+
+                await writer.WriteLineAsync(line);
+            } while (true);
+
+            serverPipe.Disconnect();
+        }
+
+        private static async Task RunClientAsync(string pipeName)
+        {
+            var clientPipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+            clientPipe.Connect();
+
+            var writer = new StreamWriter(clientPipe);
+            writer.AutoFlush = true;
+            var reader = new StreamReader(clientPipe);
+
+            string line = await reader.ReadLineAsync();
+            if (line != "HELLO")
+            {
+                throw new ApplicationException("Error");
+            }
+
+            await writer.WriteLineAsync("1+1=2");
+            line = await reader.ReadLineAsync();
+            if (line != "1+1=2")
+            {
+                throw new ApplicationException("Error");
+            }
+
+            await writer.WriteLineAsync("BYE");
+            clientPipe.WaitForPipeDrain();
+
+            clientPipe.Close();
+        }
+    }
+}

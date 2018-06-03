@@ -190,35 +190,6 @@ namespace Nistec.Channels.RemoteCache
             return new SyncApi() { useConfig = true, hostType = HostType.Sync, protocol = protocol, hostAddress = RemoteCacheSettings.GetHostAddress(null, protocol), port = RemoteCacheSettings.GetPort(0, protocol), httpMethod = RemoteCacheSettings.GetHttpMethod(null, protocol) };
         }
 
-        /// <summary>
-        /// Get<see cref="SyncApi"/> api.
-        /// </summary>
-        /// <param name="hostAddress"></param>
-        /// <param name="port"></param>
-        /// <param name="httpMethod"></param>
-        /// <param name="protocol"></param>
-        /// <returns></returns>
-        public static DataApi Data(string hostAddress, int port, string httpMethod, NetProtocol protocol = CacheApi.DefaultProtocol)
-        {
-            if (protocol == NetProtocol.NA)
-            {
-                protocol = RemoteCacheSettings.Protocol;
-            }
-            return new DataApi() { useConfig = false, hostType = HostType.Sync, protocol = protocol, hostAddress = hostAddress, port = RemoteCacheSettings.GetPort(port, protocol), httpMethod = httpMethod == null ? CacheApi.DefaultHttpMethod : httpMethod };
-        }
-        /// <summary>
-        /// Get<see cref="SyncApi"/> api.
-        /// </summary>
-        /// <param name="protocol"></param>
-        /// <returns></returns>
-        public static DataApi Data(NetProtocol protocol = CacheApi.DefaultProtocol)
-        {
-            if (protocol == NetProtocol.NA)
-            {
-                protocol = RemoteCacheSettings.Protocol;
-            }
-            return new DataApi() { useConfig = true, hostType = HostType.Sync, protocol = protocol, hostAddress = RemoteCacheSettings.GetHostAddress(null, protocol), port = RemoteCacheSettings.GetPort(0, protocol), httpMethod = RemoteCacheSettings.GetHttpMethod(null, protocol) };
-        }
 
         #endregion
 
@@ -356,7 +327,7 @@ namespace Nistec.Channels.RemoteCache
         }
         public string SendJsonDuplex(string command, string key, object value, bool pretty = false)
         {
-            IMessageStream message = MessageStream.Create(protocol, command, key, null,value, 0);
+            IMessageStream message = MessageStream.Create(protocol, command, key, value, 0);
             //message.SetBody(value);
             //message.Expiration = expiration;
             //string json = JsonSerializer.Serialize(message);
@@ -365,7 +336,7 @@ namespace Nistec.Channels.RemoteCache
         }
         public string SendJsonDuplex(string command, string key, object value, int expiration, bool pretty = false)
         {
-            IMessageStream message = MessageStream.Create(protocol, command, key, null,value, expiration);
+            IMessageStream message = MessageStream.Create(protocol, command, key, value, expiration);
             //message.SetBody(value);
             //message.Expiration = expiration;
             //string json = JsonSerializer.Serialize(message);
@@ -374,8 +345,7 @@ namespace Nistec.Channels.RemoteCache
         }
         public string SendJsonDuplex(string command, string key, object value, int expiration, string sessionId, bool pretty = false)
         {
-            IMessageStream message = MessageStream.Create(protocol, command, key, null, value, expiration);
-            message.GroupId = sessionId;
+            IMessageStream message = MessageStream.Create(protocol, command, key, sessionId, value, null, expiration);
             //message.SetBody(value);
             //message.Expiration = expiration;
             string json = JsonSerializer.Serialize(message);
@@ -409,34 +379,6 @@ namespace Nistec.Channels.RemoteCache
         }
         #endregion
 
-        #region cache message json
-
-        public string SendHttpJsonDuplex(MessageStream message, bool pretty = false)
-        {
-            string response = null;
-
-            message.TransformType = TransformType.Json;
-            message.IsDuplex = true;
-
-            response = HttpClient.SendDuplexJson(message, hostAddress, false);
-            //response = HttpClientCache.SendDuplexJson(message, RemoteHostName, false);
-
-            if (pretty)
-            {
-                if (response != null)
-                    response = JsonSerializer.Print(response);
-            }
-            return response;
-        }
-
-        public void SendHttpJsonOut(MessageStream message)
-        {
-            HttpClient.SendOutJson(message, hostAddress, false);
-            //HttpClientCache.SendOut(message, RemoteHostName, false);
-        }
-
-        #endregion
-
         #region CacheApi
         /// <summary>
         /// Represent a cache api.
@@ -463,131 +405,6 @@ namespace Nistec.Channels.RemoteCache
                     return null;
                 return JsonSerializer.Serialize(obj, null, format);
             }
-
-            #region do custom
-            public object DoCustom(string command, string key, string groupId, string label = null, object value = null, int expiration = 0)
-            {
-                switch ("cach_" + command)
-                {
-                    case CacheCmd.Add:
-                        return Add(key, value, expiration);
-                    case CacheCmd.CopyTo:
-                        CopyTo(label, key, expiration);
-                        return RemoteCacheState.Ok;
-                    case CacheCmd.CutTo:
-                        CutTo(label, key, expiration);
-                        return RemoteCacheState.Ok;
-                    case CacheCmd.Fetch:
-                        return Fetch(key);
-                    case CacheCmd.Get:
-                        return Get(key);
-                    //case CacheCmd.GetEntry:
-                    //    return GetEntry(key);
-                    case CacheCmd.GetRecord:
-                        return GetRecord(key);
-                    case CacheCmd.KeepAliveItem:
-                        KeepAliveItem(key);
-                        return RemoteCacheState.Ok;
-                    //case CacheCmd.LoadData:
-                    //    return LoadData();
-                    case CacheCmd.Remove:
-                        Remove(key);
-                        return RemoteCacheState.Ok;
-                    //case CacheCmd.RemoveAsync:
-                    //    RemoveAsync(key);
-                    //    return MessageState.Ok;
-                    case CacheCmd.RemoveItemsBySession:
-                        RemoveItemsBySession(key);
-                        return RemoteCacheState.Ok;
-                    case CacheCmd.Reply:
-                        return Reply(key);
-                    case CacheCmd.Set:
-                        return Set(key, value, expiration);
-                    //case CacheCmd.ViewEntry:
-                    //    return ViewEntry(key);
-                    default:
-                        throw new ArgumentException("Unknown command " + command);
-                }
-            }
-
-            public string DoHttpJson(string command, string key, string groupId = null, string label = null, object value = null, int expiration = 0, bool pretty = false)
-            {
-                string cmd = "cach_" + command.ToLower();
-                switch (cmd)
-                {
-                    case CacheCmd.Add:
-                        //return Add(key, value, expiration);
-                        {
-                            if (string.IsNullOrWhiteSpace(key))
-                            {
-                                throw new ArgumentNullException("key is required");
-                            }
-                            var msg = new GenericMessage() { Command = cmd, Id = key, GroupId = groupId, Expiration = expiration };
-                            msg.SetBody(value);
-                            return SendHttpJsonDuplex(msg, pretty);
-                        }
-                    case CacheCmd.CopyTo:
-                    //return CopyTo(key, detail, expiration);
-                    case CacheCmd.CutTo:
-                        //return CutTo(key, detail, expiration);
-                        {
-                            if (string.IsNullOrWhiteSpace(key))
-                            {
-                                throw new ArgumentNullException("key is required");
-                            }
-                            var msg = new GenericMessage() { Command = cmd, Id = key, GroupId = groupId, Expiration = expiration };
-                            msg.SetBody(value);
-                            msg.Args = MessageStream.CreateArgs(KnowsArgs.Source, label, KnowsArgs.Destination, key);
-                            return SendHttpJsonDuplex(msg, pretty);
-                        }
-                    case CacheCmd.Fetch:
-                    case CacheCmd.Get:
-                    case CacheCmd.GetEntry:
-                    case CacheCmd.GetRecord:
-                    case CacheCmd.RemoveItemsBySession:
-                    case CacheCmd.Reply:
-                    case CacheCmd.Remove:
-                    case CacheCmd.ViewEntry:
-                        {
-                            if (string.IsNullOrWhiteSpace(key))
-                            {
-                                throw new ArgumentNullException("key is required");
-                            }
-                            return SendHttpJsonDuplex(new GenericMessage() { Command = cmd, Id = key }, pretty);
-                        }
-                    case CacheCmd.KeepAliveItem:
-                    case CacheCmd.RemoveAsync:
-                        {
-                            if (string.IsNullOrWhiteSpace(key))
-                            {
-                                throw new ArgumentNullException("key is required");
-                            }
-                            SendHttpJsonOut(new GenericMessage() { Command = cmd, Id = key });
-                            return MessageState.Ok.ToString();
-                        }
-
-                    //case CacheCmd.LoadData:
-                    //    return LoadData();
-                    case CacheCmd.Set:
-                        //return Set(key, value, expiration);
-                        {
-                            if (string.IsNullOrWhiteSpace(key))
-                            {
-                                throw new ArgumentNullException("key is required");
-                            }
-
-                            if (value == null)
-                            {
-                                throw new ArgumentNullException("value is required");
-                            }
-                            var message = new GenericMessage(cmd, key, value, expiration);
-                            return SendHttpJsonDuplex(message, pretty);
-                        }
-                    default:
-                        throw new ArgumentException("Unknown command " + command);
-                }
-            }
-            #endregion
 
             #region public cache commands
 
@@ -700,27 +517,19 @@ namespace Nistec.Channels.RemoteCache
                 IMessageStream message = MessageStream.Create(protocol, CacheCmd.Fetch, cacheKey);
                 return SendDuplexStream<T>(message, OnFault);
             }
-            public object Fetch(string cacheKey)
-            {
-                if (string.IsNullOrWhiteSpace(cacheKey))
-                {
-                    throw new ArgumentNullException("cacheKey is required");
-                }
-                var message = new GenericMessage() { Command = CacheCmd.Fetch, Id = cacheKey };
-                return SendDuplexStreamValue(message, OnFault);
-            }
+
             /// <summary>
             /// Set a new item to the cache, if this item is exists override it with the new one.
             /// </summary>
             /// <param name="cacheKey"></param>
             /// <param name="value"></param>
             /// <param name="expiration"></param>
-            /// <returns>return RemoteCacheState</returns>
+            /// <returns>return CacheState</returns>
             public RemoteCacheState Set(string cacheKey, object value, int expiration)
             {
                 if (value == null)
                     return RemoteCacheState.ArgumentsError;
-                IMessageStream message = MessageStream.Create(protocol, CacheCmd.Set, cacheKey, null, value, expiration);
+                IMessageStream message = MessageStream.Create(protocol, CacheCmd.Set, cacheKey, null, value, null, expiration);
                 return SendDuplexState(message);
             }
             /// <summary>
@@ -730,13 +539,12 @@ namespace Nistec.Channels.RemoteCache
             /// <param name="value"></param>
             /// <param name="sessionId"></param>
             /// <param name="expiration"></param>
-            /// <returns>return RemoteCacheState</returns>
+            /// <returns>return CacheState</returns>
             public RemoteCacheState Set(string cacheKey, object value, string sessionId, int expiration)
             {
                 if (value == null)
                     return RemoteCacheState.ArgumentsError;
-                IMessageStream message = MessageStream.Create(protocol, CacheCmd.Set, cacheKey, null, value, expiration);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, CacheCmd.Set, cacheKey, sessionId, value, null, expiration);
                 return SendDuplexState(message);
             }
             /// <summary>
@@ -745,12 +553,12 @@ namespace Nistec.Channels.RemoteCache
             /// <param name="cacheKey"></param>
             /// <param name="value"></param>
             /// <param name="expiration"></param>
-            /// <returns>return RemoteCacheState</returns>
+            /// <returns>return CacheState</returns>
             public RemoteCacheState Add(string cacheKey, object value, int expiration)
             {
                 if (value == null)
                     return RemoteCacheState.ArgumentsError;
-                IMessageStream message = MessageStream.Create(protocol, CacheCmd.Add, cacheKey, null, value, expiration);
+                IMessageStream message = MessageStream.Create(protocol, CacheCmd.Add, cacheKey, null, value, null, expiration);
                 return SendDuplexState(message);
             }
             /// <summary>
@@ -760,13 +568,12 @@ namespace Nistec.Channels.RemoteCache
             /// <param name="value"></param>
             /// <param name="sessionId"></param>
             /// <param name="expiration"></param>
-            /// <returns>return RemoteCacheState</returns>
+            /// <returns>return CacheState</returns>
             public RemoteCacheState Add(string cacheKey, object value, string sessionId, int expiration)
             {
                 if (value == null)
                     return RemoteCacheState.ArgumentsError;
-                IMessageStream message = MessageStream.Create(protocol, CacheCmd.Add, cacheKey, null, value,  expiration);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, CacheCmd.Add, cacheKey, sessionId, value, null, expiration);
                 return SendDuplexState(message);
             }
 
@@ -777,7 +584,7 @@ namespace Nistec.Channels.RemoteCache
             /// <param name="source"></param>
             /// <param name="dest"></param>
             /// <param name="expiration"></param>
-            /// <returns>return RemoteCacheState</returns>
+            /// <returns>return CacheState</returns>
             public void CopyTo(string source, string dest, int expiration)
             {
                 IMessageStream message = MessageStream.Create(protocol, CacheCmd.CopyTo, dest, expiration);
@@ -856,154 +663,6 @@ namespace Nistec.Channels.RemoteCache
                 Console.WriteLine("SessionApi Fault: " + message);
             }
 
-            #region do custom
-            public object DoCustom(string command, string groupId, string id, object value = null, int expiration = 0)
-            {
-                switch ("sess_" + command)
-                {
-                    case SessionCmd.Add:
-                        return Add(groupId, id, value, expiration);
-                    case SessionCmd.ClearAll:
-                        return ClearAll();
-                    case SessionCmd.ClearItems:
-                        return ClearItems(groupId);
-                    case SessionCmd.CopyTo:
-                        return CopyTo(groupId, id, ComplexKey.Get(groupId, id).ToString(), expiration);
-                    case SessionCmd.CreateSession:
-                        return CreateSession(groupId, expiration, null);
-                    case SessionCmd.CutTo:
-                        return CutTo(groupId, id, ComplexKey.Get(groupId, id).ToString(), expiration);
-                    case SessionCmd.Exists:
-                        return Exists(groupId, id);
-                    //case SessionCmd.Fetch:
-                    //    return Fetch(groupId, id);
-                    case SessionCmd.FetchRecord:
-                        return FetchRecord(groupId, id);
-                    case SessionCmd.Get:
-                        return Get(groupId, id);
-                    //case SessionCmd.GetEntry:
-                    //    return GetEntry(groupId, id);
-                    //case SessionCmd.GetOrCreateSession:
-                    //    return GetOrCreateSession(groupId);
-                    //case SessionCmd.GetOrCreateRecord:
-                    //    return GetOrCreateRecord(groupId, id, value, expiration);
-                    case SessionCmd.GetRecord:
-                        return GetRecord(groupId, id);
-                    case SessionCmd.GetSessionItems:
-                        return GetSessionItems(groupId);
-                    case SessionCmd.Refresh:
-                        return Refresh(groupId);
-                    case SessionCmd.RefreshOrCreate:
-                        return RefreshOrCreate(groupId);
-                    case SessionCmd.Remove:
-                        return Remove(groupId, id);
-                    case SessionCmd.RemoveSession:
-                        return RemoveSession(groupId);
-                    case SessionCmd.Reply:
-                        return Reply(groupId);
-                    case SessionCmd.Set:
-                        return Set(groupId, id, value, expiration);
-                    //case SessionCmd.ViewAllSessionsKeys:
-                    //    return ViewAllSessionsKeys();
-                    //case SessionCmd.ViewAllSessionsKeysByState:
-                    //    return ViewAllSessionsKeysByState(SessionState.Active);
-                    //case SessionCmd.ViewEntry:
-                    //    return ViewEntry(groupId, id);
-                    //case SessionCmd.ViewSessionKeys:
-                    //    return ViewSessionKeys(groupId);
-                    //case SessionCmd.ViewSessionStream:
-                    //    return ViewSessionStream(groupId);
-                    default:
-                        throw new ArgumentException("Unknown command " + command);
-                }
-            }
-
-            public string DoHttpJson(string command, string groupId, string id, object value = null, int expiration = 0, bool pretty = false)
-            {
-                string cmd = "sync_" + command.ToLower();
-                switch (cmd)
-                {
-                    case SessionCmd.Add:
-                    case SessionCmd.GetOrCreateRecord:
-                    case SessionCmd.Set:
-                        {
-                            if (string.IsNullOrWhiteSpace(groupId))
-                            {
-                                throw new ArgumentNullException("key is required");
-                            }
-                            var msg = new GenericMessage() { Command = cmd, GroupId = groupId, Id = id, Expiration = expiration };
-                            msg.SetBody(value);
-                            return SendHttpJsonDuplex(msg, pretty);
-                        }
-                    case SessionCmd.ViewAllSessionsKeys:
-                    case SessionCmd.ClearAll:
-                        return SendHttpJsonDuplex(new GenericMessage() { Command = cmd }, pretty);
-                    case SessionCmd.GetOrCreateSession:
-                    case SessionCmd.RefreshOrCreate:
-                    case SessionCmd.GetSessionItems:
-                    case SessionCmd.ViewSessionStream:
-                    case SessionCmd.Reply:
-                    case SessionCmd.RemoveSession:
-                    case SessionCmd.Refresh:
-                    case SessionCmd.ClearItems:
-                        if (string.IsNullOrWhiteSpace(groupId))
-                        {
-                            throw new ArgumentNullException("groupId is required");
-                        }
-                        return SendHttpJsonDuplex(new GenericMessage() { Command = cmd, GroupId = groupId }, pretty);
-                    case SessionCmd.Exists:
-                    case SessionCmd.Fetch:
-                    case SessionCmd.FetchRecord:
-                    case SessionCmd.Get:
-                    case SessionCmd.GetEntry:
-                    case SessionCmd.GetRecord:
-                    case SessionCmd.Remove:
-                    case SessionCmd.ViewEntry:
-                        if (string.IsNullOrWhiteSpace(groupId))
-                        {
-                            throw new ArgumentNullException("groupId is required");
-                        }
-                        if (string.IsNullOrWhiteSpace(id))
-                        {
-                            throw new ArgumentNullException("id is required");
-                        }
-                        return SendHttpJsonDuplex(new GenericMessage() { Command = cmd, Id = id, GroupId = groupId }, pretty);
-                    case SessionCmd.CopyTo:
-                        //return CopyTo(key, detail, ComplexKey.Get(key, detail).ToString(), expiration);
-                        return RemoteCacheState.CommandNotSupported.ToString();
-                    case SessionCmd.CreateSession:
-                        {
-                            if (string.IsNullOrWhiteSpace(groupId))
-                            {
-                                throw new ArgumentNullException("sessionId is required");
-                            }
-                            var message = new GenericMessage()
-                            {
-                                Command = SessionCmd.CreateSession,
-                                GroupId = groupId,
-                                Args = MessageStream.CreateArgs(KnowsArgs.UserId, "0", KnowsArgs.StrArgs, ""),
-                                Expiration = expiration
-                            };
-                            return SendHttpJsonDuplex(message, pretty);
-                        }
-                    case SessionCmd.CutTo:
-                        //return CutTo(key, detail, ComplexKey.Get(key, detail).ToString(), expiration);
-                        return RemoteCacheState.CommandNotSupported.ToString();
-                    case SessionCmd.ViewAllSessionsKeysByState:
-                        //return ViewAllSessionsKeysByState(SessionState.Active);
-                        {
-                            var message = new GenericMessage()
-                            {
-                                Command = SessionCmd.ViewAllSessionsKeysByState,
-                                Args = GenericMessage.CreateArgs("state", KnownSessionState.Active)
-                            };
-                            return SendHttpJsonDuplex(message, pretty);
-                        }
-                    default:
-                        throw new ArgumentException("Unknown command " + command);
-                }
-            }
-            #endregion
             #region public session commands
 
             /// <summary>
@@ -1057,8 +716,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public object Get(string sessionId, string key)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Get, key, null, null, 0);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Get, key, sessionId, null, null, 0);
                 return SendDuplexStreamValue(message, OnFault);
             }
 
@@ -1085,8 +743,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public DynamicEntity GetRecord(string sessionId, string key)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.GetRecord, key, null, null, 0);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.GetRecord, key, sessionId, null, null, 0);
                 return SendDuplexStream<DynamicEntity>(message, OnFault);
             }
 
@@ -1099,8 +756,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public DynamicEntity FetchRecord(string sessionId, string key)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.FetchRecord, key, null, null, 0);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.FetchRecord, key, sessionId, null, null, 0);
                 return SendDuplexStream<DynamicEntity>(message, OnFault);
             }
             /// <summary>
@@ -1110,8 +766,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public IDictionary<string,object> GetSessionItems(string sessionId)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.GetSessionItems, null, null, null, 0);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.GetSessionItems, null, sessionId, null, null, 0);
                 return SendDuplexStream<IDictionary<string,object>>(message, OnFault);
             }
 
@@ -1123,9 +778,7 @@ namespace Nistec.Channels.RemoteCache
             /// <param name="keyValueArgs"></param>
             public RemoteCacheState CreateSession(string sessionId, int expiration, string[] keyValueArgs)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.CreateSession, "*", null, expiration);
-                message.GroupId = sessionId;
-                message.Args = MessageStream.CreateArgs(keyValueArgs);
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.CreateSession, "*", sessionId, null, keyValueArgs, expiration);
                 return SendDuplexState(message);
             }
 
@@ -1143,8 +796,7 @@ namespace Nistec.Channels.RemoteCache
                 if (value == null)
                     return RemoteCacheState.ArgumentsError;
 
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Add, key, null, value,  expiration);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Add, key, sessionId, value, null, expiration);
                 return SendDuplexState(message);
             }
 
@@ -1161,8 +813,7 @@ namespace Nistec.Channels.RemoteCache
                 if (value == null)
                     return RemoteCacheState.ArgumentsError;
 
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Set, key, null, value, expiration);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Set, key, sessionId, value, null, expiration);
                 return SendDuplexState(message);
             }
 
@@ -1188,9 +839,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public RemoteCacheState CopyTo(string sessionId, string key, string targetKey, int expiration, bool addToCache = false)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.CopyTo, key, null, null, expiration);
-                message.GroupId = sessionId;
-                message.Args = MessageStream.CreateArgs(new string[] { KnowsArgs.TargetKey, targetKey, KnowsArgs.AddToCache, addToCache.ToString() });
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.CopyTo, key, sessionId, null, new string[] { KnowsArgs.TargetKey, targetKey, KnowsArgs.AddToCache, addToCache.ToString() }, expiration);
                 return SendDuplexState(message);
             }
             /// <summary>
@@ -1204,9 +853,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public RemoteCacheState CutTo(string sessionId, string key, string targetKey, int expiration, bool addToCache = false)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.CutTo, key, null, null,  expiration);
-                message.GroupId = sessionId;
-                message.Args = MessageStream.CreateArgs(new string[] { KnowsArgs.TargetKey, targetKey, KnowsArgs.AddToCache, addToCache.ToString() });
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.CutTo, key, sessionId, null, new string[] { KnowsArgs.TargetKey, targetKey, KnowsArgs.AddToCache, addToCache.ToString() }, expiration);
                 return SendDuplexState(message);
             }
 
@@ -1216,24 +863,22 @@ namespace Nistec.Channels.RemoteCache
             /// <param name="sessionId"></param>
             public RemoteCacheState RemoveSession(string sessionId)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.RemoveSession, "*", null, null, 0);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.RemoveSession, "*", sessionId, null, null, 0);
                 return SendDuplexState(message);
             }
             /// <summary>
             /// Remove all items from specified session.
             /// </summary>
             /// <param name="sessionId"></param>
-            public RemoteCacheState ClearItems(string sessionId)
+            public RemoteCacheState Clear(string sessionId)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.ClearItems, "*", null, null, 0);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.ClearItems, "*", sessionId, null, null, 0);
                 return SendDuplexState(message);
             }
             /// <summary>
             /// Remove all sessions from session cache.
             /// </summary>
-            public RemoteCacheState ClearAll()
+            public RemoteCacheState ClearAllSessions()
             {
                 IMessageStream message = MessageStream.Create(protocol, SessionCmd.ClearAll, "*");
                 return SendDuplexState(message);
@@ -1245,8 +890,7 @@ namespace Nistec.Channels.RemoteCache
             /// <param name="sessionId"></param>
             public RemoteCacheState Refresh(string sessionId)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Refresh, "*", null, null, 0);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Refresh, "*", sessionId, null, null, 0);
                 return SendDuplexState(message);
             }
             /// <summary>
@@ -1255,8 +899,7 @@ namespace Nistec.Channels.RemoteCache
             /// <param name="sessionId"></param>
             public RemoteCacheState RefreshOrCreate(string sessionId)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.RefreshOrCreate, "*",  null, null, 0);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.RefreshOrCreate, "*", sessionId, null, null, 0);
                 return SendDuplexState(message);
 
             }
@@ -1269,8 +912,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public RemoteCacheState Remove(string sessionId, string key)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Remove, key, null, null, 0);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Remove, key, sessionId, null, null, 0);
                 return SendDuplexState(message);
             }
 
@@ -1283,8 +925,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public bool Exists(string sessionId, string key)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Exists, key, null, null, 0);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Exists, key, sessionId, null, null, 0);
                 return SendDuplexState(message)== RemoteCacheState.Ok;
             }
 
@@ -1294,7 +935,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public string[] GetAllSessionsKeys()
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.ViewAllSessionsKeys, "*", "*", null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.ViewAllSessionsKeys, "*", "*", null, null, 0);
                 return SendDuplexStream<string[]> (message, OnFault);
             }
             /// <summary>
@@ -1304,8 +945,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public string[] GetSessionsItemsKeys(string sessionId)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.ViewSessionKeys, "*", null, null, 0);
-                message.GroupId = sessionId;
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.ViewSessionKeys, "*", sessionId, null, null, 0);
                 return SendDuplexStream<string[]>(message, OnFault);
             }
 
@@ -1315,7 +955,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public string Reply(string text)
             {
-                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Reply, text, text, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SessionCmd.Reply, text, text, null, null, 0);
                 return SendDuplexStream<string>(message, OnFault);
             }
             #endregion
@@ -1340,317 +980,63 @@ namespace Nistec.Channels.RemoteCache
 
             #endregion
 
-            #region do custom
-            public object DoCustom(string command, string entityName, string primaryKey, string field = null, object value = null, string args = null)
-            {
-                NameValueArgs valArgs = null;
-                if (!string.IsNullOrEmpty(args))
-                {
-                    var argsArray = KeySet.SplitTrim(args);
-                    valArgs = NameValueArgs.Get(argsArray);
-                }
-
-                if (primaryKey != null)
-                {
-                    primaryKey = primaryKey.Replace(",", KeySet.Separator);
-                }
-
-                switch ("sync_" + command)
-                {
-                    case SyncCacheCmd.AddEntity:
-                        //return AddEntity(itemName, tableName);
-                        return RemoteCacheState.CommandNotSupported;
-                    case SyncCacheCmd.AddSyncItem:
-                        //return AddSyncItem(itemName, tableName);
-                        return RemoteCacheState.CommandNotSupported;
-                    case SyncCacheCmd.Contains:
-                        return Contains(ComplexArgs.Parse(entityName));
-                    case SyncCacheCmd.Get:
-                        return Get(ComplexKey.Get(entityName, primaryKey), field);
-                    case SyncCacheCmd.GetAllEntityNames:
-                        return GetAllEntityNames();
-                    case SyncCacheCmd.GetAs:
-                        return GetAs(ComplexKey.Get(entityName, primaryKey));
-                    case SyncCacheCmd.GetEntity:
-                        return GetEntity<object>(ComplexKey.Get(entityName, primaryKey));
-                    case SyncCacheCmd.GetEntityItems:
-                        return GetEntityItems(entityName);
-                    case SyncCacheCmd.GetEntityItemsCount:
-                        return GetEntityItemsCount(entityName);
-                    case SyncCacheCmd.GetEntityKeys:
-                        return GetEntityKeys(entityName);
-                    //case SyncCacheCmd.GetItemProperties:
-                    //    return GetItemProperties(entityName);
-                    case SyncCacheCmd.GetItemsReport:
-                        return GetItemsReport(entityName);
-                    case SyncCacheCmd.GetRecord:
-                        return GetRecord(ComplexKey.Get(entityName, primaryKey));
-                    case SyncCacheCmd.Refresh:
-                        Refresh(entityName);
-                        return RemoteCacheState.Ok;
-                    case SyncCacheCmd.RefreshAll:
-                        RefreshAll();
-                        return RemoteCacheState.Ok;
-                    case SyncCacheCmd.Remove:
-                        Remove(entityName);
-                        return RemoteCacheState.Ok;
-                    case SyncCacheCmd.Reply:
-                        return Reply(entityName);
-                    case SyncCacheCmd.Reset:
-                        Reset();
-                        return RemoteCacheState.Ok;
-                    default:
-                        throw new ArgumentException("Unknown command " + command);
-                }
-            }
-
-
-            public string DoHttpJson(string command, string entityName, string primaryKey, string field = null, object value = null, string keyValueArgs = null, bool pretty = false)
-            {
-                NameValueArgs valArgs = null;
-                if (!string.IsNullOrEmpty(keyValueArgs))
-                {
-                    var argsArray = KeySet.SplitTrim(keyValueArgs);
-                    valArgs = NameValueArgs.Get(argsArray);
-                }
-
-                if (primaryKey != null)
-                {
-                    primaryKey = primaryKey.Replace(",", KeySet.Separator);
-                }
-
-                string cmd = "sync_" + command.ToLower();
-                switch (cmd)
-                {
-                    case SyncCacheCmd.AddEntity:
-                        //return AddEntity(itemName, tableName);
-                        return RemoteCacheState.CommandNotSupported.ToString();
-                    case SyncCacheCmd.AddSyncItem:
-                        //return AddSyncItem(itemName, tableName);
-                        return RemoteCacheState.CommandNotSupported.ToString();
-                    case SyncCacheCmd.Get:
-                        {
-                            if (string.IsNullOrWhiteSpace(entityName))
-                            {
-                                throw new ArgumentNullException("entityName is required");
-                            }
-                            //var ck = ComplexArgs.Parse(itemName);
-                            return SendHttpJsonDuplex(new GenericMessage() { Command = cmd, Label = entityName, Id = primaryKey, Args = MessageStream.CreateArgs(KnowsArgs.Column, field) }, pretty);
-                        }
-                    case SyncCacheCmd.GetAllEntityNames:
-                        {
-                            return SendHttpJsonDuplex(new GenericMessage() { Command = cmd }, pretty);
-                        }
-                    case SyncCacheCmd.Contains:
-                    case SyncCacheCmd.GetRecord:
-                    case SyncCacheCmd.GetAs:
-                    case SyncCacheCmd.GetEntity:
-                        {
-                            if (string.IsNullOrWhiteSpace(entityName))
-                            {
-                                throw new ArgumentNullException("entityName is required");
-                            }
-                            //var ck = ComplexArgs.Parse(itemName);
-                            //return SendJsonDuplex(cmd, ComplexKey.Get(entityName, primeryKey), pretty);
-                            return SendHttpJsonDuplex(new GenericMessage() { Command = cmd, Label = entityName, Id = primaryKey }, pretty);
-                        }
-                    case SyncCacheCmd.FindEntity:
-                        {
-                            if (string.IsNullOrWhiteSpace(entityName))
-                            {
-                                throw new ArgumentNullException("entityName is required");
-                            }
-                            return SendHttpJsonDuplex(new GenericMessage() { Command = cmd, Label = entityName, Args = valArgs });
-                        }
-                    case SyncCacheCmd.GetEntityPrimaryKey:
-                    case SyncCacheCmd.GetItemsReport:
-                    case SyncCacheCmd.GetItemProperties:
-                    case SyncCacheCmd.GetEntityKeys:
-                    case SyncCacheCmd.GetEntityItemsCount:
-                    case SyncCacheCmd.GetEntityItems:
-                        {
-                            if (string.IsNullOrWhiteSpace(entityName))
-                            {
-                                throw new ArgumentNullException("entityName is required");
-                            }
-                            return SendHttpJsonDuplex(new GenericMessage() { Command = cmd, Label = entityName }, pretty);
-                        }
-                    case SyncCacheCmd.Reply:
-                    case SyncCacheCmd.Remove:
-                    case SyncCacheCmd.Refresh:
-                        SendHttpJsonDuplex(new GenericMessage() { Command = cmd, Label = entityName });
-                        return RemoteCacheState.Ok.ToString();
-                    case SyncCacheCmd.Reset:
-                    case SyncCacheCmd.RefreshAll:
-                        SendHttpJsonDuplex(new GenericMessage() { Command = cmd });
-                        return RemoteCacheState.Ok.ToString();
-                    default:
-                        throw new ArgumentException("Unknown command " + command);
-                }
-            }
-
-            #endregion
             protected void OnFault(string message)
             {
                 Console.WriteLine("SyncApi Fault: " + message);
             }
 
             #region  public SyncCacheApi commands
-
+           
+             
             /// <summary>
-            /// Get item value from sync cache using <see cref="ComplexKey"/> an <see cref="Type"/>.
+            /// Get item from sync cache using <see cref="ComplexKey"/> an <see cref="Type"/>.
             /// </summary>
             /// <param name="info"></param>
-            /// <param name="field"></param>
             /// <returns></returns>
-            public object Get(ComplexKey info, string field)
+            public object Get(ComplexKey info)
             {
-                if (info == null)
-                {
-                    throw new ArgumentNullException("ComplexKey is required");
-                }
-                using (var message = new GenericMessage()
-                {
-                    Command = SyncCacheCmd.Get,
-                    Label = info.Prefix,// info.ToString(),
-                    Id = info.Suffix,
-                    Args = MessageStream.CreateArgs(KnowsArgs.Column, field)
-                })
-                {
-                    return SendDuplexStreamValue(message, OnFault);
-                }
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Get, info.Prefix,info.Suffix, null,null, 0);
+                return SendDuplexStreamValue(message, OnFault);
             }
+
             /// <summary>
-            /// Get item value from sync cache using arguments.
+            /// Get item from sync cache using arguments.
             /// </summary>
             /// <param name="entityName"></param>
             /// <param name="keys"></param>
-            /// <param name="field"></param>
             /// <returns></returns>
-            public object Get(string entityName, string[] keys, string field)//, Type type)
+            public object Get(string entityName, string[] keys)
             {
-                if (string.IsNullOrWhiteSpace(entityName))
-                {
-                    throw new ArgumentNullException("entityName is required");
-                }
-                if (keys == null)
-                {
-                    throw new ArgumentNullException("keys is required");
-                }
-
-                using (var message = new GenericMessage()
-                {
-                    Command = SyncCacheCmd.Get,
-                    Label = entityName,// ComplexArgs.GetInfo(entityName, keys),
-                    Id = KeySet.Join(keys),
-                    Args = MessageStream.CreateArgs(KnowsArgs.Column, field)
-                })
-                {
-                    return SendDuplexStreamValue(message, OnFault);
-                }
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Get, entityName, KeySet.Join(keys), null,null, 0);
+                return SendDuplexStreamValue(message,OnFault);
             }
 
             /// <summary>
-            /// Get item value from sync cache using <see cref="ComplexKey"/>.
+            /// Get item from sync cache using <see cref="ComplexKey"/>.
             /// </summary>
             /// <typeparam name="T"></typeparam>
             /// <param name="info"></param>
             /// <returns></returns>
-            public T Get<T>(ComplexKey info, string field)
+            public T Get<T>(ComplexKey info)
             {
-                if (info == null)
-                {
-                    throw new ArgumentNullException("ComplexKey is required");
-                }
-                using (var message = new GenericMessage()
-                {
-                    Command = SyncCacheCmd.Get,
-                    Label = info.Prefix,
-                    Id = info.Suffix,
-                    Args = MessageStream.CreateArgs(KnowsArgs.Column, field)
-                })
-                {
-                    return SendDuplexStream<T>(message, OnFault);
-                }
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Get, info.Prefix, info.Suffix, null, null, 0);
+                message.TransformType = MessageStream.GetTransformType(typeof(T));
+                return SendDuplexStream<T>(message, OnFault);
             }
+
             /// <summary>
-            /// Get item value from sync cache using arguments.
+            /// Get item from sync cache using arguments.
             /// </summary>
             /// <typeparam name="T"></typeparam>
             /// <param name="entityName"></param>
             /// <param name="keys"></param>
             /// <returns></returns>
-            public T Get<T>(string entityName, string[] keys, string field)
+            public T Get<T>(string entityName, string[] keys)
             {
-                if (string.IsNullOrWhiteSpace(entityName))
-                {
-                    throw new ArgumentNullException("entityName is required");
-                }
-                if (keys == null)
-                {
-                    throw new ArgumentNullException("keys is required");
-                }
-                using (var message = new GenericMessage()
-                {
-                    Command = SyncCacheCmd.Get,
-                    Label = entityName,//ComplexArgs.GetInfo(entityName, keys)
-                    Id = KeySet.Join(keys),
-                    Args = MessageStream.CreateArgs(KnowsArgs.Column, field)
-                })
-                {
-                    return SendDuplexStream<T>(message, OnFault);
-                }
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Get, entityName, KeySet.Join(keys), null, null, 0);
+                message.TransformType = MessageStream.GetTransformType(typeof(T));
+                return SendDuplexStream<T>(message, OnFault);
             }
-
-            ///// <summary>
-            ///// Get item from sync cache using <see cref="ComplexKey"/> an <see cref="Type"/>.
-            ///// </summary>
-            ///// <param name="info"></param>
-            ///// <returns></returns>
-            //public object Get(ComplexKey info)
-            //{
-            //    IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Get, info.Prefix,info.Suffix, null, 0);
-            //    return SendDuplexStreamValue(message, OnFault);
-            //}
-
-            ///// <summary>
-            ///// Get item from sync cache using arguments.
-            ///// </summary>
-            ///// <param name="entityName"></param>
-            ///// <param name="keys"></param>
-            ///// <returns></returns>
-            //public object Get(string entityName, string[] keys)
-            //{
-            //    IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Get, entityName, KeySet.Join(keys), null, 0);
-            //    return SendDuplexStreamValue(message,OnFault);
-            //}
-
-            ///// <summary>
-            ///// Get item from sync cache using <see cref="ComplexKey"/>.
-            ///// </summary>
-            ///// <typeparam name="T"></typeparam>
-            ///// <param name="info"></param>
-            ///// <returns></returns>
-            //public T Get<T>(ComplexKey info)
-            //{
-            //    IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Get, info.Prefix, info.Suffix, null, 0);
-            //    message.TransformType = MessageStream.GetTransformType(typeof(T));
-            //    return SendDuplexStream<T>(message, OnFault);
-            //}
-
-            ///// <summary>
-            ///// Get item from sync cache using arguments.
-            ///// </summary>
-            ///// <typeparam name="T"></typeparam>
-            ///// <param name="entityName"></param>
-            ///// <param name="keys"></param>
-            ///// <returns></returns>
-            //public T Get<T>(string entityName, string[] keys)
-            //{
-            //    IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Get, entityName, KeySet.Join(keys), null, 0);
-            //    message.TransformType = MessageStream.GetTransformType(typeof(T));
-            //    return SendDuplexStream<T>(message, OnFault);
-            //}
 
             /// <summary>
             ///  Get item as <see cref="IDictionary"/> from sync cache using pipe name and item key.
@@ -1660,7 +1046,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public IDictionary GetRecord(string entityName, string[] keys)
             {
-                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetRecord, entityName, KeySet.Join(keys), null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetRecord, entityName, KeySet.Join(keys), null, null, 0);
                 return SendDuplexStream<IDictionary>(message, OnFault); 
             }
 
@@ -1672,7 +1058,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public IDictionary GetRecord(ComplexKey info)
             {
-                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetRecord, info.Prefix, info.Suffix, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetRecord, info.Prefix, info.Suffix, null, null, 0);
                 return SendDuplexStream<IDictionary>(message, OnFault);
             }
 
@@ -1708,7 +1094,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public NetStream GetAs(ComplexKey info)
             {
-                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetAs, info.Prefix, info.Suffix, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetAs, info.Prefix, info.Suffix, null, null, 0);
                 return SendDuplexStream<NetStream>(message, OnFault);
             }
 
@@ -1720,7 +1106,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public NetStream GetAs(string entityName, string[] keys)
             {
-                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetAs, entityName, KeySet.Join(keys), null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetAs, entityName, KeySet.Join(keys), null, null, 0);
                 return SendDuplexStream<NetStream>(message, OnFault);
             }
 
@@ -1732,7 +1118,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public T GetEntity<T>(ComplexKey info)
             {
-                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetEntity, info.Prefix, info.Suffix, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetEntity, info.Prefix, info.Suffix, null, null, 0);
                 message.TransformType = MessageStream.GetTransformType(typeof(T));
                 return SendDuplexStream<T>(message, OnFault);
             }
@@ -1745,7 +1131,7 @@ namespace Nistec.Channels.RemoteCache
             /// <returns></returns>
             public T GetEntity<T>(string entityName, string[] keys)
             {
-                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetEntity, entityName, KeySet.Join(keys), null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetEntity, entityName, KeySet.Join(keys), null, null, 0);
                 message.TransformType = MessageStream.GetTransformType(typeof(T));
                 return SendDuplexStream<T>(message, OnFault);
             }
@@ -1783,7 +1169,7 @@ namespace Nistec.Channels.RemoteCache
             /// </summary>
             public void Reset()
             {
-                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Reset, "*", null, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Reset, "*", null, null, null, 0);
                 SendOutAsync(message);
             }
             /// <summary>
@@ -1791,7 +1177,7 @@ namespace Nistec.Channels.RemoteCache
             /// </summary>
             public void RefreshAll()
             {
-                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.RefreshAll, "*", null, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.RefreshAll, "*", null, null, null, 0);
                 SendOutAsync(message);
             }
             /// <summary>
@@ -1800,7 +1186,7 @@ namespace Nistec.Channels.RemoteCache
             /// <param name="syncName"></param>
             public void Refresh(string syncName)
             {
-                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Refresh, syncName, null, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Refresh, syncName, null, null, null, 0);
                 SendOutAsync(message);
             }
             /// <summary>
@@ -1809,7 +1195,7 @@ namespace Nistec.Channels.RemoteCache
             /// <param name="syncName"></param>
             public void Remove(string syncName)
             {
-                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Remove, syncName, null, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.Remove, syncName, null, null, null, 0);
                 SendOutAsync(message);
             }
             /// <summary>
@@ -1892,23 +1278,7 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("keys is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetEntity, entityName, KeySet.Join(keys), null, 0);
-                {
-                    return SendDuplexState(message) == RemoteCacheState.Ok;
-                }
-            }
-            public bool Contains(ComplexKey keyInfo)
-            {
-                if (keyInfo == null)
-                {
-                    throw new ArgumentNullException("keyInfo is required");
-                }
-                using (var message = new GenericMessage()
-                {
-                    Command = SyncCacheCmd.Contains,
-                    Label = keyInfo.Prefix,
-                    Id = keyInfo.Suffix
-                })
+                IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetEntity, entityName, KeySet.Join(keys), null, null, 0);
                 {
                     return SendDuplexState(message) == RemoteCacheState.Ok;
                 }
@@ -1939,281 +1309,6 @@ namespace Nistec.Channels.RemoteCache
             {
                 Console.WriteLine("SyncApi Fault: " + message);
             }
-
-            #region do custom
-            public object DoCustom(string command, string db, string tableName, string primaryKey, string field = null, object value = null, string args = null)
-            {
-                NameValueArgs valArgs = null;
-                if (!string.IsNullOrEmpty(args))
-                {
-                    var argsArray = KeySet.SplitTrim(args);
-                    valArgs = NameValueArgs.Get(argsArray);
-                }
-                if (primaryKey != null)
-                {
-                    primaryKey = primaryKey.Replace(",", KeySet.Separator);
-                }
-                switch ("data_" + command)
-                {
-                    case DataCacheCmd.Add:
-                        AddValue(db, tableName, primaryKey, field, value);
-                        return RemoteCacheState.Ok;
-                    case DataCacheCmd.AddSyncItem:
-                        //return AddSyncItem(db, tableName);
-                        return RemoteCacheState.CommandNotSupported;
-                    case DataCacheCmd.AddTable:
-                        //return AddTable(db, tableName);
-                        return RemoteCacheState.CommandNotSupported;
-                    case DataCacheCmd.AddTableWithSync:
-                        //return AddTableWithSync(db, tableName,valArgs[KnowsArgs.MappingName],);
-                        return RemoteCacheState.CommandNotSupported;
-                    //case DataCacheCmd.Contains:
-                    //    return Contains(db, tableName);
-                    case DataCacheCmd.Get:
-                        return GetValue(db, tableName, primaryKey, field);
-                    case DataCacheCmd.GetAllEntityNames:
-                        return GetAllEntityNames(db);
-                    //case DataCacheCmd.GetEntityItems:
-                    //    return GetEntityItems(db, tableName);
-                    case DataCacheCmd.GetEntityItemsCount:
-                        return GetEntityItemsCount(db, tableName);
-                    case DataCacheCmd.GetEntityKeys:
-                        return GetEntityKeys(db, tableName);
-                    //case DataCacheCmd.GetItemProperties:
-                    //    return GetItemProperties(db, tableName);
-                    case DataCacheCmd.GetItemsReport:
-                        return GetItemsReport(db, tableName);
-                    case DataCacheCmd.GetRecord:
-                        return GetRecord(db, tableName, primaryKey);
-                    //case DataCacheCmd.GetStream:
-                    //    return GetStream(db, tableName, primaryKey);
-                    //case DataCacheCmd.GetTable:
-                    //    return GetTable(db, tableName);
-                    case DataCacheCmd.Refresh:
-                        Refresh(db, tableName);
-                        return RemoteCacheState.Ok;
-                    case DataCacheCmd.RemoveTable:
-                        RemoveTable(db, tableName);
-                        return RemoteCacheState.Ok;
-                    case DataCacheCmd.Reply:
-                        return Reply(db);
-                    case DataCacheCmd.Reset:
-                        Reset(db);
-                        return RemoteCacheState.Ok;
-                    case DataCacheCmd.Set:
-                        SetValue(db, tableName, primaryKey, field, value);
-                        return RemoteCacheState.Ok;
-                    case DataCacheCmd.SetTable:
-                        //return SetTable(db, tableName);
-                        return RemoteCacheState.CommandNotSupported;
-                    default:
-                        throw new ArgumentException("Unknown command " + command);
-                }
-            }
-
-            public string DoHttpJson(string command, string db, string tableName, string primaryKey, string field = null, object value = null, string keyValueArgs = null, bool pretty = false)
-            {
-                NameValueArgs valArgs = null;
-                if (!string.IsNullOrEmpty(keyValueArgs))
-                {
-                    var argsArray = KeySet.SplitTrim(keyValueArgs);
-                    valArgs = NameValueArgs.Get(argsArray);
-                }
-
-                string cmd = "data_" + command.ToLower();
-                switch (cmd)
-                {
-                    case DataCacheCmd.Add:
-                        //AddValue(db, tableName, field, primaryKey, value);
-                        {
-                            if (string.IsNullOrWhiteSpace(db))
-                            {
-                                throw new ArgumentNullException("db is required");
-                            }
-                            if (string.IsNullOrWhiteSpace(tableName))
-                            {
-                                throw new ArgumentNullException("tableName is required");
-                            }
-                            if (string.IsNullOrWhiteSpace(field))
-                            {
-                                throw new ArgumentNullException("field is required");
-                            }
-                            if (string.IsNullOrWhiteSpace(primaryKey))
-                            {
-                                throw new ArgumentNullException("primaryKey is required");
-                            }
-
-                            if (value == null)
-                            {
-                                throw new ArgumentNullException("value is required");
-                            }
-                            var message = new GenericMessage()
-                            {
-                                Command = DataCacheCmd.Add,
-                                GroupId = db,
-                                Label = tableName,
-                                Id = primaryKey,
-                                Args = MessageStream.CreateArgs(KnowsArgs.Column, field),
-                                BodyStream = BinarySerializer.ConvertToStream(value)
-                            };
-                            SendHttpJsonOut(message);
-                            return RemoteCacheState.Ok.ToString();
-                        }
-                    case DataCacheCmd.AddSyncItem:
-                        //return AddSyncItem(db, tableName);
-                        return RemoteCacheState.CommandNotSupported.ToString();
-                    case DataCacheCmd.AddTable:
-                        //return AddTable(db, tableName);
-                        return RemoteCacheState.CommandNotSupported.ToString();
-                    case DataCacheCmd.AddTableWithSync:
-                        //return AddTableWithSync(db, tableName,valArgs[KnowsArgs.MappingName],);
-                        return RemoteCacheState.CommandNotSupported.ToString();
-                    case DataCacheCmd.Get:
-                        //return GetValue(db, tableName, field, primaryKey);
-                        {
-                            if (string.IsNullOrWhiteSpace(db))
-                            {
-                                throw new ArgumentNullException("db is required");
-                            }
-                            if (string.IsNullOrWhiteSpace(tableName))
-                            {
-                                throw new ArgumentNullException("tableName is required");
-                            }
-                            if (string.IsNullOrWhiteSpace(field))
-                            {
-                                throw new ArgumentNullException("field is required");
-                            }
-                            if (string.IsNullOrWhiteSpace(primaryKey))
-                            {
-                                throw new ArgumentNullException("primaryKey is required");
-                            }
-
-                            var message = new GenericMessage()
-                            {
-                                Command = DataCacheCmd.Get,
-                                GroupId = db,
-                                Label = tableName,
-                                Id = primaryKey,
-                                Args = MessageStream.CreateArgs(KnowsArgs.Column, field)
-                            };
-                            return SendHttpJsonDuplex(message, pretty);
-                        }
-                    case DataCacheCmd.GetAllEntityNames:
-                    case DataCacheCmd.Reply:
-                        {
-                            if (string.IsNullOrWhiteSpace(db))
-                            {
-                                throw new ArgumentNullException("db is required");
-                            }
-                            return SendHttpJsonDuplex(new GenericMessage() { Command = cmd, GroupId = db }, pretty);
-                        }
-                    case DataCacheCmd.GetEntityItems:
-                    case DataCacheCmd.GetEntityItemsCount:
-                    case DataCacheCmd.GetEntityKeys:
-                    case DataCacheCmd.GetItemProperties:
-                    case DataCacheCmd.GetItemsReport:
-                    case DataCacheCmd.GetTable:
-                    case DataCacheCmd.Contains:
-                        {
-                            if (string.IsNullOrWhiteSpace(db))
-                            {
-                                throw new ArgumentNullException("db is required");
-                            }
-
-                            if (tableName == null)
-                            {
-                                throw new ArgumentNullException("tableName is required");
-                            }
-                            return SendHttpJsonDuplex(new GenericMessage() { Command = cmd, GroupId = db, Label = tableName }, pretty);
-                        }
-
-                    case DataCacheCmd.GetRecord:
-                    //return GetRecord(db, tableName, primaryKey);
-                    case DataCacheCmd.GetStream:
-                        //return GetStream(db, tableName, primaryKey);
-                        {
-                            if (string.IsNullOrWhiteSpace(db))
-                            {
-                                throw new ArgumentNullException("db is required");
-                            }
-                            if (tableName == null)
-                            {
-                                throw new ArgumentNullException("tableName is required");
-                            }
-                            if (primaryKey == null)
-                            {
-                                throw new ArgumentNullException("primaryKey is required");
-                            }
-                            return SendHttpJsonDuplex(new GenericMessage() { Command = cmd, GroupId = db, Label = tableName, Args = valArgs }, pretty);
-                        }
-                    case DataCacheCmd.Refresh:
-                    case DataCacheCmd.RemoveTable:
-                        {
-                            if (string.IsNullOrWhiteSpace(db))
-                            {
-                                throw new ArgumentNullException("db is required");
-                            }
-
-                            if (tableName == null)
-                            {
-                                throw new ArgumentNullException("tableName is required");
-                            }
-                            SendHttpJsonOut(new GenericMessage() { Command = cmd, GroupId = db, Label = tableName });
-                            return RemoteCacheState.Ok.ToString();
-                        }
-                    case DataCacheCmd.Reset:
-                        //Reset(db);
-                        {
-                            if (string.IsNullOrWhiteSpace(db))
-                            {
-                                throw new ArgumentNullException("db is required");
-                            }
-                            SendHttpJsonOut(new GenericMessage() { Command = cmd, GroupId = db });
-                            return RemoteCacheState.Ok.ToString();
-                        }
-                    case DataCacheCmd.Set:
-                        //SetValue(db, tableName, field, primaryKey, value);
-                        {
-                            if (string.IsNullOrWhiteSpace(db))
-                            {
-                                throw new ArgumentNullException("db is required");
-                            }
-                            if (string.IsNullOrWhiteSpace(tableName))
-                            {
-                                throw new ArgumentNullException("tableName is required");
-                            }
-                            if (string.IsNullOrWhiteSpace(field))
-                            {
-                                throw new ArgumentNullException("field is required");
-                            }
-                            if (string.IsNullOrWhiteSpace(primaryKey))
-                            {
-                                throw new ArgumentNullException("primaryKey is required");
-                            }
-                            if (value == null)
-                            {
-                                throw new ArgumentNullException("value is required");
-                            }
-                            var message = new GenericMessage()
-                            {
-                                Command = DataCacheCmd.Set,
-                                GroupId = db,
-                                Label = tableName,
-                                Id = primaryKey,
-                                Args = MessageStream.CreateArgs(KnowsArgs.Column, field),
-                                BodyStream = BinarySerializer.ConvertToStream(value)// CacheMessageStream.EncodeBody(value)
-                            };
-                            SendHttpJsonOut(message);
-                            return RemoteCacheState.Ok.ToString();
-                        }
-                    case DataCacheCmd.SetTable:
-                        //return SetTable(db, tableName);
-                        return RemoteCacheState.CommandNotSupported.ToString();
-                    default:
-                        throw new ArgumentException("Unknown command " + command);
-                }
-            }
-            #endregion
 
             #region  public DataCacheApi commands
 
@@ -2258,10 +1353,9 @@ namespace Nistec.Channels.RemoteCache
                     throw new ArgumentNullException("value is required");
                 }
 
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Add, primaryKey,tableName, BinarySerializer.ConvertToStream(value), 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Add, db, BinarySerializer.ConvertToStream(value), 0);
                 {
-                    message.GroupId = db;
-                    message.Args = MessageStream.CreateArgs(KnowsArgs.Column, column);
+                    message.Args = MessageStream.CreateArgs(KnowsArgs.ConnectionKey, db, KnowsArgs.TableName, tableName, KnowsArgs.Column, column, KnowsArgs.Pk, primaryKey);
                 }
                 {
                     SendOut(message);
@@ -2294,10 +1388,9 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("value is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Set, primaryKey, tableName, BinarySerializer.ConvertToStream(value), 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Set, db, BinarySerializer.ConvertToStream(value), 0);
                 {
-                    message.GroupId = db;
-                    message.Args = MessageStream.CreateArgs(KnowsArgs.Column, column);
+                    message.Args = MessageStream.CreateArgs(KnowsArgs.ConnectionKey, db, KnowsArgs.TableName, tableName, KnowsArgs.Column, column, KnowsArgs.Pk, primaryKey);
                 }
                 {
                     SendOut(message);
@@ -2335,12 +1428,11 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("column is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Get, primaryKey, tableName,null, 0 );
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Get, db,0 );
                 {
-                    message.Args = MessageStream.CreateArgs(KnowsArgs.Column, column);
+                    message.Args = MessageStream.CreateArgs(KnowsArgs.ConnectionKey, db, KnowsArgs.TableName, tableName, KnowsArgs.Column, column, KnowsArgs.Pk, primaryKey);
                 }
                 {
-                    message.GroupId = db;
                     return SendDuplexStream<T>(message, OnFault);
                 }
             }
@@ -2367,12 +1459,11 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("column is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Get, primaryKey, tableName, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Get, db, 0);
                 {
-                    message.Args = MessageStream.CreateArgs(KnowsArgs.Column, column);
+                    message.Args = MessageStream.CreateArgs(KnowsArgs.ConnectionKey, db, KnowsArgs.TableName, tableName, KnowsArgs.Column, column, KnowsArgs.Pk, primaryKey);
                 }
                 {
-                    message.GroupId = db;
                     return SendDuplexStreamValue(message, OnFault);
                 }
             }
@@ -2407,9 +1498,11 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("tableName is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.GetRecord, primaryKey, tableName, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.GetRecord, db, 0);
                 {
-                    message.GroupId = db;
+                    message.Args = MessageStream.CreateArgs(KnowsArgs.TableName, tableName, KnowsArgs.Pk, primaryKey);
+                }
+                {
                     return SendDuplexStream<IDictionary>(message, OnFault);
                 }
             }
@@ -2462,10 +1555,8 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("tableName is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.RemoveTable, null, tableName,null, 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.RemoveTable, db, tableName,null,null, 0, TransformType.Object, false);
                 {
-                    message.GroupId = db;
-                    message.IsDuplex = false;
                     SendOut(message);
                 }
             }
@@ -2515,12 +1606,11 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("dt is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.AddTable, primaryKey.JoinTrim(), tableName, BinarySerializer.ConvertToStream(dt), 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.AddTable, db, BinarySerializer.ConvertToStream(dt), 0);
                 {
-                    message.GroupId = db;
                     //message.TypeName = typeof(DataTable).FullName;
                     //message.Detail = primaryKey.JoinTrim();
-                    message.Args = NameValueArgs.Get(KnowsArgs.MappingName, mappingName);
+                    message.Args = NameValueArgs.Get(KnowsArgs.TableName, tableName, KnowsArgs.MappingName, mappingName, KnowsArgs.Pk, primaryKey.JoinTrim());
                 }
                 {
                     return SendDuplexState(message);
@@ -2550,12 +1640,11 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("dt is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.SetTable, primaryKey.JoinTrim(), tableName,BinarySerializer.ConvertToStream(dt), 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.SetTable, db, BinarySerializer.ConvertToStream(dt), 0);
                 {
-                    message.GroupId = db;
                     //message.TypeName = typeof(DbTable).FullName;
                     //message.Detail = primaryKey.JoinTrim();
-                    message.Args = NameValueArgs.Get(KnowsArgs.MappingName, mappingName);
+                    message.Args = NameValueArgs.Get(KnowsArgs.TableName, tableName, KnowsArgs.MappingName, mappingName, KnowsArgs.Pk, primaryKey.JoinTrim());
                 }
                 {
                     return SendDuplexState(message);
@@ -2725,9 +1814,8 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("db is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Reset, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Reset, db, 0);
                 {
-                    message.GroupId = db;
                     SendOut(message);
                 }
             }
@@ -2747,10 +1835,8 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("tableName is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Refresh, null, tableName, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Refresh, db, tableName, null,null, 0, TransformType.Object, false);
                 {
-                    message.GroupId = db;
-                    message.IsDuplex = false;
                     SendOut(message);
                 }
             }
@@ -2793,9 +1879,8 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("tableName is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.GetEntityItemsCount, null, tableName,null, 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.GetEntityItemsCount, db, tableName,null, null, 0);
                 {
-                    message.GroupId = db;
                     return SendDuplexStream<int>(message, OnFault);
                 }
             }
@@ -2816,9 +1901,8 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("tableName is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.GetEntityKeys, null, tableName, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.GetEntityKeys, db, tableName, null, null, 0);
                 {
-                    message.GroupId = db;
                     return SendDuplexStream<ICollection<string>>(message, OnFault);
                 }
             }
@@ -2834,9 +1918,8 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("db is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.GetAllEntityNames, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.GetAllEntityNames, db, 0);
                 {
-                    message.GroupId = db;
                     return SendDuplexStream<ICollection<string>>(message, OnFault);
                 }
 
@@ -2859,9 +1942,8 @@ namespace Nistec.Channels.RemoteCache
                 {
                     throw new ArgumentNullException("tableName is required");
                 }
-                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.GetItemsReport, null, tableName, null, 0);
+                IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.GetItemsReport, db, tableName, null, null, 0);
                 {
-                    message.GroupId = db;
                     return SendDuplexStream<DataTable>(message, OnFault);
                 }
             }

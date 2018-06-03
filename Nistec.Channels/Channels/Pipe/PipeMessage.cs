@@ -37,7 +37,7 @@ namespace Nistec.Channels
     /// Represent a message for named pipe communication.
     /// </summary>
     [Serializable]
-    public class PipeMessage : MessageStream,IMessage, IDisposable
+    public class PipeMessage : MessageStream, ITransformMessage//, IDisposable
     {
  
         #region ctor
@@ -61,7 +61,7 @@ namespace Nistec.Channels
             : this()
         {
             Command = command;
-            Key = key;
+            Id = key;
             Expiration = expiration;
             SetBody(value);
         }
@@ -77,9 +77,9 @@ namespace Nistec.Channels
             : this()
         {
             Command = command;
-            Key = key;
+            Id = key;
             Expiration = expiration;
-            Id = sessionId;
+            Label = sessionId;
             SetBody(value);
         }
         #endregion
@@ -95,17 +95,12 @@ namespace Nistec.Channels
         #endregion
 
         #region static
-        /// <summary>
-        /// Create a new message stream.
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <param name="streamer"></param>
-        /// <returns></returns>
-        public static MessageStream Create(Stream stream, IBinaryStreamer streamer)
+
+        public static PipeOptions GetPipeOptions(bool isAsync, PipeTransmissionMode transformMode= PipeTransmissionMode.Message)
         {
-            PipeMessage message = new PipeMessage();
-            message.EntityRead(stream, streamer);
-            return message;
+            if (isAsync)
+                return transformMode== PipeTransmissionMode.Byte? PipeOptions.Asynchronous| PipeOptions.WriteThrough: PipeOptions.Asynchronous;
+            return transformMode == PipeTransmissionMode.Byte ? PipeOptions.WriteThrough : PipeOptions.None;
         }
 
         #endregion
@@ -115,52 +110,38 @@ namespace Nistec.Channels
         /// Send duplex message to named pipe server using the pipe name argument.
         /// </summary>
         /// <param name="PipeName"></param>
-        /// <param name="IsAsync"></param>
+        /// <param name="option"></param>
         /// <returns></returns>
-        public object SendDuplex(string PipeName, bool IsAsync)
+        public object SendDuplex(string PipeName, PipeOptions option= PipeOptions.None)
         {
-            return PipeClient.SendDuplex(this, PipeName, IsAsync);
+            return PipeClient.SendDuplex(this, PipeName, false, option);
         }
         /// <summary>
         /// Send duplex message to named pipe server using the pipe name argument.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="PipeName"></param>
-        /// <param name="IsAsync"></param>
+        /// <param name="option"></param>
         /// <returns></returns>
-        public T SendDuplex<T>(string PipeName, bool IsAsync)
+        public T SendDuplex<T>(string PipeName, PipeOptions option = PipeOptions.None)
         {
-            return PipeClient.SendDuplex<T>(this, PipeName, IsAsync);
+            return PipeClient.SendDuplex<T>(this, PipeName, false, option);
         }
         /// <summary>
         /// Send one way message to named pipe server using the pipe name argument.
         /// </summary>
         /// <param name="PipeName"></param>
-        /// <param name="IsAsync"></param>
-        public void SendOut(string PipeName, bool IsAsync)
+        /// <param name="option"></param>
+        public void SendOut(string PipeName, PipeOptions option = PipeOptions.None)
         {
-            PipeClient.SendOut(this, PipeName, IsAsync);
+            PipeClient.SendOut(this, PipeName, false, option);
         }
 
         #endregion
 
         #region Read/Write
 
-        public NetStream ToStream()
-        {
-            NetStream stream = new NetStream();
-            EntityWrite(stream, null);
-            return stream;
-        }
-
-        public static PipeMessage ParseStream(Stream stream)
-        {
-            var message = new PipeMessage();
-            message.EntityRead(stream, null);
-            return message;
-        }
-
-        internal static PipeMessage ReadRequest(NamedPipeServerStream pipeServer, int InBufferSize = 8192)
+        internal static PipeMessage ReadRequest(NamedPipeServerStream pipeServer, int ReceiveBufferSize = 8192)
         {
             var message = new PipeMessage();
             message.EntityRead(pipeServer, null);
@@ -168,74 +149,38 @@ namespace Nistec.Channels
             return message;
         }
 
-        internal static void WriteResponse(NamedPipeServerStream pipeServer, NetStream bResponse)
-        {
-            if (bResponse == null)
-            {
-                return;
-            }
-
-            int cbResponse = bResponse.iLength;
-
-            pipeServer.Write(bResponse.ToArray(), 0, cbResponse);
-
-            pipeServer.Flush();
-
-        }
-
         #endregion
 
-        /// <summary>
-        /// Convert <see cref="IDictionary"/> to <see cref="MessageStream"/>.
-        /// </summary>
-        /// <param name="dict"></param>
-        /// <returns></returns>
-        public static MessageStream ConvertFrom(IDictionary dict)
-        {
-            PipeMessage message = new PipeMessage()
-            {
-                Command = dict.Get<string>("Command"),
-                Key = dict.Get<string>("Key"),
-                Args = dict.Get<GenericNameValue>("Args"),
-                BodyStream = dict.Get<NetStream>("Body", null),
-                Expiration = dict.Get<int>("Expiration", 0),
-                IsDuplex = dict.Get<bool>("IsDuplex", true),
-                Modified = dict.Get<DateTime>("Modified", DateTime.Now),
-                TypeName = dict.Get<string>("TypeName"),
-                Id = dict.Get<string>("Id")
-            };
+        #region ReadResponse pipe
 
-            return message;
-        }
+        //public object ReadResponse(NamedPipeClientStream stream, int ReceiveBufferSize = 8192)
+        //{
+        //    return new TransStream(stream, ReceiveBufferSize);
+        //}
+        //public object ReadResponse(NamedPipeClientStream stream, TransformType transformType, int ReceiveBufferSize = 8192)
+        //{
+        //    if (transformType == TransformType.TransStream)
+        //    {
+        //        return new TransStream(stream, ReceiveBufferSize);
+        //    }
 
-        #region ReadAck pipe
-
-        public object ReadAck(NamedPipeClientStream stream, Type type, int InBufferSize = 8192)
-        {
-
-            using (AckStream ack = AckStream.Read(stream, type, InBufferSize))
-            {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new Exception(ack.Message);
-                }
-                return ack.Value;
-            }
-        }
-
-        public TResponse ReadAck<TResponse>(NamedPipeClientStream stream, int InBufferSize = 8192)
-        {
-
-            using (AckStream ack = AckStream.Read(stream, typeof(TResponse), InBufferSize))
-            {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new Exception(ack.Message);
-                }
-                return ack.GetValue<TResponse>();
-            }
-        }
-
+        //    using (TransStream ack = new TransStream(stream, ReceiveBufferSize, TransformType.Message))
+        //    {
+        //        return ack.ReadValue();
+        //    }
+        //}
+        //public TResponse ReadResponse<TResponse>(NamedPipeClientStream stream, int ReceiveBufferSize = 8192)
+        //{
+        //    if (TransReader.IsTransStream(typeof(TResponse)))
+        //    {
+        //        TransStream ts = new TransStream(stream, ReceiveBufferSize);
+        //        return GenericTypes.Cast<TResponse>(ts, true);
+        //    }
+        //    using (TransStream ack = new TransStream(stream, ReceiveBufferSize, TransformType.Message))
+        //    {
+        //        return ack.ReadValue<TResponse>();
+        //    }
+        //}
 
         #endregion
 

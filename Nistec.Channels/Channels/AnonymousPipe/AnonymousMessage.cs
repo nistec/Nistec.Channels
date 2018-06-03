@@ -37,7 +37,7 @@ namespace Nistec.Channels
     /// Represent a message for anonymous pipe communication.
     /// </summary>
     [Serializable]
-    public class AnonymousMessage : MessageStream,IMessage, IDisposable
+    public class AnonymousMessage : MessageStream, ITransformMessage// IDisposable
     {
  
         #region ctor
@@ -61,7 +61,7 @@ namespace Nistec.Channels
             : this()
         {
             Command = command;
-            Key = key;
+            Id = key;
             Expiration = expiration;
             SetBody(value);
         }
@@ -77,9 +77,9 @@ namespace Nistec.Channels
             : this()
         {
             Command = command;
-            Key = key;
+            Id = key;
             Expiration = expiration;
-            Id = sessionId;
+            Label = sessionId;
             SetBody(value);
         }
         #endregion
@@ -114,7 +114,7 @@ namespace Nistec.Channels
         /// <summary>
         /// Send duplex message to named pipe server using the pipe name argument.
         /// </summary>
-        /// <param name="PipeName"></param>
+        /// <param name="FileName"></param>
         /// <param name="IsAsync"></param>
         /// <returns></returns>
         public object SendDuplex(string FileName, bool IsAsync)
@@ -125,7 +125,7 @@ namespace Nistec.Channels
         /// Send duplex message to named pipe server using the pipe name argument.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="PipeName"></param>
+        /// <param name="FileName"></param>
         /// <param name="IsAsync"></param>
         /// <returns></returns>
         public T SendDuplex<T>(string FileName, bool IsAsync)
@@ -135,7 +135,7 @@ namespace Nistec.Channels
         /// <summary>
         /// Send one way message to named pipe server using the pipe name argument.
         /// </summary>
-        /// <param name="PipeName"></param>
+        /// <param name="FileName"></param>
         /// <param name="IsAsync"></param>
         public void SendOut(string FileName, bool IsAsync)
         {
@@ -161,7 +161,7 @@ namespace Nistec.Channels
             return message;
         }
 
-        internal static AnonymousMessage ReadRequest(AnonymousPipeClientStream pipeClient, int InBufferSize = 8192)
+        internal static AnonymousMessage ReadRequest(AnonymousPipeClientStream pipeClient, int ReceiveBufferSize = 8192)
         {
             var message = new AnonymousMessage();
             var stream= AnonymousMessage.CopyStream(pipeClient);
@@ -184,15 +184,15 @@ namespace Nistec.Channels
 
         }
 
-        public static NetStream CopyStream(PipeStream stream, int InBufferSize = 8192)
+        public static NetStream CopyStream(PipeStream stream, int ReceiveBufferSize = 8192)
         {
-            if (InBufferSize <= 0)
-                InBufferSize = 8192;
+            if (ReceiveBufferSize <= 0)
+                ReceiveBufferSize = 8192;
             int cbRead = 0;
             NetStream ms = new NetStream();
             do
             {
-                byte[] bytes = new byte[InBufferSize];
+                byte[] bytes = new byte[ReceiveBufferSize];
                 int bytesLength = bytes.Length;
                 cbRead = stream.Read(bytes, 0, bytesLength);
                 if (cbRead > 0)
@@ -219,14 +219,15 @@ namespace Nistec.Channels
             AnonymousMessage message = new AnonymousMessage()
             {
                 Command = dict.Get<string>("Command"),
-                Key = dict.Get<string>("Key"),
-                Args = dict.Get<GenericNameValue>("Args"),
+                Id = dict.Get<string>("Id"),
+                Args = dict.Get<NameValueArgs>("Args"),
                 BodyStream = dict.Get<NetStream>("Body", null),
                 Expiration = dict.Get<int>("Expiration", 0),
                 IsDuplex = dict.Get<bool>("IsDuplex", true),
                 Modified = dict.Get<DateTime>("Modified", DateTime.Now),
                 TypeName = dict.Get<string>("TypeName"),
-                Id = dict.Get<string>("Id")
+                Label = dict.Get<string>("Label"),
+                TransformType=(TransformType) dict.Get<byte>("TransformType")
             };
 
             return message;
@@ -239,34 +240,55 @@ namespace Nistec.Channels
 
         #region ReadAck pipe
 
-        public object ReadAck(AnonymousPipeClientStream stream, Type type, int InBufferSize = 8192)
+        public object ReadAck(AnonymousPipeClientStream stream, TransformType type, int ReceiveBufferSize = 8192)
         {
-            var ns = CopyStream(stream);
-            using (AckStream ack = AckStream.Read(ns, type, InBufferSize))
-            {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new Exception(ack.Message);
-                }
-                return ack.Value;
-            }
+            return TransReader.ReadValue(CopyStream(stream));
+            //var ns = CopyStream(stream);
+            //using (TransStream ack = TransStream.Read(ns, type, ReceiveBufferSize))
+            //{
+            //    return ack.GetValue();
+            //}
         }
 
-        public TResponse ReadAck<TResponse>(AnonymousPipeClientStream stream, int InBufferSize = 8192)
+        public TResponse ReadAck<TResponse>(AnonymousPipeClientStream stream, int ReceiveBufferSize = 8192)
         {
-            var ns= CopyStream(stream);
-            using (AckStream ack = AckStream.Read(ns, typeof(TResponse), InBufferSize))
-            {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new Exception(ack.Message);
-                }
-                return ack.GetValue<TResponse>();
-            }
+            return TransReader.ReadValue<TResponse>(CopyStream(stream));
+
+            //var ns = CopyStream(stream);
+            //using (TransStream ack = TransStream.Read(ns, MessageStream.GetTransformType(typeof(TResponse)), ReceiveBufferSize))
+            //{
+            //    return ack.GetValue<TResponse>();
+            //}
+
         }
+        //public object ReadAck(AnonymousPipeClientStream stream, TransformType type, int ReceiveBufferSize = 8192)
+        //{
+        //    var ns = CopyStream(stream);
+        //    using (AckStream ack = AckStream.Read(ns, type, ReceiveBufferSize))
+        //    {
+        //        if (ack.State > MessageState.Ok)
+        //        {
+        //            throw new Exception(ack.Message);
+        //        }
+        //        return ack.Value;
+        //    }
+        //}
+
+        //public TResponse ReadAck<TResponse>(AnonymousPipeClientStream stream, int ReceiveBufferSize = 8192)
+        //{
+        //    var ns= CopyStream(stream);
+        //    using (AckStream ack = AckStream.Read(ns, MessageStream.GetTransformType(typeof(TResponse)), ReceiveBufferSize))
+        //    {
+        //        if (ack.State > MessageState.Ok)
+        //        {
+        //            throw new Exception(ack.Message);
+        //        }
+        //        return ack.GetValue<TResponse>();
+        //    }
+        //}
 
 
         #endregion
-      
+
     }
 }

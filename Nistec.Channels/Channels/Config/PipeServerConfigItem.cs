@@ -6,7 +6,7 @@
 // Note    : Copyright 2007-2015, Nissim Trujman, All rights reserved
 // Compiler: Microsoft Visual C#
 //
-// This file contains a class that is part of nistec library.
+// This file contains a class that is part of cache core.
 //
 // This code is published under the Microsoft Public License (Ms-PL).  A copy of the license should be
 // distributed with the code and can be found at the project website: http://nistec.net/license/nistec.cache-license.txt.  
@@ -22,46 +22,39 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Configuration;
 
-namespace Nistec.Channels
+namespace Nistec.Channels.Config
 {
     /// <summary>
-    /// Channel Service State
+    /// Represent pipe server config item.
     /// </summary>
-    public enum ChannelServiceState { None, Started, Stoped, Paused }
-
-
-    /// <summary>
-    /// Net Protocol
-    /// </summary>
-    [Flags]
-    public enum NetProtocol
+    public class PipeServerConfigItem : PipeConfigItem
     {
-        NA = 0,
-        Pipe = 1,
-        Tcp = 2,
-        Http=4
+
+
+        /// <summary>
+        /// Get max server connection.
+        /// </summary>
+        [ConfigurationProperty("MaxServerConnections", DefaultValue = "1", IsRequired = false)]
+        public int MaxServerConnections
+        {
+            get
+            {
+                return Types.ToInt(this["MaxServerConnections"], 1);
+            }
+        }
+        /// <summary>
+        /// Get max allowed server instances.
+        /// </summary>
+        [ConfigurationProperty("MaxAllowedServerInstances", DefaultValue = System.IO.Pipes.NamedPipeServerStream.MaxAllowedServerInstances, IsRequired = false)]
+        public int MaxAllowedServerInstances
+        {
+            get
+            {
+                return Types.ToInt(this["MaxAllowedServerInstances"], System.IO.Pipes.NamedPipeServerStream.MaxAllowedServerInstances);
+            }
+        }
+
     }
-
-    /// <summary>
-    /// Net Format
-    /// </summary>
-   // [Flags]
-    public enum BundleFormatter
-    {
-        NA=0,
-        Binary = 1,
-        Json = 2
-    }
-
-    /// <summary>
-    /// Message Direction
-    /// </summary>
-    public enum MessageDirection
-    {
-        Request,
-        Response
-    }
-
-
 }

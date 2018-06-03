@@ -38,7 +38,7 @@ namespace Nistec.Channels.Tcp
     /// Represent a message for named tcp communication.
     /// </summary>
     [Serializable]
-    public class TcpMessage : MessageStream,IMessage, IDisposable
+    public class TcpMessage : MessageStream, ITransformMessage, IDisposable
     {
         #region ctor
 
@@ -61,7 +61,7 @@ namespace Nistec.Channels.Tcp
             : this()
         {
             Command = command;
-            Key = key;
+            Id = key;
             Expiration = expiration;
             SetBody(value);
         }
@@ -77,9 +77,9 @@ namespace Nistec.Channels.Tcp
             : this()
         {
             Command = command;
-            Key = key;
+            Id = key;
             Expiration = expiration;
-            Id = sessionId;
+            Label = sessionId;
             SetBody(value);
         }
         #endregion
@@ -92,22 +92,6 @@ namespace Nistec.Channels.Tcp
         {
             Dispose(false);
         }
-        #endregion
-
-        #region static
-        /// <summary>
-        /// Create a new message stream.
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <param name="streamer"></param>
-        /// <returns></returns>
-        public static MessageStream Create(Stream stream, IBinaryStreamer streamer)
-        {
-            TcpMessage message = new TcpMessage();
-            message.EntityRead(stream, streamer);
-            return message;
-        }
-
         #endregion
 
         #region send methods
@@ -151,6 +135,16 @@ namespace Nistec.Channels.Tcp
         #endregion
 
         #region Read/Write
+
+        internal static TcpMessage ServerReadRequest(NetworkStream streamServer, int ReceiveBufferSize = 8192)
+        {
+            var message = new TcpMessage();
+            message.EntityRead(streamServer, null);
+
+            return message;
+        }
+
+        /*
         /// <summary>
         /// Get <see cref="TcpMessage"/> as <see cref="NetStream"/> Stream.
         /// </summary>
@@ -170,15 +164,6 @@ namespace Nistec.Channels.Tcp
         {
             var message = new TcpMessage();
             message.EntityRead(stream, null);
-            return message;
-        }
-
-
-        internal static TcpMessage ServerReadRequest(NetworkStream streamServer, int InBufferSize = 8192)
-        {
-            var message = new TcpMessage();
-            message.EntityRead(streamServer, null);
-
             return message;
         }
 
@@ -214,30 +199,28 @@ namespace Nistec.Channels.Tcp
                 IsDuplex = dict.Get<bool>("IsDuplex", true),
                 Modified = dict.Get<DateTime>("Modified", DateTime.Now),
                 TypeName = dict.Get<string>("TypeName"),
-                Id = dict.Get<string>("Id")
+                Id = dict.Get<string>("Id"),
+                ReturnTypeName = dict.Get<string>("ReturnTypeName")
             };
 
             return message;
         }
+        */
         #endregion
 
         #region ReadAck tcp
-
+       /*
         /// <summary>
         /// Read response from server.
         /// </summary>
         /// <param name="stream"></param>
         /// <param name="readTimeout"></param>
-        /// <param name="InBufferSize"></param>
-        public object ReadAck(NetworkStream stream, int readTimeout, int InBufferSize)
+        /// <param name="ReceiveBufferSize"></param>
+        public object ReadAck(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
         {
-            using (AckStream ack = AckStream.Read(stream, typeof(object), readTimeout, InBufferSize))
+            using (TransStream ack = new TransStream(stream, readTimeout, ReceiveBufferSize))
             {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new MessageException(ack);
-                }
-                return ack.Value;
+                return ack.ReadValue();
             }
         }
 
@@ -247,18 +230,14 @@ namespace Nistec.Channels.Tcp
         /// <param name="stream"></param>
         /// <param name="type"></param>
         /// <param name="readTimeout"></param>
-        /// <param name="InBufferSize"></param>
+        /// <param name="ReceiveBufferSize"></param>
         /// <returns></returns>
-        public object ReadAck(NetworkStream stream, Type type, int readTimeout, int InBufferSize)
+        public object ReadAck(NetworkStream stream, TransformType type, int readTimeout, int ReceiveBufferSize)
         {
 
-            using (AckStream ack = AckStream.Read(stream, type, readTimeout, InBufferSize))
+            using (TransStream ack = new TransStream(stream, readTimeout, ReceiveBufferSize))
             {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new MessageException(ack);
-                }
-                return ack.Value;
+                return ack.ReadValue();
             }
         }
 
@@ -268,22 +247,94 @@ namespace Nistec.Channels.Tcp
         /// <typeparam name="TResponse"></typeparam>
         /// <param name="stream"></param>
         /// <param name="readTimeout"></param>
-        /// <param name="InBufferSize"></param>
+        /// <param name="ReceiveBufferSize"></param>
         /// <returns></returns>
-        public TResponse ReadAck<TResponse>(NetworkStream stream, int readTimeout, int InBufferSize)
+        public TResponse ReadAck<TResponse>(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
         {
 
-            using (AckStream ack = AckStream.Read(stream, typeof(TResponse), readTimeout, InBufferSize))
+            using (TransStream ack = new TransStream(stream, readTimeout, ReceiveBufferSize))
             {
-                if (ack.State > MessageState.Ok)
-                {
-                    throw new MessageException(ack);
-                }
-                return ack.GetValue<TResponse>();
+                return ack.ReadValue<TResponse>();
             }
         }
+        */
+        ///// <summary>
+        ///// Read response from server.
+        ///// </summary>
+        ///// <param name="stream"></param>
+        ///// <param name="readTimeout"></param>
+        ///// <param name="ReceiveBufferSize"></param>
+        //public object ReadAck(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
+        //{
+        //    using (AckStream ack = new AckStream(stream, TransformType.Message, readTimeout, ReceiveBufferSize))
+        //    {
+        //        if (ack.State > MessageState.Ok)
+        //        {
+        //            throw new MessageException(ack);
+        //        }
+        //        return ack.Value;
+        //    }
+        //}
+
+        ///// <summary>
+        ///// Read response from server.
+        ///// </summary>
+        ///// <param name="stream"></param>
+        ///// <param name="type"></param>
+        ///// <param name="readTimeout"></param>
+        ///// <param name="ReceiveBufferSize"></param>
+        ///// <returns></returns>
+        //public object ReadAck(NetworkStream stream, TransformType type, int readTimeout, int ReceiveBufferSize)
+        //{
+
+        //    using (AckStream ack = new AckStream(stream, type, readTimeout, ReceiveBufferSize))
+        //    {
+        //        if (ack.State > MessageState.Ok)
+        //        {
+        //            throw new MessageException(ack);
+        //        }
+        //        return ack.Value;
+        //    }
+        //}
+
+        ///// <summary>
+        ///// Read response from server.
+        ///// </summary>
+        ///// <typeparam name="TResponse"></typeparam>
+        ///// <param name="stream"></param>
+        ///// <param name="readTimeout"></param>
+        ///// <param name="ReceiveBufferSize"></param>
+        ///// <returns></returns>
+        //public TResponse ReadAck<TResponse>(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
+        //{
+
+        //    using (AckStream ack = new AckStream(stream, MessageStream.GetTransformType(typeof(TResponse)), readTimeout, ReceiveBufferSize))
+        //    {
+        //        if (ack.State > MessageState.Ok)
+        //        {
+        //            throw new MessageException(ack);
+        //        }
+        //        return ack.GetValue<TResponse>();
+        //    }
+        //}
 
         #endregion
-      
+
+        #region static
+        /*
+        /// <summary>
+        /// Create a new message stream.
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="streamer"></param>
+        /// <returns></returns>
+        public static MessageStream Create(Stream stream, IBinaryStreamer streamer)
+        {
+            TcpMessage message = new TcpMessage();
+            message.EntityRead(stream, streamer);
+            return message;
+        }
+        */
+        #endregion      
     }
 }

@@ -57,15 +57,15 @@ namespace Nistec.Channels
         {
             State = state;
         }
-        /// <summary>
-        /// Initializes a new instance of the MessageException class.
-        /// </summary>
-        /// <param name="ack"></param>
-        public MessageException(AckStream ack)
-            : base(ack.Message)
-        {
-            State = ack.State;
-        }
+        ///// <summary>
+        ///// Initializes a new instance of the MessageException class.
+        ///// </summary>
+        ///// <param name="ack"></param>
+        //public MessageException(AckStream ack)
+        //    : base(ack.Message)
+        //{
+        //    State = ack.State;
+        //}
         
 
     }

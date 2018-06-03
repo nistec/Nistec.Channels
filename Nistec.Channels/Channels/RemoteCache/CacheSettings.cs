@@ -31,208 +31,158 @@ using Nistec.Serialization;
 
 namespace Nistec.Channels.RemoteCache
 {
-
-    #region CacheDefaults
-    internal class CacheDefaults
+ 
+    /// <summary>
+    /// Represent the cache api settings as read only.
+    /// </summary>
+    public class RemoteCacheSettings
     {
+
+        #region Defaults
+
         /// <summary>
         /// Get Default Formatter
         /// </summary>
         public static Formatters DefaultFormatter { get { return Formatters.BinarySerializer; } }
+        public const int DefaultReceiveBufferSize = 4096;
+        public const int DefaultSendBufferSize = 4096;
+
+        public const int DefaultConnectTimeout = 5000;
+        public const int DefaultProcessTimeout = 5000;
+        public const int DefaultSessionTimeout = 30;
+        public const int DefaultCacheExpiration = 0;
+        public const int DefaultTaskTimeout = 240;
+
+        public const bool DefaultIsAsync = false;
+        public const bool DefaultEnableException = false;
+
+        public static NetProtocol DefaultProtocol = NetProtocol.Tcp;
+
+        #endregion
 
         #region pipe
         /// <summary>
         /// Default Cache HostName
         /// </summary>
-        public const string DefaultCacheHostName = "nistec_cache";
+        public const string DefaultHostName = "nistec_cache_bundle";
         /// <summary>
         /// Default Data HostName
         /// </summary>
-        public const string DefaultDataCacheHostName = "nistec_cache_data";
-        /// <summary>
-        /// Default Session HostName
-        /// </summary>
-        public const string DefaultSessionHostName = "nistec_cache_session";
-        /// <summary>
-        /// Default Sync HostName
-        /// </summary>
-        public const string DefaultSyncCacheHostName = "nistec_cache_sync";
-        /// <summary>
-        /// Default CacheManager HostName
-        /// </summary>
-        public const string DefaultCacheManagerHostName = "nistec_cache_manager";
-
-        /// <summary>
-        /// Default CacheManager HostName
-        /// </summary>
-        public const string DefaultBundleHostName = "nistec_cache_bundle";
+        public const string DefaultPipeName = "nistec_cache_bundle";
 
         #endregion
 
         #region TCP
 
         /// <summary>
-        /// DefaultReadTimeout
-        /// </summary>
-        public const int DefaultReadTimeout = 1000;
-
-        /// <summary>
         /// Default Sync Address
         /// </summary>
-        public const string DefaultBundleAddress = "localhost";
+        public const string DefaultTcpAddress = "localhost";
         /// <summary>
         /// DefaultCachePort
         /// </summary>
-        public const int DefaultBundlePort = 13000;
-
-        /// <summary>
-        /// Default Sync Address
-        /// </summary>
-        public const string DefaultCacheAddress = "localhost";
-        /// <summary>
-        /// DefaultCachePort
-        /// </summary>
-        public const int DefaultCachePort = 13001;
-
-        /// <summary>
-        /// Default Data Address
-        /// </summary>
-        public const string DefaultDataCacheAddress = "localhost";
-        /// <summary>
-        /// DefaultDataCachePort
-        /// </summary>
-        public const int DefaultDataCachePort = 13002;
-
-        /// <summary>
-        /// Default Session Address
-        /// </summary>
-        public const string DefaultSessionAddress = "localhost";
-        /// <summary>
-        /// DefaultSessionPort
-        /// </summary>
-        public const int DefaultSessionPort = 13003;
-
-        /// <summary>
-        /// Default Sync Address
-        /// </summary>
-        public const string DefaultSyncCacheAddress = "localhost";
-        /// <summary>
-        /// DefaultSyncCachePort
-        /// </summary>
-        public const int DefaultSyncCachePort = 13004;
-
-        /// <summary>
-        /// Default CacheManager Address
-        /// </summary>
-        public const string DefaultCacheManagerAddress = "localhost";
-        /// <summary>
-        /// DefaultCacheManagerPort
-        /// </summary>
-        public const int DefaultCacheManagerPort = 13005;
-        /// <summary>
-        /// DefaultTaskTimeout
-        /// </summary>
-        public const int DefaultTaskTimeout = 240;
+        public const int DefaultTcpPort = 13001;
 
         #endregion
 
-        internal const int DefaultSessionTimeout = 30;
-        public static NetProtocol DefaultProtocol = NetProtocol.Tcp;
+        #region Http
 
-    }
-    #endregion
+        public const string DefaultHttpAddress = "localhost";
+        public const int DefaultHttpPort = 13010;
+        public const string DefaultHttpMethod = "post";
+        public const int DefaultHttpSslPort = 13043;
+        #endregion
 
-    /// <summary>
-    /// Represent the cache api settings as read only.
-    /// </summary>
-    public class CacheSettings
-    {
- 
+        #region Properties
+        public static string PipeName { get; set; }
+
+        public static int TcpPort { get; set; }
+        public static string TcpAddress { get; set; }
+
+        public static int HttpPort { get; set; }
+        public static int HttpSslPort { get; set; }
+        public static string HttpAddress { get; set; }
+        public static string HttpMethod { get; set; }
+       
+        public static int GetHttpPort()
+        {
+            if (IsHttpSsl())
+                return HttpSslPort;
+            else
+                return HttpPort;
+        }
+        public static bool IsHttpSsl()
+        {
+            if (HttpAddress == null)
+                return false;
+            return (HttpAddress.ToLower().StartsWith("https://"));
+        }
+
+        public static int ConnectTimeout { get; set; }
+        public static int ProcessTimeout { get; set; }
+        public static int ReceiveBufferSize { get; set; }
+        public static int SendBufferSize { get; set; }
+
+
+        public static int SessionTimeout { get; set; }
+        public static int CacheExpiration { get; set; }
+        public static bool IsRemoteAsync { get; set; }
+        public static bool EnableRemoteException { get; set; }
+        public static NetProtocol Protocol { get; set; }
+        #endregion
+
+        #region Helper
+
+        internal static string GetHostAddress(string hostAddress, NetProtocol protocol)
+        {
+            if (hostAddress != null)
+                return hostAddress;
+            if (protocol == NetProtocol.Http)
+                return HttpAddress;
+            if (protocol == NetProtocol.Tcp)
+                return TcpAddress;
+            if (protocol == NetProtocol.Pipe)
+                return PipeName;
+
+            return null;
+        }
+
+        internal static int GetPort(int port, NetProtocol protocol)
+        {
+            if (port > 0)
+                return port;
+            if (protocol == NetProtocol.Http)
+                return (IsHttpSsl()) ? DefaultHttpSslPort : DefaultHttpPort;
+            if (protocol == NetProtocol.Tcp)
+                return DefaultTcpPort;
+            return 0;
+        }
+
+        internal static string GetHttpMethod(string httpMethod, NetProtocol protocol)
+        {
+            if (httpMethod != null)
+                return httpMethod;
+            if (protocol == NetProtocol.Http)
+                return HttpMethod;
+            return null;
+
+        }
+
+        #endregion
+
         #region CacheClientSettings
-
-        static string _RemoteCacheHostName = CacheDefaults.DefaultCacheHostName;
-        static string _RemoteSyncCacheHostName = CacheDefaults.DefaultSyncCacheHostName;
-        static string _RemoteSessionHostName = CacheDefaults.DefaultSessionHostName;
-        static string _RemoteDataCacheHostName = CacheDefaults.DefaultDataCacheHostName;
-        static string _RemoteCacheManagerHostName = CacheDefaults.DefaultCacheManagerHostName;
-        static string _RemoteBundleHostName = CacheDefaults.DefaultBundleHostName;
-        static int _SessionTimeout = CacheDefaults.DefaultSessionTimeout;
-
-        /// <summary>RemoteCacheHostName.</summary>
-        public static string RemoteCacheHostName { get { return _RemoteCacheHostName; } set { _RemoteCacheHostName = value; } }
-        /// <summary>RemoteSyncCacheHostName.</summary>
-        public static string RemoteSyncCacheHostName { get { return _RemoteSyncCacheHostName; } set { _RemoteSyncCacheHostName = value; } }
-        /// <summary>RemoteSessionHostName.</summary>
-        public static string RemoteSessionHostName { get { return _RemoteSessionHostName; } set { _RemoteSessionHostName = value; } }
-        /// <summary>RemoteDataCacheHostName.</summary>
-        public static string RemoteDataCacheHostName { get { return _RemoteDataCacheHostName; } set { _RemoteDataCacheHostName = value; } }
-        /// <summary>RemoteCacheManagerHostName.</summary>
-        public static string RemoteCacheManagerHostName { get { return _RemoteCacheManagerHostName; } set { _RemoteCacheManagerHostName = value; } }
-
-        /// <summary>RemoteCacheBundleHostName.</summary>
-        public static string RemoteBundleHostName { get { return _RemoteBundleHostName; } set { _RemoteBundleHostName = value; } }
-
-        const bool DefaultIsAsync = false;
-
-        const bool DefaultEnableException = false;
-
-        static bool _IsRemoteAsync = DefaultIsAsync;
-        /// <summary>IsRemoteAsync.</summary>
-        public static bool IsRemoteAsync
-        {
-            get
-            {
-                return _IsRemoteAsync;// NetConfig.Get<bool>("IsRemoteAsync", DefaultIsAsync);
-            }
-            set { _IsRemoteAsync = value; }
-        }
-
-        static bool _EnableRemoteException = DefaultEnableException;
-
-        /// <summary>EnableRemoteException.</summary>
-        public static bool EnableRemoteException
-        {
-            get
-            {
-                return _EnableRemoteException;// NetConfig.Get<bool>("EnableRemoteException", DefaultEnableException);
-            }
-            set { _EnableRemoteException = value; }
-        }
-
-
-        static NetProtocol _Protocol = CacheDefaults.DefaultProtocol;
-
-        /// <summary>Protocol.</summary>
-        public static NetProtocol Protocol
-        {
-            get
-            {
-                return _Protocol;
-            }
-            set { _Protocol = value; }
-        }
-
-
-        /// <summary>SessionTimeout.</summary>
-        public static int SessionTimeout { get { return _SessionTimeout; } set { _SessionTimeout = value; } }
-
-
 
         static NameValueCollection ApiConfig;
 
-        /// <summary>
-        /// Get <see cref="CacheConfigClient"/>.
-        /// </summary>
-        /// <returns></returns>
-        public static NameValueCollection GetApiConfig()
+         public static NameValueCollection GetApiConfig()
         {
             if (ApiConfig == null)
-                ApiConfig = ConfigurationManager.GetSection("RemoteCache") as NameValueCollection;
+                ApiConfig = ConfigurationManager.GetSection("RemoteCacheApi") as NameValueCollection;
             return ApiConfig;
         }
 
 
-        static CacheSettings()
+        static RemoteCacheSettings()
         {
             try
             {
@@ -240,15 +190,13 @@ namespace Nistec.Channels.RemoteCache
 
                 XmlDocument doc = new XmlDocument();
                 doc.Load(config.FilePath);
-                //Netlog.Debug("Load RemoteCache settings : " + config.FilePath);
-                string xpath = ".//RemoteCache/CacheApiSettings";
+                string xpath = ".//RemoteCacheApi/ApiSettings";
                 XmlNode root = doc.SelectSingleNode(xpath);
                 LoadItemSettings(root);
             }
             catch (Exception ex)
             {
                 string err = ex.Message;
-                //Netlog.Error("Load RemoteCache settings error: " + ex.Message);
             }
         }
 
@@ -259,22 +207,24 @@ namespace Nistec.Channels.RemoteCache
                 throw new ArgumentNullException("CacheApiSettings.XmlNode node");
             }
             XmlTable table = XmlTable.LoadXmlKeyValue(node, "key", "value");
-            //XmlTable table = new XmlTable(node, "key");
 
-            _IsRemoteAsync = table.Get<bool>("IsRemoteAsync", DefaultIsAsync);
-            _EnableRemoteException = table.Get<bool>("EnableRemoteException", DefaultEnableException);
+            IsRemoteAsync = table.Get<bool>("IsRemoteAsync", DefaultIsAsync);
+            EnableRemoteException = table.Get<bool>("EnableRemoteException", DefaultEnableException);
 
-            _RemoteCacheHostName = table.Get<string>("RemoteCacheHostName", CacheDefaults.DefaultCacheHostName);
-            _RemoteSyncCacheHostName = table.Get<string>("RemoteSyncCacheHostName", CacheDefaults.DefaultSyncCacheHostName);
-            _RemoteSessionHostName = table.Get<string>("RemoteSessionHostName", CacheDefaults.DefaultSessionHostName);
-            _RemoteDataCacheHostName = table.Get<string>("RemoteDataCacheHostName", CacheDefaults.DefaultDataCacheHostName);
-            _RemoteCacheManagerHostName = table.Get<string>("RemoteCacheManagerHostName", CacheDefaults.DefaultCacheManagerHostName);
+            Protocol = table.GetEnum<NetProtocol>("Protocol", DefaultProtocol);
 
-            _RemoteBundleHostName = table.Get<string>("RemoteBundleHostName", CacheDefaults.DefaultBundleHostName);
-
-            _SessionTimeout = table.Get<int>("SessionTimeout", CacheDefaults.DefaultSessionTimeout);
-            _Protocol = table.GetEnum<NetProtocol>("Protocol", CacheDefaults.DefaultProtocol);
-
+            PipeName = table.Get<string>("PipeName", DefaultPipeName);
+            TcpPort = table.Get<int>("TcpPort", DefaultTcpPort);
+            TcpAddress = table.Get<string>("TcpAddress", DefaultTcpAddress);
+            HttpPort = table.Get<int>("HttpPort", DefaultHttpPort);
+            HttpSslPort = table.Get<int>("HttpSslPort", DefaultHttpSslPort);
+            HttpMethod = table.Get<string>("HttpMethod", DefaultHttpMethod);
+            ConnectTimeout = table.Get<int>("ConnectTimeout", DefaultConnectTimeout);
+            ProcessTimeout = table.Get<int>("ProcessTimeout", DefaultProcessTimeout);
+            ReceiveBufferSize = table.Get<int>("ReceiveBufferSize", DefaultReceiveBufferSize);
+            SendBufferSize = table.Get<int>("SendBufferSize", DefaultSendBufferSize);
+            SessionTimeout = table.Get<int>("SessionTimeout", DefaultSessionTimeout);
+            CacheExpiration = table.Get<int>("CacheExpiration", DefaultCacheExpiration);
         }
 
         #endregion

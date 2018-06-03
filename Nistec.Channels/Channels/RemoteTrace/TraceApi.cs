@@ -46,18 +46,18 @@ namespace Nistec.Channels.RemoteTrace
         internal enum HostType { Trace };
         
         #region create message
-
-        internal static IMessage CreateMessage(string command, string key, NetProtocol protocol)
+        /*
+        internal static IMessageStream CreateMessage(string command, string key, NetProtocol protocol)
         {
             return CreateMessage(command, key, null, TypeEmpty, null, protocol);
         }
 
-        internal static IMessage CreateMessage(string command, string key, Type type, NetProtocol protocol)
+        internal static IMessageStream CreateMessage(string command, string key, Type type, NetProtocol protocol)
         {
             return CreateMessage(command, key, null, type, null, protocol);
         }
 
-        internal static IMessage CreateMessage(string command, string key, string id, Type type, string[] args, NetProtocol protocol)
+        internal static IMessageStream CreateMessage(string command, string key, string id, object value, string[] args, NetProtocol protocol)
         {
             if (type == null)
                 throw new ArgumentNullException("CreateMessage.type");
@@ -69,7 +69,7 @@ namespace Nistec.Channels.RemoteTrace
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException("CreateMessage.key");
 
-            IMessage message = null;
+            IMessageStream message = null;
             switch (protocol)
             {
                 case NetProtocol.Tcp:
@@ -98,6 +98,7 @@ namespace Nistec.Channels.RemoteTrace
 
             return message;
         }
+        */
         #endregion
 
         #region Send methods internal
@@ -108,7 +109,7 @@ namespace Nistec.Channels.RemoteTrace
             return hostName;
         }
 
-        internal static object SendDuplex(IMessage message,HostType hostType, NetProtocol protocol)
+        internal static object SendDuplex(IMessageStream message,HostType hostType, NetProtocol protocol)
         {
  
             switch (protocol)
@@ -123,15 +124,15 @@ namespace Nistec.Channels.RemoteTrace
                     {
                         return PipeClient.SendDuplex(message as PipeMessage,
                             GetHost(hostType),
-                            TraceSettings.IsRemoteAsync,
-                            TraceSettings.EnableRemoteException);
+                            TraceSettings.EnableRemoteException,
+                            PipeMessage.GetPipeOptions(TraceSettings.IsRemoteAsync));
                     }
                 default:
                     throw new ArgumentException("Protocol is not supported " + protocol.ToString());
             }
         }
 
-        internal static T SendDuplex<T>(IMessage message, HostType hostType, NetProtocol protocol)
+        internal static T SendDuplex<T>(IMessageStream message, HostType hostType, NetProtocol protocol)
         {
             switch (protocol)
             {
@@ -145,15 +146,16 @@ namespace Nistec.Channels.RemoteTrace
                     {
                         return PipeClient.SendDuplex<T>(message as PipeMessage,
                             GetHost(hostType),
-                            TraceSettings.IsRemoteAsync,
-                            TraceSettings.EnableRemoteException);
+                            TraceSettings.EnableRemoteException,
+                        PipeMessage.GetPipeOptions(TraceSettings.IsRemoteAsync));
+
                     }
                 default:
                     throw new ArgumentException("Protocol is not supported " + protocol.ToString());
             }
         }
 
-        internal static void SendOut(IMessage message, HostType hostType, NetProtocol protocol)
+        internal static void SendOut(IMessageStream message, HostType hostType, NetProtocol protocol)
         {
             switch (protocol)
             {
@@ -168,8 +170,8 @@ namespace Nistec.Channels.RemoteTrace
                     {
                         PipeClient.SendOut(message as PipeMessage,
                             GetHost(hostType),
-                            TraceSettings.IsRemoteAsync,
-                            TraceSettings.EnableRemoteException);
+                            TraceSettings.EnableRemoteException,
+                            PipeMessage.GetPipeOptions(TraceSettings.IsRemoteAsync));
                         break;
                     }
                 default:
@@ -182,7 +184,7 @@ namespace Nistec.Channels.RemoteTrace
         #region trace cmd
 
         /// <summary>
-        /// Get item from sync trace using <see cref="MessageKey"/> an <see cref="Type"/>.
+        /// Get item from sync trace using <see cref="ComplexKey"/> an <see cref="Type"/>.
         /// </summary>
         /// <param name="command"></param>
         /// <param name="key"></param>
@@ -191,12 +193,12 @@ namespace Nistec.Channels.RemoteTrace
         /// <returns></returns>
         internal static object Get(string command, string key, Type type, NetProtocol protocol)
         {
-            IMessage message = CreateMessage(command, key, null, type, null, protocol);
+            IMessageStream message = MessageStream.Create(protocol, command, key, null, type, 0);
             return SendDuplex(message, HostType.Trace, protocol);
         }
 
         /// <summary>
-        /// Get item from sync trace using <see cref="MessageKey"/>.
+        /// Get item from sync trace using <see cref="ComplexKey"/>.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="command"></param>
@@ -205,7 +207,9 @@ namespace Nistec.Channels.RemoteTrace
         /// <returns></returns>
         internal static T Get<T>(string command, string key, NetProtocol protocol)
         {
-            IMessage message = CreateMessage(command, key, null, typeof(T), null, protocol);
+            var transformType=MessageStream.GetTransformType(typeof(T));
+            IMessageStream message = MessageStream.Create(protocol, command, key, null, null,0);
+            message.TransformType = transformType;
             return SendDuplex<T>(message, HostType.Trace, protocol);
         }
 
@@ -220,7 +224,8 @@ namespace Nistec.Channels.RemoteTrace
         /// <param name="protocol"></param>
         internal static void Do(string command, string key, string[] keyValue, NetProtocol protocol)
         {
-            IMessage message = CreateMessage(command, key, null, TypeEmpty, keyValue, protocol);
+            IMessageStream message = MessageStream.Create(protocol, command, key, null, TypeEmpty, 0);
+            message.Args = NameValueArgs.Get(keyValue);
             SendOut(message,HostType.Trace,  protocol);
         }
 
@@ -237,8 +242,8 @@ namespace Nistec.Channels.RemoteTrace
         {
             if (value == null)
                 return KnownTraceState.ArgumentsError;
-            IMessage message = CreateMessage(command, key, id, value.GetType(), null, protocol);
-            message.SetBody(value);
+            IMessageStream message = MessageStream.Create(protocol, command, key, id, value, 0);
+            //message.SetBody(value);
             return SendDuplex(message, HostType.Trace, protocol);
         }
 

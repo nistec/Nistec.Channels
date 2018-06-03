@@ -320,17 +320,19 @@ namespace Nistec.Channels
             {
                 Create();
 
-                using (Task task = new Task(() => SendRequest(request)))
+                Task task = new Task(() => SendRequest(request));
                 {
                     task.Wait();
                 };
+                task.TryDispose();
 
-                using (Task<TResponse> task = new Task<TResponse>(() => GetResponse<TResponse>()))
+                Task<TResponse> task2 = new Task<TResponse>(() => GetResponse<TResponse>());
                 {
-                    task.Wait();
+                    task2.Wait();
 
-                    return task.Result;
+                    return task2.Result;
                 };
+                task2.TryDispose();
             }
             catch (Exception ex)
             {
@@ -377,17 +379,19 @@ namespace Nistec.Channels
             {
                 Create();
 
-                using (Task task = new Task(() => SendRequestStream(request.ToStream())))
+                Task task = new Task(() => SendRequestStream(request.ToStream()));
                 {
                     task.Wait();
                 };
+                task.TryDispose();
 
-                using (Task<AnonymousMessage> task = new Task<AnonymousMessage>(() => GetResponseMessage()))
+                Task<AnonymousMessage> task2 = new Task<AnonymousMessage>(() => GetResponseMessage());
                 {
                     task.Wait();
 
-                    return task.Result;
+                    return task2.Result;
                 };
+                task2.TryDispose();
             }
             catch (Exception ex)
             {
@@ -451,10 +455,11 @@ namespace Nistec.Channels
             {
                 CreateOneWay();
 
-                using (Task task = new Task(() => SendRequest(request)))
+                Task task = new Task(() => SendRequest(request));
                 {
                     task.Wait();
                 };
+                task.TryDispose();
 
                 _ClientProcess.WaitForExit();
 
