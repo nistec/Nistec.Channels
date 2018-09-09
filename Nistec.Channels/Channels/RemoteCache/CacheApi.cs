@@ -2465,7 +2465,8 @@ namespace Nistec.Channels.RemoteCache
                 IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.RemoveTable, null, tableName,null, 0);
                 {
                     message.GroupId = db;
-                    message.IsDuplex = false;
+                    //message.IsDuplex = false;
+                    message.DuplexType =  DuplexTypes.None;
                     SendOut(message);
                 }
             }
@@ -2750,7 +2751,8 @@ namespace Nistec.Channels.RemoteCache
                 IMessageStream message = MessageStream.Create(protocol, DataCacheCmd.Refresh, null, tableName, null, 0);
                 {
                     message.GroupId = db;
-                    message.IsDuplex = false;
+                    //message.IsDuplex = false;
+                    message.DuplexType =  DuplexTypes.None;
                     SendOut(message);
                 }
             }

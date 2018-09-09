@@ -82,9 +82,15 @@ namespace Nistec.Channels
         /// </summary>
         public string Sender { get; set; }
         /// <summary>
-        /// Get or Set indicate wether the message is a duplex type.
+        /// Get indicate wether the message is a duplex type.
         /// </summary>
-        public bool IsDuplex { get; set; }
+        public bool IsDuplex { get { return !(DuplexType == DuplexTypes.None); } set { DuplexType = value ? DuplexTypes.NoWaite : DuplexTypes.None; } }// { get; set; }
+
+        /// <summary>
+        /// Get or Set DuplexType.
+        /// </summary>
+        public DuplexTypes DuplexType { get; set; }
+
         /// <summary>
         ///  Get or Set The message expiration.
         /// </summary>
@@ -139,7 +145,8 @@ namespace Nistec.Channels
             Label = info.GetValue<string>("Label");
             GroupId = info.GetValue<string>("GroupId");
             Command = info.GetValue<string>("Command");
-            IsDuplex = info.GetValue<bool>("IsDuplex");
+            //IsDuplex = info.GetValue<bool>("IsDuplex");
+            DuplexType =(DuplexTypes) info.GetValue<int>("DuplexType");
             Expiration = info.GetValue<int>("Expiration");
             Modified = info.GetValue<DateTime>("Modified");
             Args = (NameValueArgs)info.GetValue("Args");
@@ -154,7 +161,8 @@ namespace Nistec.Channels
             Label = copy.Label;
             GroupId = copy.GroupId;
             Command = copy.Command;
-            IsDuplex = copy.IsDuplex;
+            //IsDuplex = copy.IsDuplex;
+            DuplexType = copy.DuplexType;
             Expiration = copy.Expiration;
             Modified = copy.Modified;
             Args = copy.Args;
@@ -339,7 +347,9 @@ namespace Nistec.Channels
             streamer.WriteString(GroupId);
             streamer.WriteString(Command);
             streamer.WriteString(Sender);
-            streamer.WriteValue(IsDuplex);
+            //streamer.WriteValue(IsDuplex);
+            streamer.WriteValue((int)DuplexType);
+
             streamer.WriteValue(Expiration);
             streamer.WriteValue(Modified);
             streamer.WriteValue(Args);
@@ -366,7 +376,8 @@ namespace Nistec.Channels
             GroupId = streamer.ReadString();
             Command = streamer.ReadString();
             Sender = streamer.ReadString();
-            IsDuplex = streamer.ReadValue<bool>();
+            //IsDuplex = streamer.ReadValue<bool>();
+            DuplexType =(DuplexTypes) streamer.ReadValue<int>();
             Expiration = streamer.ReadValue<int>();
             Modified = streamer.ReadValue<DateTime>();
             Args = (NameValueArgs)streamer.ReadValue();
@@ -387,7 +398,8 @@ namespace Nistec.Channels
             info.Add("GroupId", GroupId);
             info.Add("Command", Command);
             info.Add("Sender", Sender);
-            info.Add("IsDuplex", IsDuplex);
+            //info.Add("IsDuplex", IsDuplex);
+            info.Add("DuplexType", (int)DuplexType);
             info.Add("Expiration", Expiration);
             info.Add("Modified", Modified);
             info.Add("Args",Args);
@@ -412,7 +424,8 @@ namespace Nistec.Channels
             GroupId = info.GetValue<string>("GroupId");
             Command = info.GetValue<string>("Command");
             Sender = info.GetValue<string>("Sender");
-            IsDuplex = info.GetValue<bool>("IsDuplex");
+            //IsDuplex = info.GetValue<bool>("IsDuplex");
+            DuplexType = (DuplexTypes)info.GetValue<int>("DuplexType");
             Expiration = info.GetValue<int>("Expiration");
             Modified = info.GetValue<DateTime>("Modified");
             Args = (NameValueArgs)info.GetValue("Args");
@@ -868,7 +881,8 @@ namespace Nistec.Channels
             serializer.WriteToken("BodyStream", BodyStream == null ? null : BodyStream.ToBase64String());
             serializer.WriteToken("Modified", Modified);
             serializer.WriteToken("Formatter", Formatter);
-            serializer.WriteToken("IsDuplex", IsDuplex);
+            //serializer.WriteToken("IsDuplex", IsDuplex);
+            serializer.WriteToken("DuplexType", (int)DuplexType);
             serializer.WriteToken("Expiration", Expiration);
             serializer.WriteToken("Args", Args);
             serializer.WriteToken("TransformType", TransformType);
@@ -898,7 +912,8 @@ namespace Nistec.Channels
                 var body = dic.Get<string>("BodyStream".ToLower());
                 Modified = dic.Get<DateTime>("Modified".ToLower());
                 Formatter = dic.GetEnum<Formatters>("Formatter".ToLower(), Formatters.BinarySerializer);
-                IsDuplex = dic.Get<bool>("IsDuplex".ToLower());
+                //IsDuplex = dic.Get<bool>("IsDuplex".ToLower());
+                DuplexType =(DuplexTypes) dic.Get<int>("DuplexType".ToLower());
                 Expiration = dic.Get<int>("Expiration".ToLower());
                 Args = NameValueArgs.Convert((IDictionary<string, object>)dic.Get("Args".ToLower()));// dic.Get<NameValueArgs>("Args".ToLower());
                 TransformType =(TransformType) dic.GetEnum<TransformType>("TransformType".ToLower(), TransformType.Object);
@@ -925,7 +940,8 @@ namespace Nistec.Channels
                 var body = queryString.Get<string>("BodyStream".ToLower());
                 Modified = queryString.Get<DateTime>("Modified".ToLower(), DateTime.Now);
                 Formatter = queryString.GetEnum<Formatters>("Formatter".ToLower(), Formatters.Json);
-                IsDuplex = queryString.Get<bool>("IsDuplex".ToLower());
+                //IsDuplex = queryString.Get<bool>("IsDuplex".ToLower());
+                DuplexType =(DuplexTypes) queryString.Get<int>("DuplexType".ToLower());
                 Expiration = queryString.Get<int>("Expiration".ToLower());
                 var args= queryString.Get("Args".ToLower());
                 if(args!=null)
@@ -1003,7 +1019,9 @@ namespace Nistec.Channels
             message.Args = dict.Get<NameValueArgs>("Args");
             message.BodyStream = dict.Get<NetStream>("Body", null);//, ConvertDescriptor.Implicit),
             message.Expiration = dict.Get<int>("Expiration", 0);
-            message.IsDuplex = dict.Get<bool>("IsDuplex", true);
+            //message.IsDuplex = dict.Get<bool>("IsDuplex", true);
+            message.DuplexType =(DuplexTypes) dict.Get<int>("DuplexType", 0);
+            
             message.Modified = dict.Get<DateTime>("Modified", DateTime.Now);
             message.TypeName = dict.Get<string>("TypeName");
             message.Label = dict.Get<string>("Label");
@@ -1090,7 +1108,8 @@ namespace Nistec.Channels
                 default:
                     throw new ArgumentException("Protocol is not supported " + protocol.ToString());
             }
-            message.IsDuplex = true;// isDuplex;
+            //message.IsDuplex = true;// isDuplex;
+            message.DuplexType = DuplexTypes.NoWaite;
             message.TransformType = TransformType.Object ;// transformType;
             if (label != null)
                 message.Label = label;

@@ -12,7 +12,13 @@ namespace Nistec.Channels
         /// <summary>
         /// Get or Set indicate wether the message is a duplex type.
         /// </summary>
-        bool IsDuplex { get; set; }
+        bool IsDuplex { get; }//{ get; set; }
+
+        /// <summary>
+        /// Get or Set DuplexType.
+        /// </summary>
+        DuplexTypes DuplexType { get; set; }
+
         /// <summary>
         ///  Get or Set The message expiration.
         /// </summary>

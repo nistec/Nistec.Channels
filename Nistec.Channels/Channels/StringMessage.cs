@@ -58,11 +58,15 @@ namespace Nistec.Channels
 
         #region ITransformMessage
 
+        /// <summary>
+        /// Get indicate wether the message is a duplex type.
+        /// </summary>
+        public bool IsDuplex { get { return !(DuplexType == DuplexTypes.None); } set { DuplexType = (value) ? DuplexTypes.NoWaite : DuplexTypes.None; } }// { get; set; }
 
         /// <summary>
-        /// Get or Set indicate wether the message is a duplex type.
+        /// Get or Set DuplexType.
         /// </summary>
-        public bool IsDuplex { get; set; }
+        public DuplexTypes DuplexType { get; set; }
         /// <summary>
         ///  Get or Set The message expiration.
         /// </summary>
