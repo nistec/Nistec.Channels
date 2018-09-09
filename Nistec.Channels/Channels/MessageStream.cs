@@ -344,7 +344,7 @@ namespace Nistec.Channels
         /// </summary>
         /// <param name="stream"></param>
         /// <param name="streamer"></param>
-        public void EntityWrite(Stream stream, IBinaryStreamer streamer)
+        public virtual void EntityWrite(Stream stream, IBinaryStreamer streamer)
         {
             if (streamer == null)
                 streamer = new BinaryStreamer(stream);
@@ -373,7 +373,7 @@ namespace Nistec.Channels
         /// </summary>
         /// <param name="stream"></param>
         /// <param name="streamer"></param>
-        public void EntityRead(Stream stream, IBinaryStreamer streamer)
+        public virtual void EntityRead(Stream stream, IBinaryStreamer streamer)
         {
             if (streamer == null)
                 streamer = new BinaryStreamer(stream);
@@ -397,7 +397,7 @@ namespace Nistec.Channels
         /// Write the current object include the body and properties to <see cref="ISerializerContext"/> using <see cref="SerializeInfo"/>.
         /// </summary>
         /// <param name="context"></param>
-        public void WriteContext(ISerializerContext context)
+        public virtual void WriteContext(ISerializerContext context)
         {
             SerializeInfo info = new SerializeInfo();
             info.Add("Id", Id);
@@ -422,7 +422,7 @@ namespace Nistec.Channels
         /// Read <see cref="ISerializerContext"/> context to the current object include the body and properties using <see cref="SerializeInfo"/>.
         /// </summary>
         /// <param name="context"></param>
-        public void ReadContext(ISerializerContext context)
+        public virtual void ReadContext(ISerializerContext context)
         {
             SerializeInfo info = context.ReadSerializeInfo();
 
@@ -871,7 +871,7 @@ namespace Nistec.Channels
 
         #region ISerialJson
 
-        public string EntityWrite(IJsonSerializer serializer, bool pretty = false)
+        public virtual string EntityWrite(IJsonSerializer serializer, bool pretty = false)
         {
             if (serializer == null)
                 serializer = new JsonSerializer(JsonSerializerMode.Write, null);
@@ -901,7 +901,7 @@ namespace Nistec.Channels
             return serializer.WriteOutput(pretty);
         }
 
-        public object EntityRead(string json, IJsonSerializer serializer)
+        public virtual object EntityRead(string json, IJsonSerializer serializer)
         {
             if (serializer == null)
                 serializer = new JsonSerializer(JsonSerializerMode.Read, new JsonSettings() { IgnoreCaseOnDeserialize=true });
@@ -934,7 +934,7 @@ namespace Nistec.Channels
             return this;
         }
 
-        public object EntityRead(NameValueCollection queryString, IJsonSerializer serializer)
+        public virtual object EntityRead(NameValueCollection queryString, IJsonSerializer serializer)
         {
             if (serializer == null)
                 serializer = new JsonSerializer(JsonSerializerMode.Read, new JsonSettings() { IgnoreCaseOnDeserialize = true });
