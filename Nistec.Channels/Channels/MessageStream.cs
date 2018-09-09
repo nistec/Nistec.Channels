@@ -212,6 +212,16 @@ namespace Nistec.Channels
 
         #region methods
 
+        public static string GetTypeName(object o, bool fullyQualifiedTypeName = true)
+        {
+            if (o == null)
+                return null;
+            if (o is Type)
+                return SerializeTools.GetTypeName((Type)o, fullyQualifiedTypeName);
+
+            return SerializeTools.GetTypeName(o.GetType(), fullyQualifiedTypeName);
+        }
+
         int GetSize()
         {
             if (BodyStream == null)
