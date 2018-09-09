@@ -653,6 +653,11 @@ namespace Nistec.Channels
             return _Stream;
         }
 
+        public int GetLength()
+        {
+            return _Stream == null ? 0 : _Stream.iLength;
+        }
+
         public TransType PeekTransType()
         {
             var stream = GetStream();
