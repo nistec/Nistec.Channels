@@ -324,5 +324,18 @@ namespace Nistec.Channels
             }
 
         }
+
+        /// <summary>
+        /// EnsureSettings PipeOptions
+        /// </summary>
+        public void EnsureSettings()
+        {
+            if (IsAsync)
+                PipeOptions = PipeOptions.Asynchronous;
+            else if (PipeOptions == PipeOptions.Asynchronous)
+                IsAsync = true;
+            else if(PipeOptions != PipeOptions.WriteThrough)
+                PipeOptions = PipeOptions.None;
+        }
     }
 }

@@ -125,8 +125,10 @@ namespace Nistec.Channels
             
             //PipeName = name;
             //VerifyPipe = name;
-
             PipeSettings settings = new PipeSettings(hostName, true, loadFromSettings);
+
+            settings.EnsureSettings();
+
             this.HostName = settings.HostName;
             this.PipeName = settings.PipeName;
             this.ConnectTimeout = settings.ConnectTimeout;
@@ -146,6 +148,8 @@ namespace Nistec.Channels
         /// <param name="settings"></param>
         protected PipeServer(PipeSettings settings)
         {
+            settings.EnsureSettings();
+
             this.HostName = settings.HostName;
             this.PipeName = settings.PipeName;
             this.ConnectTimeout = settings.ConnectTimeout;
@@ -159,6 +163,7 @@ namespace Nistec.Channels
             this.IsAsync = settings.IsAsync;
 
         }
+        
         #endregion
 
         #region Initilize
@@ -358,6 +363,8 @@ namespace Nistec.Channels
             //bool connected = false;
             Console.WriteLine("{0} Pipe server start listen Thread<{1}>", PipeName, Thread.CurrentThread.ManagedThreadId);
 
+            Log.Info("Pipe server sync start listen Name:{0}, Thread<{1}>", PipeName, Thread.CurrentThread.ManagedThreadId);
+
             while (Listen)
             {
                 try
@@ -398,7 +405,7 @@ namespace Nistec.Channels
                 Thread.Sleep(10);
             }
             Console.WriteLine("{0} Pipe server stope listen Thread<{1}>", PipeName, Thread.CurrentThread.ManagedThreadId);
-
+            Log.Info("Pipe server sync stop listen Name:{0}, Thread<{1}>", PipeName, Thread.CurrentThread.ManagedThreadId);
         }
 
 
@@ -581,6 +588,8 @@ namespace Nistec.Channels
             //bool connected = false;
             Console.WriteLine("{0} Pipe server async start listen Thread<{1}>", PipeName, Thread.CurrentThread.ManagedThreadId);
 
+            Log.Info("Pipe server async start listen Name:{0}, Thread<{1}>", PipeName, Thread.CurrentThread.ManagedThreadId);
+
             while (Listen)
             {
                 ServerCom server = null;
@@ -610,6 +619,7 @@ namespace Nistec.Channels
                 Thread.Sleep(10);
             }
             Console.WriteLine("{0} Pipe server async stop listen Thread<{1}>", PipeName, Thread.CurrentThread.ManagedThreadId);
+            Log.Info("Pipe server async stop listen Name:{0}, Thread<{1}>", PipeName, Thread.CurrentThread.ManagedThreadId);
         }
 
 
