@@ -84,12 +84,34 @@ namespace Nistec.Channels
         /// <summary>
         /// Get indicate wether the message is a duplex type.
         /// </summary>
-        public bool IsDuplex { get { return !(DuplexType == DuplexTypes.None); } set { DuplexType = value ? DuplexTypes.NoWaite : DuplexTypes.None; } }// { get; set; }
+        bool _IsDuplex;
+        public bool IsDuplex
+        {
+            get { return _IsDuplex; }
+            set
+            {
+                _IsDuplex = value;
+                if (!value)
+                    _DuplexType = DuplexTypes.None;
+                else if(_DuplexType == DuplexTypes.None)
+                    _DuplexType = DuplexTypes.WaitOne;
+            }
+        }
+        //public bool IsDuplex { get { return !(DuplexType == DuplexTypes.None); } set { DuplexType = value ? DuplexTypes.NoWaite : DuplexTypes.None; } }// { get; set; }
 
         /// <summary>
         /// Get or Set DuplexType.
         /// </summary>
-        public DuplexTypes DuplexType { get; set; }
+        DuplexTypes _DuplexType;
+        public DuplexTypes DuplexType
+        {
+            get { return _DuplexType; }
+            set
+            {
+                _DuplexType = value;
+                _IsDuplex = (_DuplexType != DuplexTypes.None);
+            }
+        }
 
         /// <summary>
         ///  Get or Set The message expiration.
