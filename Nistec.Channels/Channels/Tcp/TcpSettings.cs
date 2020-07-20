@@ -383,7 +383,7 @@ namespace Nistec.Channels.Tcp
         {
             return new IPEndPoint(HostAddress, Port);
         }
-
+  
         /// <summary>
         /// Get Server Endpoint Using Machine Name
         /// </summary>

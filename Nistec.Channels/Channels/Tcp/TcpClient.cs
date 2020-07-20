@@ -378,6 +378,8 @@ namespace Nistec.Channels.Tcp
                 else
                     Connect();
 
+                //Console.WriteLine("SendDuplexStream-LocalEndPoint: {0}", tcpClient.Client.LocalEndPoint.ToString());
+
                 if (message.IsDuplex)
                     return ExecuteMessage<TResponse>(tcpClient.GetStream(), message);
                 else
@@ -434,8 +436,6 @@ namespace Nistec.Channels.Tcp
                 }
             }
         }
-
- 
         #endregion
     }
 
@@ -553,6 +553,7 @@ namespace Nistec.Channels.Tcp
             request.IsDuplex = true;
             using (TcpClient client = new TcpClient(HostAddress, port, timeout, IsAsync))
             {
+
                 return client.Execute<TransStream>(request, enableException);
             }
         }
@@ -665,7 +666,7 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         /// <param name="hostAddress"></param>
         /// <param name="port"></param>
-        /// <param name="readTimeout"></param>
+        /// <param name="timeout"></param>
         /// <param name="isAsync"></param>
         public TcpClient(string hostAddress, int port,int timeout, bool isAsync)
             : base(hostAddress, port, timeout, isAsync)
@@ -678,12 +679,12 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         /// <param name="hostAddress"></param>
         /// <param name="port"></param>
-        /// <param name="readTimeout"></param>
+        /// <param name="timeout"></param>
         /// <param name="inBufferSize"></param>
         /// <param name="outBufferSize"></param>
         /// <param name="isAsync"></param>
-        public TcpClient(string hostAddress, int port,int readTimeout, int inBufferSize, int outBufferSize, bool isAsync)
-            : base(hostAddress, port, readTimeout,inBufferSize, outBufferSize, isAsync)
+        public TcpClient(string hostAddress, int port,int timeout, int inBufferSize, int outBufferSize, bool isAsync)
+            : base(hostAddress, port, timeout, inBufferSize, outBufferSize, isAsync)
         {
 
         }

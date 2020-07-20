@@ -23,6 +23,7 @@ using Nistec.IO;
 using Nistec.Logging;
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
@@ -36,6 +37,7 @@ using TCP = System.Net.Sockets;
 
 namespace Nistec.Channels.Tcp
 {
+
     public abstract class TcpServerPool<TRequest>
     {
 
@@ -62,7 +64,7 @@ namespace Nistec.Channels.Tcp
         /// <summary>
         /// Get or Set Logger that implements <see cref="ILogger"/> interface.
         /// </summary>
-        public ILogger Log { get { return _Logger; } set { if (value != null)_Logger = value; } }
+        public ILogger Log { get { return _Logger; } set { if (value != null) _Logger = value; } }
 
         /// <summary>
         /// Get current <see cref="TcpSettings"/> settings.
@@ -73,7 +75,7 @@ namespace Nistec.Channels.Tcp
 
         #region ctor
 
-         /// <summary>
+        /// <summary>
         /// Constractor default
         /// </summary>
         protected TcpServerPool()
@@ -86,7 +88,7 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         /// <param name="hostAddress"></param>
         /// <param name="port"></param>
-        protected TcpServerPool(string hostAddress,int port)
+        protected TcpServerPool(string hostAddress, int port)
         {
             Settings = new TcpSettings(hostAddress, port);
         }
@@ -119,7 +121,7 @@ namespace Nistec.Channels.Tcp
         private bool IsAsync = true;
         private Thread _listenerThread;
         TcpListener _listener;
-        
+
         private void Init()
         {
 
@@ -144,7 +146,7 @@ namespace Nistec.Channels.Tcp
             IsReady = true;
         }
 
-  
+
         protected virtual void OnLoad()
         {
 
@@ -175,8 +177,8 @@ namespace Nistec.Channels.Tcp
                     return;
                 }
 
-                if(_State == ChannelServiceState.Started)
-                return;
+                if (_State == ChannelServiceState.Started)
+                    return;
 
                 Listen = true;
                 Init();
@@ -189,7 +191,7 @@ namespace Nistec.Channels.Tcp
             {
                 Listen = false;
                 _State = ChannelServiceState.None;
-                Log.Exception("The tcp server on start throws the error: ", ex, true,true);
+                Log.Exception("The tcp server on start throws the error: ", ex, true, true);
             }
         }
 
@@ -197,7 +199,7 @@ namespace Nistec.Channels.Tcp
         {
             try
             {
-                
+
                 _listener = new TcpListener(endpoint);
                 _listener.ExclusiveAddressUse = false;
                 _listener.Start();
@@ -309,7 +311,7 @@ namespace Nistec.Channels.Tcp
 
         private void Run()
         {
-           
+
             while (Listen)
             {
                 try
@@ -334,7 +336,7 @@ namespace Nistec.Channels.Tcp
                     {
                         Pool.Enqueue(client);
                     }
-                    
+
                     sockeErrors = 0;
                 }
                 catch (SocketException se)
@@ -376,7 +378,7 @@ namespace Nistec.Channels.Tcp
                     _listener.BeginAcceptTcpClient(new AsyncCallback(ProcessIncomingConnection), _listener);
                     //connected = true;
                     tcpClientConnected.WaitOne();
-                    
+
                 }
                 catch (SocketException se)
                 {
@@ -441,7 +443,7 @@ namespace Nistec.Channels.Tcp
         }
         //end runAsync
 
-             
+
         void Close(TCP.TcpClient client)
         {
             if (client != null)
@@ -554,7 +556,70 @@ namespace Nistec.Channels.Tcp
                 get { return SyncdQ.SyncRoot; }
             }
 
-        } 
+        }
+
+
     }
 
- }
+    /// <summary>
+    /// Endpoin Pool
+    /// </summary>
+    public class EndpoinPool
+    {
+        ConcurrentDictionary<int, IPEndPoint> endPointList = new ConcurrentDictionary<int, IPEndPoint>();
+        int currentIndex = 0;
+        int MaxIndex = 0;
+        /// <summary>
+        /// ctor
+        /// </summary>
+        /// <param name="array"></param>
+        public EndpoinPool(IPEndPoint[] array)
+        {
+            if (array == null || array.Length == 0)
+            {
+
+                throw new ArgumentNullException("EndpoinPool");
+            }
+            int i = 0;
+            foreach (var item in array)
+            {
+                endPointList[i] = item;
+                i++;
+            }
+            MaxIndex = array.Length - 1;
+        }
+        /// <summary>
+        /// ctor
+        /// </summary>
+        /// <param name="ip"></param>
+        /// <param name="ports"></param>
+        public EndpoinPool(IPAddress ip, int[] ports)
+        {
+            if (ip == null || ports == null || ports.Length == 0)
+            {
+                throw new ArgumentNullException("EndpoinPool");
+            }
+            int i = 0;
+            foreach (var item in ports)
+            {
+                endPointList[i] = new IPEndPoint(ip, item);
+                i++;
+            }
+            MaxIndex = ports.Length - 1;
+        }
+        /// <summary>
+        /// Get Next IPEndPoint
+        /// </summary>
+        /// <returns></returns>
+        public IPEndPoint Next()
+        {
+            if (0 != Interlocked.CompareExchange(ref currentIndex, MaxIndex, 0))
+                Interlocked.Increment(ref currentIndex);
+            else
+                Interlocked.Exchange(ref currentIndex, 0);
+
+            return endPointList[currentIndex]; ;
+        }
+
+    }
+}
