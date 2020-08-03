@@ -136,17 +136,8 @@ namespace Nistec.Channels.Tcp
 
         #region Read/Write
 
-        internal static TcpMessage ServerReadRequest(NetworkStream streamServer, int readTimeout, int ReceiveBufferSize = 8192)
+        internal static TcpMessage ServerReadRequest(NetworkStream streamServer)
         {
-
-            //var message = new TcpMessage();
-            //using (var ntStream = new NetStream())
-            //{
-            //    ntStream.CopyFrom(streamServer, readTimeout, ReceiveBufferSize);
-
-            //    message.EntityRead(ntStream, null);
-            //}
-            //return message;
 
             var message = new TcpMessage();
             message.EntityRead(streamServer, null);

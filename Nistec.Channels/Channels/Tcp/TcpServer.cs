@@ -302,10 +302,8 @@ namespace Nistec.Channels.Tcp
         /// Read Request from client.
         /// </summary>
         /// <param name="stream"></param>
-        /// <param name="readTimeout"></param>
-        /// <param name="ReceiveBufferSize"></param>
         /// <returns></returns>
-        protected abstract TRequest ReadRequest(NetworkStream stream, int readTimeout, int ReceiveBufferSize);
+        protected abstract TRequest ReadRequest(NetworkStream stream);
 
         /// <summary>
         /// Exec client requset.
@@ -351,8 +349,6 @@ namespace Nistec.Channels.Tcp
 
         private void Run()
         {
-            int readtimeout = Settings.ReadTimeout;
-            int ReceiveBufferSize= Settings.ReceiveBufferSize;
             //bool hasFault = false;
 
             while (Listen)
@@ -391,7 +387,7 @@ namespace Nistec.Channels.Tcp
 
                     //ProcessIncomingData(client,readtimeout, ReceiveBufferSize,true);
 
-                    Task task = Task.Factory.StartNew(() => ProcessIncomingData(client, readtimeout, ReceiveBufferSize, false));
+                    Task task = Task.Factory.StartNew(() => ProcessIncomingData(client, false));
                     {
                         task.Wait();
                         //if (task.IsCompleted)
@@ -494,8 +490,6 @@ namespace Nistec.Channels.Tcp
         {
             TcpListener listener = null;
             TCP.TcpClient client = null;
-            int readtimeout = Settings.ReadTimeout;
-            int ReceiveBufferSize = Settings.ReceiveBufferSize;
 
             try
             {
@@ -530,7 +524,7 @@ namespace Nistec.Channels.Tcp
 
                 //ProcessIncomingData(client, readtimeout, ReceiveBufferSize,true);
 
-                Task task = Task.Factory.StartNew(() => ProcessIncomingData(client, readtimeout, ReceiveBufferSize, false));
+                Task task = Task.Factory.StartNew(() => ProcessIncomingData(client, false));
                 {
                     task.Wait();
                     //if(task.IsCompleted)
@@ -565,7 +559,7 @@ namespace Nistec.Channels.Tcp
         }
 
    
-        void ProcessIncomingData(TCP.TcpClient client,int readtimeout, int ReceiveBufferSize, bool enableException)
+        void ProcessIncomingData(TCP.TcpClient client, bool enableException)
         {
             try
             {
@@ -577,7 +571,7 @@ namespace Nistec.Channels.Tcp
                 }
                 using (NetworkStream stream = client.GetStream())
                 {
-                    TRequest req = ReadRequest(stream, readtimeout, ReceiveBufferSize);
+                    TRequest req = ReadRequest(stream);
 
                     var res = ExecRequset(req);
                     if (req.IsDuplex)
@@ -734,10 +728,10 @@ namespace Nistec.Channels.Tcp
         /// <param name="readTimeout"></param>
         /// <param name="ReceiveBufferSize"></param>
         /// <returns></returns>
-        protected override TcpMessage ReadRequest(NetworkStream stream, int readTimeout,int ReceiveBufferSize= TcpSettings.DefaultReceiveBufferSize)
+        protected override TcpMessage ReadRequest(NetworkStream stream)
         {
 
-            return TcpMessage.ServerReadRequest(stream, readTimeout, ReceiveBufferSize);
+            return TcpMessage.ServerReadRequest(stream);
         }
 
         #endregion
