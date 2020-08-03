@@ -43,8 +43,8 @@ namespace Nistec.Channels.Tcp
     {
 
         #region membrs
-        private bool Listen;
-        private bool Initilize = false;
+        volatile bool Listen;
+        private bool Initilized = false;
         private bool IsAsync = true;
         #endregion
 
@@ -108,6 +108,7 @@ namespace Nistec.Channels.Tcp
         protected TcpServer(TcpSettings settings)
         {
             Settings = settings;
+            Log = settings.Log;
         }
         #endregion
 
@@ -123,7 +124,7 @@ namespace Nistec.Channels.Tcp
         private void Init()
         {
 
-            if (Initilize)
+            if (Initilized)
                 return;
             IsReady = false;
             endpoint = Settings.GetEndpoint();
@@ -167,9 +168,12 @@ namespace Nistec.Channels.Tcp
             {
                 if (_State == ChannelServiceState.Paused)
                 {
-                    _State = ChannelServiceState.Started;
-                    OnStart();
-                    return;
+                    if (Initilized)
+                    {
+                        _State = ChannelServiceState.Started;
+                        OnStart();
+                        return;
+                    }
                 }
                 if (_State == ChannelServiceState.Started)
                     return;
@@ -204,6 +208,7 @@ namespace Nistec.Channels.Tcp
 
                 _listenerThread.IsBackground = true;
                 _listenerThread.Start();
+                Initilized = true;
 
             }
             catch (Exception ex)
@@ -213,9 +218,36 @@ namespace Nistec.Channels.Tcp
             }
         }
 
+        void StopInternal()
+        {
+            try
+            {
+                Log.Info("The tcp server listener Stoping...");
+                Thread.Sleep(3000);
+                if (_listener != null)
+                {
+                    _listener.Stop();
+                    //_listenerThread.Interrupt();
+                    //_listenerThread.Join(5000);
+                }
+                Initilized = false;
+            }
+            catch (ThreadInterruptedException ex)
+            {
+                /* Clean up. */
+                OnFault("The tcp server on Stop throws ThreadInterruptedException: ", ex);
+            }
+            catch (Exception ex)
+            {
+                OnFault("The tcp server listener on Stop throws the error: ", ex);
+            }
+        }
+
         public void Stop()
         {
             Listen = false;
+            StopInternal();
+            Initilized = false;
             _State = ChannelServiceState.Stoped;
             OnStop();
             Log.Info("TcpServer stoped: {0}", Settings.HostName);
@@ -270,8 +302,10 @@ namespace Nistec.Channels.Tcp
         /// Read Request from client.
         /// </summary>
         /// <param name="stream"></param>
+        /// <param name="readTimeout"></param>
+        /// <param name="ReceiveBufferSize"></param>
         /// <returns></returns>
-        protected abstract TRequest ReadRequest(NetworkStream stream);
+        protected abstract TRequest ReadRequest(NetworkStream stream, int readTimeout, int ReceiveBufferSize);
 
         /// <summary>
         /// Exec client requset.
@@ -317,22 +351,23 @@ namespace Nistec.Channels.Tcp
 
         private void Run()
         {
-            int timeout=Settings.ProcessTimeout;
+            int readtimeout = Settings.ReadTimeout;
+            int ReceiveBufferSize= Settings.ReceiveBufferSize;
             //bool hasFault = false;
 
             while (Listen)
             {
-                //TCP.TcpClient client = null;
+                TCP.TcpClient client = null;
                 try
                 {
                     //hasFault = false;
                     if (_State == ChannelServiceState.Paused)
                     {
-                        Thread.Sleep(10000);
+                        Thread.Sleep(5000);
                         continue;
                     }
 
-                    TCP.TcpClient client = _listener.AcceptTcpClient();
+                    client = _listener.AcceptTcpClient();
                    
                     if (IsReady == false)
                     {
@@ -344,13 +379,25 @@ namespace Nistec.Channels.Tcp
                     //connected = true;
                     OnClientConnected();
 
-                    Task task = Task.Factory.StartNew(() => ProcessIncomingData(client));
+                    //using (NetworkStream stream = client.GetStream())
+                    //{
+                    //    TRequest req = ReadRequest(stream, readtimeout, ReceiveBufferSize);
+
+                    //    var res = ExecRequset(req);
+                    //    if (req.IsDuplex)
+                    //        WriteResponse(stream, res);
+                    //}
+                    //sockeErrors = 0;
+
+                    //ProcessIncomingData(client,readtimeout, ReceiveBufferSize,true);
+
+                    Task task = Task.Factory.StartNew(() => ProcessIncomingData(client, readtimeout, ReceiveBufferSize, false));
                     {
-                        task.Wait(timeout);
-                        if (task.IsCompleted)
-                        {
-                            Console.WriteLine("ProcessIncomingData completed");
-                        }
+                        task.Wait();
+                        //if (task.IsCompleted)
+                        //{
+                        //    Console.WriteLine("ProcessIncomingData completed");
+                        //}
                     }
                     task.TryDispose();
 
@@ -363,7 +410,7 @@ namespace Nistec.Channels.Tcp
                     sockeErrors++;
                     OnFault("The tcp server throws SocketException: ", se);
                     //ExecFault(client, "The tcp server throws SocketException: " + se.Message);
-                    if (sockeErrors > MAX_SOCKET_ERRORS)
+                    if (sockeErrors > MAX_SOCKET_ERRORS && MAX_SOCKET_ERRORS>0)
                     {
                         Log.Error("The tcp server shutdown after {0} errors ", MAX_SOCKET_ERRORS);
                         _listener.Stop();
@@ -375,10 +422,10 @@ namespace Nistec.Channels.Tcp
                     OnFault("The tcp server throws the error: ", ex);
                     //ExecFault(client, "The tcp server throws Exception: " + ex.Message);
                 }
-                //finally
-                //{
-                //    Close(client);
-                //}
+                finally
+                {
+                    //Close(client);
+                }
             }
 
         }
@@ -400,11 +447,11 @@ namespace Nistec.Channels.Tcp
 
                 if (client != null)
                 {
-                    //if (client.Connected)
-                    //{
-                    //    client.Close();
-                    //}
-                    client.Close();
+                    if (client.Connected)
+                    {
+                        client.Close();
+                    }
+                    //client.Close();
                     client = null;
                 }
             }
@@ -430,7 +477,7 @@ namespace Nistec.Channels.Tcp
                 {
                     sockeErrors++;
                     OnFault("The tcp server async throws SocketException: {0}", se);
-                    if (sockeErrors > MAX_SOCKET_ERRORS)
+                    if (sockeErrors > MAX_SOCKET_ERRORS && MAX_SOCKET_ERRORS > 0)
                     {
                         Log.Error("The tcp server shutdown after {0} errors ", MAX_SOCKET_ERRORS);
                         _listener.Stop();
@@ -447,9 +494,18 @@ namespace Nistec.Channels.Tcp
         {
             TcpListener listener = null;
             TCP.TcpClient client = null;
-            int timeout = Settings.ProcessTimeout;
+            int readtimeout = Settings.ReadTimeout;
+            int ReceiveBufferSize = Settings.ReceiveBufferSize;
+
             try
             {
+                if(Listen==false)
+                {
+                    Log.Warn("The tcp server async ProcessIncomingConnection not lisenning... ");
+                    Thread.Sleep(1000);
+                    return;
+                }
+
                 listener = (TcpListener)ar.AsyncState;
                 client = listener.EndAcceptTcpClient(ar);
 
@@ -462,13 +518,25 @@ namespace Nistec.Channels.Tcp
                 }
                 OnClientConnected();
 
-                Task task = Task.Factory.StartNew(() => ProcessIncomingData(client));
+                //using (NetworkStream stream = client.GetStream())
+                //{
+                //    TRequest req = ReadRequest(stream, readtimeout, ReceiveBufferSize);
+
+                //    var res = ExecRequset(req);
+                //    if (req.IsDuplex)
+                //        WriteResponse(stream, res);
+                //}
+                //sockeErrors = 0;
+
+                //ProcessIncomingData(client, readtimeout, ReceiveBufferSize,true);
+
+                Task task = Task.Factory.StartNew(() => ProcessIncomingData(client, readtimeout, ReceiveBufferSize, false));
                 {
-                    task.Wait(timeout);
-                    if(task.IsCompleted)
-                    {
-                        Console.WriteLine("ProcessIncomingConnection completed");
-                    }
+                    task.Wait();
+                    //if(task.IsCompleted)
+                    //{
+                    //    Console.WriteLine("ProcessIncomingConnection completed");
+                    //}
                 }
                 task.TryDispose();
             }
@@ -477,7 +545,7 @@ namespace Nistec.Channels.Tcp
                 int val = Interlocked.Increment(ref sockeErrors);
                 OnFault("The tcp server async throws SocketException: {0}", se);
                 ExecFault(client, "The tcp server throws Exception: " + se.Message);
-                if (val > MAX_SOCKET_ERRORS)
+                if (val > MAX_SOCKET_ERRORS && MAX_SOCKET_ERRORS > 0)
                 {
                     Log.Error("The tcp server async ProcessIncomingConnection shutdown after {0} errors ", MAX_SOCKET_ERRORS);
                     listener.Stop();
@@ -491,18 +559,25 @@ namespace Nistec.Channels.Tcp
             }
             finally
             {
+                //Close(client);
                 tcpClientConnected.Set();
             }
         }
 
-        void ProcessIncomingData(TCP.TcpClient client)
+   
+        void ProcessIncomingData(TCP.TcpClient client,int readtimeout, int ReceiveBufferSize, bool enableException)
         {
             try
             {
-
+                if (Listen == false)
+                {
+                    Log.Warn("The tcp server async ProcessIncomingData not lisenning... ");
+                    Thread.Sleep(1000);
+                    return;
+                }
                 using (NetworkStream stream = client.GetStream())
                 {
-                    TRequest req = ReadRequest(stream);
+                    TRequest req = ReadRequest(stream, readtimeout, ReceiveBufferSize);
 
                     var res = ExecRequset(req);
                     if (req.IsDuplex)
@@ -513,7 +588,10 @@ namespace Nistec.Channels.Tcp
             }
             catch (Exception ex)
             {
-                OnFault("The tcp server async ProcessIncomingData throws the error: ", ex);
+                if (enableException)
+                    throw ex;
+                else
+                    OnFault("The tcp server async ProcessIncomingData throws the error: ", ex);
             }
             finally
             {
@@ -653,11 +731,13 @@ namespace Nistec.Channels.Tcp
         /// Read Request
         /// </summary>
         /// <param name="stream"></param>
+        /// <param name="readTimeout"></param>
+        /// <param name="ReceiveBufferSize"></param>
         /// <returns></returns>
-        protected override TcpMessage ReadRequest(NetworkStream stream)
+        protected override TcpMessage ReadRequest(NetworkStream stream, int readTimeout,int ReceiveBufferSize= TcpSettings.DefaultReceiveBufferSize)
         {
 
-            return TcpMessage.ServerReadRequest(stream, Settings.ReceiveBufferSize);
+            return TcpMessage.ServerReadRequest(stream, readTimeout, ReceiveBufferSize);
         }
 
         #endregion

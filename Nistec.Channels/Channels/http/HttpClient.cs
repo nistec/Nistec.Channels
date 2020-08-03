@@ -88,7 +88,7 @@ namespace Nistec.Channels.Http
                 Address = address,
                 Port = port,
                 ConnectTimeout = HttpSettings.DefaultConnectTimeout,
-                ProcessTimeout = HttpSettings.DefaultProcessTimeout,
+                ReadTimeout = HttpSettings.DefaultReadTimeout,
                 //IsDuplex = true,
                 Method = method ?? HttpSettings.DefaultMethod
             };
@@ -109,7 +109,7 @@ namespace Nistec.Channels.Http
                 Address = address,
                 Port = port,
                 ConnectTimeout = timeout <= 0 ? HttpSettings.DefaultConnectTimeout : timeout,
-                ProcessTimeout = timeout <= 0 ? HttpSettings.DefaultProcessTimeout : timeout,
+                ReadTimeout = timeout <= 0 ? HttpSettings.DefaultReadTimeout : timeout,
                 Method = method
             };
         }
@@ -132,7 +132,7 @@ namespace Nistec.Channels.Http
                 Address = address,
                 Port = port,
                 ConnectTimeout = timeout <= 0 ? HttpSettings.DefaultConnectTimeout : timeout,
-                ProcessTimeout = timeout <= 0 ? HttpSettings.DefaultProcessTimeout : timeout,
+                ReadTimeout = timeout <= 0 ? HttpSettings.DefaultReadTimeout : timeout,
                 Method = method
             };
 
@@ -152,6 +152,7 @@ namespace Nistec.Channels.Http
         protected HttpClient(HttpSettings settings)
         {
             Settings = settings;
+            Log = settings.Log;
         }
        
         #endregion
@@ -694,7 +695,91 @@ namespace Nistec.Channels.Http
             }
         }
 
- 
+        /// <summary>
+        /// connect to the http server and execute request.
+        /// </summary>
+        public void ExecuteAsync<TResponse>(TRequest message, Action<TResponse> onCompleted, bool enableException=false)
+        {
+
+            TResponse response = default(TResponse);
+
+            try
+            {
+
+                if (TransReader.IsTransStream(typeof(TResponse)))// message.TransformType == TransformType.Stream)
+                {
+                    var brequest = RequestToStream(message);
+                    //var streamResponse = ExecuteRequestStream(brequest);
+                    HttpRequest.DoHttpTransStreamAsync(Settings.HostAddress, brequest, Settings.ConnectTimeout,(TransStream streamResponse) =>
+                    {
+                        if (message.IsDuplex && streamResponse != null)
+                        {
+                            onCompleted(GenericTypes.Cast<TResponse>(streamResponse));
+
+                            //return streamResponse==null? default(TResponse) : streamResponse.ReadValue<TResponse>();
+                            //return TransWriter.Write(streamResponse.GetValue<TResponse>();
+                        }
+                        else
+                            onCompleted(default(TResponse));
+                    });
+
+                    
+                }
+                else
+                {
+                    string jsonRequest = RequestToJson(message);
+                    HttpRequest.DoRequestStringAsync(Settings.HostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true, (string strResponse) => {
+                    //var strResponse = ExecuteJsonRequest(jsonRequest);
+                    if (message.IsDuplex)
+                        onCompleted(ReadJsonResponse<TResponse>(strResponse));
+                    else
+                        onCompleted( default(TResponse));
+
+                });
+                   
+                }
+
+                //return ReadJsonResponse<TResponse>(strResponse);
+            }
+            catch (SocketException se)
+            {
+                Log.Exception("The http client throws SocketException: {0}", se);
+                if (enableException)
+                    throw se;
+                onCompleted(response);
+            }
+            catch (TimeoutException toex)
+            {
+                Log.Exception("The http client throws the TimeoutException : ", toex, true);
+                if (enableException)
+                    throw toex;
+                onCompleted(response);
+            }
+            catch (SerializationException sex)
+            {
+                Log.Exception("The http client throws the SerializationException : ", sex, true);
+                if (enableException)
+                    throw sex;
+                onCompleted(response);
+            }
+            catch (MessageException mex)
+            {
+                Log.Exception("The tcp client throws the MessageException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                onCompleted(response);
+            }
+            catch (Exception ex)
+            {
+                Log.Exception("The http client throws the error: ", ex, true);
+
+                if (enableException)
+                    throw ex;
+
+                onCompleted(response);
+            }
+        }
+
         #endregion
     }
 
@@ -750,7 +835,16 @@ namespace Nistec.Channels.Http
                 return client.Execute<TransStream>(request, enableException);
             }
         }
-
+        public static void SendDuplexStreamAsync(MessageStream request, string address, int port, string method, int timeout, Action<TransStream> onCompleted, bool enableException = false)
+        {
+            Type type = request.BodyType;
+            request.TransformType = TransformType.Stream;
+            request.IsDuplex = true;
+            using (HttpClient client = new HttpClient(address, port, method, timeout))
+            {
+                client.ExecuteAsync<TransStream>(request, onCompleted,enableException);
+            }
+        }
         public static string SendRequest(string request, string address, int port, string method, int timeout, RequestContentType contentType, bool enableException = false)
         {
             using (HttpClient client = new HttpClient(address, port, method, timeout))

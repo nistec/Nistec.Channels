@@ -90,6 +90,7 @@ namespace Nistec.Channels.Http
         protected HttpServer(HttpSettings settings)
         {
             Settings = settings;
+            Log = settings.Log;
             _stop = new ManualResetEvent(false);
             _ready = new ManualResetEvent(false);
             _listener = new HttpListener();
@@ -183,9 +184,12 @@ namespace Nistec.Channels.Http
             {
                 if (_State == ChannelServiceState.Paused)
                 {
-                    _State = ChannelServiceState.Started;
-                    OnStart();
-                    return;
+                    if (Initilized)
+                    {
+                        _State = ChannelServiceState.Started;
+                        OnStart();
+                        return;
+                    }
                 }
                 if (_State == ChannelServiceState.Started)
                     return;
@@ -203,11 +207,43 @@ namespace Nistec.Channels.Http
             }
         }
 
-       
+        void StopInternal()
+        {
+            try
+            {
+                Log.Info("The http server listener Stoping...");
+                Thread.Sleep(3000);
+                if (_listener != null)
+                {
+                    _listener.Stop();
+                    //_listenerThread.Interrupt();
+                    //_listenerThread.Join(5000);
+                    //if (_workers != null)
+                    //{
+                    //    for (int i = 0; i < _workers.Length; i++)
+                    //    {
+                    //        _workers[i].Interrupt();
+                    //        _workers[i].Join(5000);
+                    //    }
+                    //}
+                }
+                Initilized = false;
+
+            }
+            catch (ThreadInterruptedException ex)
+            {
+                /* Clean up. */
+                OnFault("The http server on Stop throws ThreadInterruptedException: ", ex);
+            }
+            catch (Exception ex)
+            {
+                OnFault("The http server async listener on Stop throws the error: ", ex);
+            }
+        }
+
         public void Stop()
         {
-            if (_listener != null)
-                _listener.Stop();
+            StopInternal();
             Initilized = false;
             //Listen = false;
             _State = ChannelServiceState.Stoped;

@@ -87,7 +87,7 @@ namespace Nistec.Channels.Tcp
     ///     MaxServerConnections="0" 
     /// </TcpServerSettings>
     /// </example>
-    public class TcpSettings
+    public class TcpSettings: IChannelSettings
     {
         /// <summary>
         /// DefaultHostName
@@ -113,22 +113,29 @@ namespace Nistec.Channels.Tcp
         /// DefaultConnectTimeout
         /// </summary>
         public const int DefaultConnectTimeout = 5000;
-        /// <summary>
-        /// DefaultProcessTimeout
-        /// </summary>
-        public const int DefaultProcessTimeout = 5000;
         ///// <summary>
-        ///// DefaultReadTimeout
+        ///// DefaultProcessTimeout
         ///// </summary>
-        //public const int DefaultReadTimeout = 1000;
+        //public const int DefaultReceiveTimeout = 5000;
+        /// <summary>
+        /// DefaultReadTimeout
+        /// </summary>
+        public const int DefaultReadTimeout = 180000;
         /// <summary>
         /// DefaultMaxSocketError
         /// </summary>
         public const int DefaultMaxSocketError = 50;
 
-        
+        /// <summary>
+        /// Infinite
+        /// </summary>
+        public const int InfiniteReadTimeout = -1;
 
 
+        /// <summary>
+        /// Get NetProtocol
+        /// </summary>
+        public NetProtocol Protocol { get { return NetProtocol.Tcp; } }
         /// <summary>
         ///  Get or Set HostName.
         /// </summary>
@@ -150,18 +157,18 @@ namespace Nistec.Channels.Tcp
         /// Get or Set MaxServerConnections (Only for server side) (Default=1).
         /// </summary>
         public int MaxServerConnections { get; set; }
-        /// <summary>
-        /// Get or Set ProcessTimeout (Default=5000).
-        /// </summary>
-        public int ProcessTimeout { get; set; }
+        ///// <summary>
+        ///// Get or Set ProcessTimeout (Default=5000).
+        ///// </summary>
+        //public int ReceiveTimeout { get; set; }
         /// <summary>
         /// Get or Set ConnectTimeout (Default=5000).
         /// </summary>
         public int ConnectTimeout { get; set; }
-        ///// <summary>
-        ///// Get or Set ReadTimeout (Default=5000).
-        ///// </summary>
-        //public int ReadTimeout { get; set; }
+        /// <summary>
+        /// Get or Set ReadTimeout (Default=5000).
+        /// </summary>
+        public int ReadTimeout { get; set; }
         /// <summary>
         /// Get or Set ReceiveBufferSize (Default=8192).
         /// </summary>
@@ -174,7 +181,15 @@ namespace Nistec.Channels.Tcp
         /// Get or Set the max socket errors
         /// </summary>
         public int MaxSocketError { get; set; }
-        
+
+        /// <summary>
+        ///  Get Host Address.
+        /// </summary>
+        public string RawHostAddress { get { return string.Format("tcp:{0}:{1}", Address, Port); } }
+        /// <summary>
+        /// Get or Set Logger that implements <see cref="ILogger"/> interface.
+        /// </summary>
+        public ILogger Log { get; set; }
         /// <summary>
         /// Ensure Host Address
         /// </summary>
@@ -197,8 +212,8 @@ namespace Nistec.Channels.Tcp
             Port=DefaultPort;
             IsAsync = true;
             ConnectTimeout = DefaultConnectTimeout;
-            ProcessTimeout = DefaultProcessTimeout;
-            //ReadTimeout = DefaultReadTimeout;
+            //ReceiveTimeout = DefaultReceiveTimeout;
+            ReadTimeout = DefaultReadTimeout;
             ReceiveBufferSize = DefaultReceiveBufferSize;
             SendBufferSize = DefaultSendBufferSize;
             MaxServerConnections = 0;
@@ -253,8 +268,8 @@ namespace Nistec.Channels.Tcp
             Port = table.Get<int>("Port");
             IsAsync = (bool)table.Get<bool>("IsAsync", true);
             ConnectTimeout = (int)table.Get<int>("ConnectTimeout", DefaultConnectTimeout);
-            ProcessTimeout = (int)table.Get<int>("ProcessTimeout", DefaultProcessTimeout);
-            //ReadTimeout = (int)table.Get<int>("ReadTimeout", DefaultReadTimeout);
+            //ReceiveTimeout = (int)table.Get<int>("ReceiveTimeout", DefaultReceiveTimeout);
+            ReadTimeout = (int)table.Get<int>("ReadTimeout", DefaultReadTimeout);
             ReceiveBufferSize = table.Get<int>("ReceiveBufferSize", DefaultReceiveBufferSize);
             SendBufferSize = table.Get<int>("SendBufferSize", DefaultSendBufferSize);
             if (isServer)

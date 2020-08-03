@@ -1244,6 +1244,15 @@ namespace Nistec.Channels
 
         public static MessageStream ReadRequest(NetworkStream streamServer, int ReceiveBufferSize = 8192)
         {
+            //var message = new TcpMessage();
+            //using (var ntStream = new NetStream())
+            //{
+            //    ntStream.CopyFrom(streamServer, 0, ReceiveBufferSize);
+
+            //    message.EntityRead(ntStream, null);
+            //}
+            //return message;
+
             var message = new TcpMessage();
             message.EntityRead(streamServer, null);
             return message;

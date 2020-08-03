@@ -208,7 +208,7 @@ namespace Nistec.Channels
 
             HostName = settings.HostName;
             PipeName = settings.PipeName;
-            ConnectTimeout = settings.ConnectTimeout;
+            ConnectTimeout = (uint) settings.ConnectTimeout;
             ReceiveBufferSize = settings.ReceiveBufferSize;
             SendBufferSize = settings.SendBufferSize;
             PipeDirection = settings.PipeDirection;

@@ -81,7 +81,7 @@ namespace Nistec.Channels
     ///     MaxAllowedServerInstances="255"/>
     /// </pipeServerSettings>
     /// </example>
-    public class PipeSettings
+    public class PipeSettings: IChannelSettings
     {
 
         /// <summary>
@@ -100,10 +100,16 @@ namespace Nistec.Channels
         /// DefaultConnectTimeout
         /// </summary>
         public const int DefaultConnectTimeout = 5000;
+        ///// <summary>
+        ///// DefaultConnectTimeout
+        ///// </summary>
+        //public const int DefaultProcessTimeout = 5000;
+
         /// <summary>
-        /// DefaultConnectTimeout
+        /// Get NetProtocol
         /// </summary>
-        public const int DefaultProcessTimeout = 5000;
+        public NetProtocol Protocol { get { return NetProtocol.Pipe; } }
+
         /// <summary>
         ///  Get or Set HostName.
         /// </summary>
@@ -135,11 +141,11 @@ namespace Nistec.Channels
         /// <summary>
         /// Get or Set ConnectTimeout (Default=5000).
         /// </summary>
-        public uint ConnectTimeout { get; set; }
-        /// <summary>
-        /// Get or Set ProcessTimeout (Default=5000).
-        /// </summary>
-        public int ProcessTimeout { get; set; }
+        public int ConnectTimeout { get; set; }
+        ///// <summary>
+        ///// Get or Set ProcessTimeout (Default=5000).
+        ///// </summary>
+        //public int ProcessTimeout { get; set; }
         /// <summary>
         /// Get or Set ReceiveBufferSize (Default=8192).
         /// </summary>
@@ -160,6 +166,15 @@ namespace Nistec.Channels
         ///  Get or Set Indicates that the channel can be used for asynchronous reading and writing..
         /// </summary>
         public bool IsAsync { get; set; }
+        /// <summary>
+        ///  Get Host Address.
+        /// </summary>
+        public string RawHostAddress { get { return string.Format("ipc:{0}:{1}", ServerName,PipeName); } }
+
+        /// <summary>
+        /// Get or Set Logger that implements <see cref="ILogger"/> interface.
+        /// </summary>
+        public ILogger Log { get; set; }
 
         /// <summary>
         /// Default constractor.
@@ -219,8 +234,8 @@ namespace Nistec.Channels
             PipeDirection = EnumExtension.Parse<PipeDirection>(table.Get<string>("PipeDirection"), PipeDirection.InOut);
             PipeOptions = EnumExtension.Parse<PipeOptions>(table.Get<string>("PipeOptions"), PipeOptions.None);
             VerifyPipe = table.Get<string>("VerifyPipe", PipeName);
-            ConnectTimeout = (uint)table.Get<int>("ConnectTimeout", 5000);
-            ProcessTimeout = (int)table.Get<int>("ProcessTimeout", 5000);
+            ConnectTimeout = table.Get<int>("ConnectTimeout", 5000);//uint
+            //ProcessTimeout = (int)table.Get<int>("ProcessTimeout", 5000);
             ReceiveBufferSize = table.Get<int>("ReceiveBufferSize", DefaultReceiveBufferSize);
             SendBufferSize = table.Get<int>("SendBufferSize", DefaultSendBufferSize);
             if (isServer)

@@ -91,25 +91,25 @@ namespace Nistec.Channels.Config
         /// <summary>
         /// Get Process timeout.
         /// </summary>
-        [ConfigurationProperty("ProcessTimeout", DefaultValue = 5000, IsRequired = false)]
-        public int ProcessTimeout
+        [ConfigurationProperty("ReceiveTimeout", DefaultValue = 5000, IsRequired = false)]
+        public int ReceiveTimeout
         {
             get
             {
-                return Types.ToInt(this["ProcessTimeout"], 5000);
+                return Types.ToInt(this["ReceiveTimeout"], 5000);
             }
         }
-        ///// <summary>
-        ///// Get Process timeout.
-        ///// </summary>
-        //[ConfigurationProperty("ReadTimeout", DefaultValue = 1000, IsRequired = false)]
-        //public int ReadTimeout
-        //{
-        //    get
-        //    {
-        //        return Types.ToInt(this["ReadTimeout"], 0);
-        //    }
-        //}
+        /// <summary>
+        /// Get Process timeout.
+        /// </summary>
+        [ConfigurationProperty("ReadTimeout", DefaultValue = 1000, IsRequired = false)]
+        public int ReadTimeout
+        {
+            get
+            {
+                return Types.ToInt(this["ReadTimeout"], 0);
+            }
+        }
         /// <summary>
         /// Get Max Socket Error.
         /// </summary>

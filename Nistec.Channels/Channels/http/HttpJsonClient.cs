@@ -137,7 +137,7 @@ namespace Nistec.Channels.Http
         /// <summary>
         /// DefaultSendTimeout
         /// </summary>
-        public const int DefaultSendTimeout = 5000;
+        public const int DefaultConnectTimeout = 5000;
         /// <summary>
         /// DefaultProcessTimeout
         /// </summary>
@@ -181,7 +181,7 @@ namespace Nistec.Channels.Http
         /// <summary>
         /// Get or Set ProcessTimeout (Default=5000).
         /// </summary>
-        public int ProcessTimeout { get; set; }
+        public int ReadTimeout { get; set; }
         ///// <summary>
         ///// Get or Set ProcessTimeout (Default=5000).
         ///// </summary>
@@ -227,8 +227,8 @@ namespace Nistec.Channels.Http
             HostName = hostAddress;
             Address = hostAddress;
             Port = port;
-            ConnectTimeout = DefaultReadTimeout;
-            ProcessTimeout = DefaultSendTimeout;
+            ConnectTimeout = DefaultConnectTimeout;
+            ReadTimeout = DefaultReadTimeout;
             Method = method;
             HostAddress = GetHostAddress();
         }
@@ -245,8 +245,8 @@ namespace Nistec.Channels.Http
             HostName = hostAddress;
             Address = hostAddress;
             Port = port;
-            ConnectTimeout = timeout <= 0? DefaultReadTimeout: timeout;
-            ProcessTimeout = timeout <= 0 ? DefaultSendTimeout : timeout;
+            ConnectTimeout = timeout <= 0? DefaultConnectTimeout : timeout;
+            ReadTimeout = timeout <= 0 ? DefaultReadTimeout : timeout;
             Method = method;
             HostAddress = GetHostAddress();
         }
@@ -262,7 +262,7 @@ namespace Nistec.Channels.Http
             Port = settings.Port;
             ConnectTimeout = settings.ConnectTimeout;
             Method = settings.Method;
-            ProcessTimeout = settings.ProcessTimeout;
+            ReadTimeout = settings.ReadTimeout;
             HostAddress = GetHostAddress();
         }
         /// <summary>
@@ -276,8 +276,10 @@ namespace Nistec.Channels.Http
             Port = settings.Port;
             ConnectTimeout = settings.ConnectTimeout;
             Method = settings.Method;
-            ProcessTimeout = settings.ProcessTimeout;
+            ReadTimeout = settings.ReadTimeout;
             HostAddress = GetHostAddress();
+
+            Log = settings.Log;
         }
        
         #endregion

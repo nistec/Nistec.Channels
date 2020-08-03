@@ -100,12 +100,12 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         /// <param name="HostAddress"></param>
         /// <param name="Port"></param>
-        /// <param name="ReadTimeOut"></param>
+        /// <param name="ConnectTimeOut"></param>
         /// <param name="IsAsync"></param>
         /// <returns></returns>
-        public object SendDuplex(string HostAddress,int Port, int ReadTimeOut, bool IsAsync)
+        public object SendDuplex(string HostAddress,int Port, int ConnectTimeOut, bool IsAsync)
         {
-            return TcpClient.SendDuplex(this, HostAddress, Port,ReadTimeOut, IsAsync);
+            return TcpClient.SendDuplex(this, HostAddress, Port,ConnectTimeOut, IsAsync);
         }
         /// <summary>
         /// Send duplex message to tcp server using the host name and port arguments.
@@ -113,34 +113,43 @@ namespace Nistec.Channels.Tcp
         /// <typeparam name="T"></typeparam>
         /// <param name="HostAddress"></param>
         /// <param name="Port"></param>
-        /// <param name="ReadTimeOut"></param>
+        /// <param name="ConnectTimeOut"></param>
         /// <param name="IsAsync"></param>
         /// <returns></returns>
-        public T SendDuplex<T>(string HostAddress, int Port, int ReadTimeOut, bool IsAsync)
+        public T SendDuplex<T>(string HostAddress, int Port, int ConnectTimeOut, bool IsAsync)
         {
-            return TcpClient.SendDuplex<T>(this, HostAddress, Port, ReadTimeOut, IsAsync);
+            return TcpClient.SendDuplex<T>(this, HostAddress, Port, ConnectTimeOut, IsAsync);
         }
         /// <summary>
         /// Send one way message to tcp server using the host name and port arguments.
         /// </summary>
         /// <param name="HostAddress"></param>
         /// <param name="Port"></param>
-        /// <param name="ReadTimeOut"></param>
+        /// <param name="ConnectTimeOut"></param>
         /// <param name="IsAsync"></param>
-        public void SendOut(string HostAddress, int Port, int ReadTimeOut, bool IsAsync)
+        public void SendOut(string HostAddress, int Port, int ConnectTimeOut, bool IsAsync)
         {
-            TcpClient.SendOut(this, HostAddress, Port, ReadTimeOut, IsAsync);
+            TcpClient.SendOut(this, HostAddress, Port, ConnectTimeOut, IsAsync);
         }
 
         #endregion
 
         #region Read/Write
 
-        internal static TcpMessage ServerReadRequest(NetworkStream streamServer, int ReceiveBufferSize = 8192)
+        internal static TcpMessage ServerReadRequest(NetworkStream streamServer, int readTimeout, int ReceiveBufferSize = 8192)
         {
+
+            //var message = new TcpMessage();
+            //using (var ntStream = new NetStream())
+            //{
+            //    ntStream.CopyFrom(streamServer, readTimeout, ReceiveBufferSize);
+
+            //    message.EntityRead(ntStream, null);
+            //}
+            //return message;
+
             var message = new TcpMessage();
             message.EntityRead(streamServer, null);
-
             return message;
         }
 

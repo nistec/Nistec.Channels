@@ -671,6 +671,11 @@ namespace Nistec.Channels
             return TransType.None;
         }
 
+        public bool IsEmpty
+        {
+            get { return _Stream == null || _Stream.Length == 0; }
+        }
+
         //public NetStream GetJsonStream()
         //{
         //    var stream = GetStream();
@@ -686,6 +691,11 @@ namespace Nistec.Channels
         #endregion
 
         #region static
+
+        public static bool IsEmptyStream(TransStream ts)
+        {
+            return (ts == null || ts.IsEmpty);
+        }
 
         public static TransType PeekTransType(NetStream stream)
         {

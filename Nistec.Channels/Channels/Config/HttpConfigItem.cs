@@ -111,12 +111,12 @@ namespace Nistec.Channels.Config
         /// <summary>
         /// Get Process timeout.
         /// </summary>
-        [ConfigurationProperty("ProcessTimeout", DefaultValue = 5000, IsRequired = false)]
-        public int ProcessTimeout
+        [ConfigurationProperty("ReadTimeout", DefaultValue = 5000, IsRequired = false)]
+        public int ReadTimeout
         {
             get
             {
-                return Types.ToInt(this["ProcessTimeout"], 5000);
+                return Types.ToInt(this["ReadTimeout"], 5000);
             }
         }
         ///// <summary>

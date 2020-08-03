@@ -83,7 +83,7 @@ namespace Nistec.Channels.Http
     ///     MaxServerConnections="0" 
     /// </HttpServerSettings>
     /// </example>
-    public class HttpSettings
+    public class HttpSettings: IChannelSettings
     {
 
         /// <summary>
@@ -110,19 +110,23 @@ namespace Nistec.Channels.Http
         /// DefaultSendTimeout
         /// </summary>
         public const int DefaultConnectTimeout = 5000;
-        /// <summary>
-        /// DefaultProcessTimeout
-        /// </summary>
-        public const int DefaultProcessTimeout = 5000;
         ///// <summary>
-        ///// DefaultReadTimeout
+        ///// DefaultProcessTimeout
         ///// </summary>
-        //public const int DefaultReadTimeout = 1000;
+        //public const int DefaultProcessTimeout = 5000;
+        /// <summary>
+        /// DefaultReadTimeout
+        /// </summary>
+        public const int DefaultReadTimeout = 5000;
         /// <summary>
         /// DefaultMaxSocketError
         /// </summary>
         public const int DefaultMaxErrors = 50;
 
+        /// <summary>
+        /// Get NetProtocol
+        /// </summary>
+        public NetProtocol Protocol { get { return NetProtocol.Http; } }
 
         /// <summary>
         ///  Get or Set HostName.
@@ -154,18 +158,18 @@ namespace Nistec.Channels.Http
         /// Get or Set MaxServerConnections (Only for server side) (Default=1).
         /// </summary>
         public int MaxServerConnections { get; set; }
-        /// <summary>
-        /// Get or Set ProcessTimeout (Default=5000).
-        /// </summary>
-        public int ProcessTimeout { get; set; }
+        ///// <summary>
+        ///// Get or Set ProcessTimeout (Default=5000).
+        ///// </summary>
+        //public int ProcessTimeout { get; set; }
         /// <summary>
         /// Get or Set ConnectTimeout (Default=5000).
         /// </summary>
         public int ConnectTimeout { get; set; }
-        ///// <summary>
-        ///// Get or Set ReadTimeout (Default=5000).
-        ///// </summary>
-        //public int ReadTimeout { get; set; }
+        /// <summary>
+        /// Get or Set ReadTimeout (Default=5000).
+        /// </summary>
+        public int ReadTimeout { get; set; }
 
         /// <summary>
         /// Get or Set the max errors befor service shut down.
@@ -175,6 +179,19 @@ namespace Nistec.Channels.Http
         /// Get or Set the max workers of http listener.
         /// </summary>
         public int MaxThreads { get; set; }
+
+        /// <summary>
+        /// Get or Set ReceiveBufferSize (Default=8192) Not Implemented.
+        /// </summary>
+        public int ReceiveBufferSize { get; set; }
+        /// <summary>
+        /// Get or Set SendBufferSize (Default=8192) Not Implemented.
+        /// </summary>
+        public int SendBufferSize { get; set; }
+        /// <summary>
+        ///  Get or Set Indicates that the channel can be used for asynchronous reading and writing  Not Implemented.
+        /// </summary>
+        public bool IsAsync { get; set; }
 
         /// <summary>
         /// Ensure Hot Address
@@ -190,11 +207,19 @@ namespace Nistec.Channels.Http
         ///  Get or Set Full Host Address like "site.com:13010".
         /// </summary>
         public string HostAddress { get; private set; }
-
+        /// <summary>
+        ///  Get Raw Host Address.
+        /// </summary>
+        public string RawHostAddress { get { return string.Format("http:{0}", HostAddress); } }
         /// <summary>
         ///  Get or Set Host Address ssl.
         /// </summary>
         public string SslHostAddress { get; private set; }
+
+        /// <summary>
+        /// Get or Set Logger that implements <see cref="ILogger"/> interface.
+        /// </summary>
+        public ILogger Log { get; set; }
 
         /// <summary>
         /// Get host adress.
@@ -275,8 +300,8 @@ namespace Nistec.Channels.Http
             SslEnabled = false;
             Method = DefaultMethod;
             ConnectTimeout = DefaultConnectTimeout;
-            ProcessTimeout = DefaultProcessTimeout;
-            //ReadTimeout = DefaultReadTimeout;
+            //ProcessTimeout = DefaultProcessTimeout;
+            ReadTimeout = DefaultReadTimeout;
             MaxServerConnections = 0;
             MaxErrors = DefaultMaxErrors;
             HostAddress = GetHostAddress();
@@ -339,8 +364,8 @@ namespace Nistec.Channels.Http
             SslEnabled = table.Get<bool>("SslEnabled",false);
             Method = table.GetValue("Method");
             ConnectTimeout = (int)table.Get<int>("ConnectTimeout", DefaultConnectTimeout);
-            ProcessTimeout = (int)table.Get<int>("ProcessTimeout", DefaultProcessTimeout);
-            //ReadTimeout = (int)table.Get<int>("ReadTimeout", DefaultReadTimeout);
+            //ProcessTimeout = (int)table.Get<int>("ProcessTimeout", DefaultProcessTimeout);
+            ReadTimeout = (int)table.Get<int>("ReadTimeout", DefaultReadTimeout);
             if (isServer)
             {
                 MaxErrors = table.Get<int>("MaxErrors", DefaultMaxErrors);

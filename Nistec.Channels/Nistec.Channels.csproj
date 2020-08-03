@@ -91,6 +91,7 @@
     <Compile Include="Channels\http\HttpRequestInfo.cs" />
     <Compile Include="Channels\http\HttpRequest.cs" />
     <Compile Include="Channels\GenericMessage.cs" />
+    <Compile Include="Channels\IChannelSettings.cs" />
     <Compile Include="Channels\TransStream.cs" />
     <Compile Include="Channels\AnonymousPipe\AnonymousPipeClient.cs">
       <SubType>Code</SubType>

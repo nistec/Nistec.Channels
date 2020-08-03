@@ -112,11 +112,24 @@ namespace Nistec.Channels.Tcp
         /// ReadRequest
         /// </summary>
         /// <param name="networkStream"></param>
+        /// <param name="readTimeout"></param>
+        /// <param name="ReceiveBufferSize"></param>
         /// <returns></returns>
-        protected override StringMessage ReadRequest(NetworkStream networkStream)
+        protected override StringMessage ReadRequest(NetworkStream networkStream,int readTimeout, int ReceiveBufferSize = TcpSettings.DefaultReceiveBufferSize)
         {
             //StringMessage.ReadString(pipeServer);
-            return new StringMessage(networkStream);
+
+
+            StringMessage message = null;
+            using (var ntStream = new NetStream())
+            {
+                ntStream.CopyFrom(networkStream, readTimeout, ReceiveBufferSize);
+
+                message = new StringMessage(ntStream);
+            }
+            return message;
+
+            //return new StringMessage(networkStream);
         }
 
         #endregion

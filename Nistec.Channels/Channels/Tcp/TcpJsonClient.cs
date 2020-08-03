@@ -175,7 +175,7 @@ namespace Nistec.Channels.Tcp
         /// <summary>
         /// Get or Set ProcessTimeout (Default=5000).
         /// </summary>
-        public int ProcessTimeout { get; set; }
+        public int ReadTimeout { get; set; }
         /// <summary>
         /// Get or Set ReceiveBufferSize (Default=8192).
         /// </summary>
@@ -212,7 +212,7 @@ namespace Nistec.Channels.Tcp
             Address = hostAddress;
             IsAsync = isAsync;
             Port = port <= 0 ? DefaultPort : port;
-            ProcessTimeout = readTimeout <= 0 ? DefaultReadTimeout : readTimeout;
+            ReadTimeout = readTimeout <= 0 ? DefaultReadTimeout : readTimeout;
             ConnectTimeout = DefaultSendTimeout;
             ReceiveBufferSize = receiveBufferSize <= 0 ? DefaultReceiveBufferSize : receiveBufferSize;
             SendBufferSize = sendBufferSize <= 0 ? DefaultSendBufferSize : sendBufferSize;
@@ -229,10 +229,27 @@ namespace Nistec.Channels.Tcp
             Address = settings.Address;
             IsAsync = settings.IsAsync;
             Port = settings.Port;
-            ProcessTimeout = settings.ProcessTimeout;
+            ReadTimeout = settings.ReadTimeout;
             ConnectTimeout = settings.ConnectTimeout;
             ReceiveBufferSize = settings.ReceiveBufferSize;
             SendBufferSize = settings.SendBufferSize;
+        }
+        /// <summary>
+        /// Initialize a new instance of <see cref="TcpClient"/> with given <see cref="TcpSettings"/> settings.
+        /// </summary>
+        /// <param name="settings"></param>
+        protected TcpJsonClient(TcpSettings settings)
+        {
+            HostName = settings.HostName;
+            Address = settings.Address;
+            IsAsync = settings.IsAsync;
+            Port = settings.Port;
+            ReadTimeout = settings.ReadTimeout;
+            ConnectTimeout = settings.ConnectTimeout;
+            ReceiveBufferSize = settings.ReceiveBufferSize;
+            SendBufferSize = settings.SendBufferSize;
+
+            Log = settings.Log;
         }
         #endregion
 

@@ -786,6 +786,34 @@ namespace Nistec.Channels.Http
             }
         }
 
+        public static void DoRequestStringAsync(string url, string data, string method, RequestContentType contentType, int timeout, bool enableException, Action<string> onCompleted)
+        {
+
+            try
+            {
+
+                DoHttpRequestAsync(url, data, method, contentType, timeout, onCompleted);
+            }
+            catch (TimeoutException tex)
+            {
+                if (enableException)
+                    throw tex;
+                onCompleted(null);
+            }
+            catch (System.Net.WebException webExcp)
+            {
+                if (enableException)
+                    throw webExcp;
+                onCompleted(null);
+            }
+            catch (Exception ex)
+            {
+                if (enableException)
+                    throw ex;
+                onCompleted(null);
+            }
+        }
+
         public static string DoRequestString(string url, string data, string method, RequestContentType contentType, int timeout, Action<string> OnFault)
         {
 
@@ -926,6 +954,77 @@ namespace Nistec.Channels.Http
 
         }
 
+        public static void DoHttpRequestAsync(string url, string data, string method, RequestContentType contentType, int timeout, Action<string> onCompleted)
+        {
+
+            if (url == null)
+            {
+                throw new ArgumentNullException("url");
+            }
+            if (data == null)
+            {
+                throw new ArgumentNullException("data");
+            }
+            string result = null;
+
+            HttpWebRequest request = CreateRequest(url, data, method, contentType, timeout);
+
+
+            //string content_type = GetContentType(contentType);
+            //method = GetMethod(method);
+            //if (timeout <= 0)
+            //    timeout = GetTimeout(timeout);
+
+            //string encoding = "utf-8";
+            //Encoding enc = Encoding.GetEncoding(encoding);
+
+            //string postData = EncodeRequestData(contentType, data);
+
+            //if (method.ToUpper() == "GET")
+            //{
+            //    string qs = string.IsNullOrEmpty(data) ? "" : "?" + data;
+            //    request = (HttpWebRequest)WebRequest.Create(url + qs);
+            //    request.Timeout = timeout;
+            //}
+            //else
+            //{
+            //    request = (HttpWebRequest)WebRequest.Create(url);
+            //    request.Method = "POST";
+            //    request.Credentials = CredentialCache.DefaultCredentials;
+
+            //    request.Timeout = timeout;
+            //    request.ContentType = content_type;
+
+            //    byte[] bytes = enc.GetBytes(data);
+            //    request.ContentLength = bytes.Length;
+
+            //    //Create request stream
+            //    using (Stream OutputStream = request.GetRequestStream())
+            //    {
+            //        if (!OutputStream.CanWrite)
+            //        {
+            //            throw new Exception("Could not wirte to RequestStream");
+            //        }
+            //        OutputStream.Write(bytes, 0, bytes.Length);
+            //    }
+
+            //}
+
+            //Get response stream
+            using (WebResponse resp = request.GetResponse())
+            {
+                using (Stream ResponseStream = resp.GetResponseStream())
+                {
+                    using (StreamReader readStream =
+                            new StreamReader(ResponseStream, Encoding.UTF8))
+                    {
+                        result = readStream.ReadToEnd();
+                    }
+                }
+            }
+            onCompleted(result);
+
+        }
         public static byte[] DoHttpBinary(string url, string data, string method, RequestContentType contentType, int timeout)
         {
 
@@ -1200,6 +1299,56 @@ namespace Nistec.Channels.Http
             catch (Exception ex)
             {
                 return TransStream.Write("Response error: " + ex.Message, TransType.Error);
+            }
+        }
+
+        public static void DoHttpTransStreamAsync(string url, NetStream stream, int timeout, Action<TransStream> onCompleted)
+        {
+
+            if (url == null)
+            {
+                throw new ArgumentNullException("url");
+            }
+            if (stream == null)
+            {
+                throw new ArgumentNullException("stream");
+            }
+            TransStream result = null;
+
+            try
+            {
+                byte[] data = stream.ToArray();
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "POST";
+                request.Credentials = CredentialCache.DefaultCredentials;
+                request.Timeout = GetTimeout(timeout);
+                request.ContentType = GetContentType(RequestContentType.Data);
+                request.ContentLength = data.Length;
+
+                //Create request stream
+                using (Stream OutputStream = request.GetRequestStream())
+                {
+                    if (!OutputStream.CanWrite)
+                    {
+                        throw new Exception("Could not wirte to RequestStream");
+                    }
+                    OutputStream.Write(data, 0, data.Length);
+                }
+
+
+                //Get response stream
+                using (WebResponse resp = request.GetResponse())
+                {
+                    using (Stream ResponseStream = resp.GetResponseStream())
+                    {
+                        result = TransStream.CopyFromStream(ResponseStream);
+                    }
+                }
+                onCompleted(result);
+            }
+            catch (Exception ex)
+            {
+                onCompleted(TransStream.Write("Response error: " + ex.Message, TransType.Error));
             }
         }
 

@@ -41,8 +41,8 @@ namespace Nistec.Channels
     {
         #region membrs
         private int numThreads;
-        private bool Listen;
-        private bool Initilize = false;
+        volatile bool Listen;
+        private bool Initilized = false;
         //private bool IsAsync = true;
         Thread[] servers;
         static object mlock = new object();
@@ -51,7 +51,11 @@ namespace Nistec.Channels
         /// Get or Set Logger that implements <see cref="ILogger"/> interface.
         /// </summary>
         public ILogger Log { get { return _Logger; } set { if (value != null)_Logger = value; } }
-
+        private ChannelServiceState _State = ChannelServiceState.None;
+        /// <summary>
+        /// Get <see cref="ChannelServiceState"/> State.
+        /// </summary>
+        public ChannelServiceState ServiceState { get { return _State; } }
         #endregion
 
         #region settings
@@ -131,7 +135,7 @@ namespace Nistec.Channels
 
             this.HostName = settings.HostName;
             this.PipeName = settings.PipeName;
-            this.ConnectTimeout = settings.ConnectTimeout;
+            this.ConnectTimeout =(uint) settings.ConnectTimeout;
             this.ReceiveBufferSize = settings.ReceiveBufferSize;
             this.SendBufferSize = settings.SendBufferSize;
             this.PipeDirection = settings.PipeDirection;
@@ -152,7 +156,7 @@ namespace Nistec.Channels
 
             this.HostName = settings.HostName;
             this.PipeName = settings.PipeName;
-            this.ConnectTimeout = settings.ConnectTimeout;
+            this.ConnectTimeout =(uint) settings.ConnectTimeout;
             this.ReceiveBufferSize = settings.ReceiveBufferSize;
             this.SendBufferSize = settings.SendBufferSize;
             this.PipeDirection = settings.PipeDirection;
@@ -170,7 +174,7 @@ namespace Nistec.Channels
 
         private void Init()
         {
-            if (Initilize)
+            if (Initilized)
                 return;
             numThreads = MaxServerConnections;
             servers = new Thread[numThreads];
@@ -187,12 +191,40 @@ namespace Nistec.Channels
                 servers[i].IsBackground = true;
                 servers[i].Start();
             }
-            Initilize = true;
+            Initilized = true;
             OnLoad();
 
             Log.Info("Waiting for client connection...\n");
 
         }
+        void StopInternal()
+        {
+            try
+            {
+                Log.Info("The pipe server listener Stoping...");
+                Thread.Sleep(3000);
+
+                //if (servers != null)
+                //{
+                //    for (int i = 0; i < servers.Length; i++)
+                //    {
+                //        servers[i].Interrupt();
+                //        servers[i].Join(5000);
+                //    }
+                //}
+                Initilized = false;
+            }
+            catch (ThreadInterruptedException ex)
+            {
+                /* Clean up. */
+                OnFault("The pipe server listener on Stop throws ThreadInterruptedException: ", ex);
+            }
+            catch (Exception ex)
+            {
+                OnFault("The pipe server listener on Stop throws the error: ", ex);
+            }
+        }
+
         /// <summary>
         /// On load.
         /// </summary>
@@ -215,6 +247,13 @@ namespace Nistec.Channels
 
         }
         /// <summary>
+        /// On pause.
+        /// </summary>
+        protected virtual void OnPause()
+        {
+
+        }
+        /// <summary>
         /// On error.
         /// </summary>
         protected virtual void OnFault(string message, Exception ex)
@@ -227,9 +266,19 @@ namespace Nistec.Channels
         /// </summary>
         public void Start()
         {
-            //IsAsync = isAsync;
+            if (_State == ChannelServiceState.Paused) {
+
+                if (Initilized)
+                {
+                    Listen = true;
+                    _State = ChannelServiceState.Started;
+                    OnStart();
+                    return;
+                }
+            }
             Listen = true;
             Init();
+            _State = ChannelServiceState.Started;
             OnStart();
         }
         /// <summary>
@@ -238,7 +287,18 @@ namespace Nistec.Channels
         public void Stop()
         {
             Listen = false;
+            StopInternal();
+            _State = ChannelServiceState.Stoped;
             OnStop();
+        }
+        /// <summary>
+        /// Pause pipe server listner.
+        /// </summary>
+        public void Pause()
+        {
+            _State = ChannelServiceState.Paused;
+            OnPause();
+            Log.Debug("PipeServer paused: {0}", HostName);
         }
 
         #endregion
@@ -369,6 +429,12 @@ namespace Nistec.Channels
             {
                 try
                 {
+                    if (_State == ChannelServiceState.Paused)
+                    {
+                        Thread.Sleep(10000);
+                        continue;
+                    }
+
                     lock (mlock)
                     {
                         pipeServer = CreatePipeAccessControl();
@@ -425,6 +491,12 @@ namespace Nistec.Channels
             {
                 try
                 {
+
+                    if (_State == ChannelServiceState.Paused)
+                    {
+                        Thread.Sleep(10000);
+                        continue;
+                    }
 
                     pipeServer = CreatePipeAccessControl();
 
@@ -596,7 +668,13 @@ namespace Nistec.Channels
 
                 try
                 {
-                   pipeServerAsync = CreatePipeAccessControl();
+                    if (_State == ChannelServiceState.Paused)
+                    {
+                        Thread.Sleep(10000);
+                        continue;
+                    }
+
+                    pipeServerAsync = CreatePipeAccessControl();
                    server = new ServerCom(pipeServerAsync);
 
                     // Wait for the client to connect.
