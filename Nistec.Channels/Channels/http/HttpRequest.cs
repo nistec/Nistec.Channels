@@ -1514,9 +1514,9 @@ namespace Nistec.Channels.Http
                 throw new ArgumentNullException("ContentType");
             contentTypes = contentTypes.ToLower();
 
-            if (contentTypes == "application/x-www-form-urlencoded")
+            if (contentTypes.StartsWith("application/x-www-form-urlencoded"))
                 return RequestContentType.Form;
-            else if (contentTypes == "application/json")
+            else if (contentTypes.StartsWith("application/json"))
                 return RequestContentType.Json;
             else if (contentTypes.StartsWith("text/xml"))
                 return RequestContentType.Xml;

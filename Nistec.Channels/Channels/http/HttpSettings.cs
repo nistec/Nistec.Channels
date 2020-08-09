@@ -289,6 +289,15 @@ namespace Nistec.Channels.Http
         }
 
         /// <summary>
+        /// EnsureSettings
+        /// </summary>
+        public void EnsureSettings() {
+
+            HostAddress = GetHostAddress();
+            SslHostAddress = GetSslHostAddress();
+        }
+
+        /// <summary>
         /// Default constractor.
         /// </summary>
         public HttpSettings()
@@ -308,6 +317,7 @@ namespace Nistec.Channels.Http
             SslHostAddress = GetSslHostAddress();
         }
 
+       
         /// <summary>
         /// Constractor with extra parameters
         /// </summary>
