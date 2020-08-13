@@ -137,7 +137,7 @@ namespace Nistec.Channels.Http
             {
                 throw new ArgumentException("Invalid Host Address");
             }
-            
+
             //if (!_listener.Prefixes.Contains(Settings.HostAddress))
             //{
             //    _listener.Prefixes.Add(Settings.HostAddress);
@@ -321,6 +321,14 @@ namespace Nistec.Channels.Http
         protected virtual void WriteResponse(HttpListenerContext context, TransStream bResponse)
         {
             var response = context.Response;
+            if (context.Request.HttpMethod == "OPTIONS")
+            {
+                if (Settings.Allow_Headers)
+                    response.AddHeader("Access-Control-Allow-Headers", Settings.AllowAccessHeaders);
+            }
+            if (Settings.Allow_Origin)
+                response.AppendHeader("Access-Control-Allow-Origin", Settings.AllowAccessOrigin);
+
             if (bResponse == null)
             {
                 response.StatusCode = (int)HttpStatusCode.NoContent;
@@ -356,12 +364,21 @@ namespace Nistec.Channels.Http
         protected virtual void WriteResponse(HttpListenerContext context, string strResponse)
         {
             var response = context.Response;
+            if (context.Request.HttpMethod == "OPTIONS")
+            {
+                if (Settings.Allow_Headers)
+                    response.AddHeader("Access-Control-Allow-Headers", Settings.AllowAccessHeaders);
+            }
+            if (Settings.Allow_Origin)
+                response.AppendHeader("Access-Control-Allow-Origin", Settings.AllowAccessOrigin);
+
             if (strResponse == null)
             {
                 response.StatusCode = (int)HttpStatusCode.NoContent;
                 response.StatusDescription = "No response";
                 return;
             }
+
             response.ContentType = "text/plain";
             byte[] buffer = System.Text.Encoding.UTF8.GetBytes(strResponse);
             int cbResponse = buffer.Length;

@@ -193,6 +193,13 @@ namespace Nistec.Channels.Http
         /// </summary>
         public bool IsAsync { get; set; }
 
+        public string AllowAccessOrigin { get; set; }
+        public string AllowAccessHeaders { get; set; }
+
+        public bool Allow_Origin { get{ return !string.IsNullOrEmpty(AllowAccessOrigin); } }
+        public bool Allow_Headers { get { return !string.IsNullOrEmpty(AllowAccessHeaders); } }
+
+
         /// <summary>
         /// Ensure Hot Address
         /// </summary>
@@ -315,6 +322,8 @@ namespace Nistec.Channels.Http
             MaxErrors = DefaultMaxErrors;
             HostAddress = GetHostAddress();
             SslHostAddress = GetSslHostAddress();
+            AllowAccessOrigin = "*";
+            AllowAccessOrigin = "*";
         }
 
        
@@ -371,7 +380,7 @@ namespace Nistec.Channels.Http
             Address = table.GetValue("Address");
             Port = table.Get<int>("Port");
             SslPort = table.Get<int>("SslPort");
-            SslEnabled = table.Get<bool>("SslEnabled",false);
+            SslEnabled = table.Get<bool>("SslEnabled", false);
             Method = table.GetValue("Method");
             ConnectTimeout = (int)table.Get<int>("ConnectTimeout", DefaultConnectTimeout);
             //ProcessTimeout = (int)table.Get<int>("ProcessTimeout", DefaultProcessTimeout);
@@ -383,6 +392,8 @@ namespace Nistec.Channels.Http
             }
             HostAddress = GetHostAddress();
             SslHostAddress = GetSslHostAddress();
+            AllowAccessOrigin = table.GetValue("AllowAccessOrigin");
+            AllowAccessHeaders = table.GetValue("AllowAccessHeaders");
         }
 
         /// <summary>
