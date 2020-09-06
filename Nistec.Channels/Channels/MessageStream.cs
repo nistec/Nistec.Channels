@@ -172,16 +172,19 @@ namespace Nistec.Channels
             Id = info.GetValue<string>("Id");
             BodyStream = (NetStream)info.GetValue("BodyStream");
             TypeName = info.GetValue<string>("TypeName");
-            EncodingName = info.GetValue<string>("EncodingName");
             Formatter = (Formatters)info.GetValue<int>("Formatter");
             Label = info.GetValue<string>("Label");
             GroupId = info.GetValue<string>("GroupId");
             Command = info.GetValue<string>("Command");
+            Sender = info.GetValue<string>("Sender ");
             //IsDuplex = info.GetValue<bool>("IsDuplex");
             DuplexType =(DuplexTypes) info.GetValue<int>("DuplexType");
             Expiration = info.GetValue<int>("Expiration");
             Modified = info.GetValue<DateTime>("Modified");
             Args = (NameValueArgs)info.GetValue("Args");
+            TransformType = (TransformType)info.GetValue<int>("TransformType");
+            EncodingName = Types.NZorEmpty(info.GetValue<string>("EncodingName"), DefaultEncoding); 
+
         }
 
         void Copy(MessageStream copy)
@@ -189,16 +192,18 @@ namespace Nistec.Channels
             Id = copy.Id;
             BodyStream = copy.BodyStream;
             TypeName = copy.TypeName;
-            EncodingName = copy.EncodingName;
             Formatter = copy.Formatter;
             Label = copy.Label;
             GroupId = copy.GroupId;
             Command = copy.Command;
+            Sender = copy.Sender;
             //IsDuplex = copy.IsDuplex;
             DuplexType = copy.DuplexType;
             Expiration = copy.Expiration;
             Modified = copy.Modified;
             Args = copy.Args;
+            TransformType= copy.TransformType;
+            EncodingName = copy.EncodingName;
         }
         #endregion
 
@@ -409,7 +414,6 @@ namespace Nistec.Channels
             streamer.WriteString(Id);
             streamer.WriteValue(BodyStream);
             streamer.WriteString(TypeName);
-            streamer.WriteString(EncodingName);
             streamer.WriteValue((int)Formatter);
             streamer.WriteString(Label);
             streamer.WriteString(GroupId);
@@ -422,6 +426,7 @@ namespace Nistec.Channels
             streamer.WriteValue(Modified);
             streamer.WriteValue(Args);
             streamer.WriteValue((byte)TransformType);
+            streamer.WriteString(EncodingName);
             streamer.Flush();
         }
 
@@ -439,7 +444,6 @@ namespace Nistec.Channels
             Id = streamer.ReadString();
             BodyStream = (NetStream)streamer.ReadValue();
             TypeName = streamer.ReadString();
-            EncodingName = Types.NZorEmpty(streamer.ReadString(), DefaultEncoding);
             Formatter = (Formatters)streamer.ReadValue<int>();
             Label = streamer.ReadString();
             GroupId = streamer.ReadString();
@@ -451,6 +455,7 @@ namespace Nistec.Channels
             Modified = streamer.ReadValue<DateTime>();
             Args = (NameValueArgs)streamer.ReadValue();
             TransformType =(TransformType) streamer.ReadValue<byte>();
+            EncodingName = Types.NZorEmpty(streamer.ReadString(), DefaultEncoding);
         }
         /// <summary>
         /// Write the current object include the body and properties to <see cref="ISerializerContext"/> using <see cref="SerializeInfo"/>.
@@ -462,7 +467,6 @@ namespace Nistec.Channels
             info.Add("Id", Id);
             info.Add("BodyStream", BodyStream);
             info.Add("TypeName", TypeName);
-            info.Add("EncodingName", EncodingName);
             info.Add("Formatter", (int)Formatter);
             info.Add("Label", Label);
             info.Add("GroupId", GroupId);
@@ -474,6 +478,7 @@ namespace Nistec.Channels
             info.Add("Modified", Modified);
             info.Add("Args",Args);
             info.Add("TransformType", (byte)TransformType);
+            info.Add("EncodingName", EncodingName);
             context.WriteSerializeInfo(info);
         }
 
@@ -489,7 +494,6 @@ namespace Nistec.Channels
             Id = info.GetValue<string>("Id");
             BodyStream = (NetStream)info.GetValue("BodyStream");
             TypeName = info.GetValue<string>("TypeName");
-            EncodingName = Types.NZorEmpty(info.GetValue<string>("EncodingName"), DefaultEncoding);
             Formatter = (Formatters)info.GetValue<int>("Formatter");
             Label = info.GetValue<string>("Label");
             GroupId = info.GetValue<string>("GroupId");
@@ -501,6 +505,7 @@ namespace Nistec.Channels
             Modified = info.GetValue<DateTime>("Modified");
             Args = (NameValueArgs)info.GetValue("Args");
             TransformType =(TransformType) info.GetValue<byte>("TransformType");
+            EncodingName = Types.NZorEmpty(info.GetValue<string>("EncodingName"), DefaultEncoding);
         }
 
 
@@ -866,24 +871,26 @@ namespace Nistec.Channels
         public static IDictionary ConvertTo(MessageStream message)
         {
             IDictionary dict = new Dictionary<string, object>();
-            dict.Add("Command", message.Command);
             dict.Add("Id", message.Id);
+            if (message.BodyStream != null)
+                dict.Add("Body", message.BodyStream);
+            dict.Add("TypeName", message.TypeName);
+            dict.Add("Formatter", (byte)message.Formatter);
             dict.Add("Label", message.Label);
             dict.Add("GroupId", message.GroupId);
-
+            dict.Add("Command", message.Command);
+            dict.Add("Sender", message.Sender);
+            dict.Add("DuplexType", (byte)message.DuplexType);
             dict.Add("Expiration", message.Expiration);
             dict.Add("Modified", message.Modified);
-            dict.Add("TypeName", message.TypeName);
+            if (message.Args != null)
+                dict.Add("Args", message.Args);
+            dict.Add("TransformType", (byte)message.TransformType);
             dict.Add("EncodingName", message.EncodingName);
-            dict.Add("TransformType", message.TransformType);
 
             if (message.IsDuplex)
                 dict.Add("IsDuplex", message.IsDuplex);
 
-            if (message.Args != null)
-                dict.Add("Args", message.Args);
-            if (message.BodyStream != null)
-                dict.Add("Body", message.BodyStream);
             //if (message.ReturnTypeName != null)
             //    dict.Add("ReturnTypeName", message.ReturnTypeName);
             return dict;
@@ -903,24 +910,26 @@ namespace Nistec.Channels
         {
             dynamic entity = new DynamicEntity();
             entity.Id = this.Id;
-            entity.TypeName = this.TypeName;
-            entity.EncodingName = this.EncodingName;
-            entity.Formatter = this.Formatter;
-            entity.Label = this.Label;
-            entity.GroupId = this.GroupId;
-            entity.Command = this.Command;
-            entity.Sender = this.Sender;
-            entity.IsDuplex = this.IsDuplex;
-            entity.Expiration = this.Expiration;
-            entity.Modified = this.Modified;
-            entity.Args = this.Args;
-            entity.TransformType = (byte)this.TransformType;
             if (BodyStream != null)
             {
                 var body = this.DecodeBody();
                 if (body != null)
                     entity.Body = DictionaryUtil.ToDictionaryOrObject(body, "");
             }
+            entity.TypeName = this.TypeName;
+            entity.Formatter = this.Formatter;
+            entity.Label = this.Label;
+            entity.GroupId = this.GroupId;
+            entity.Command = this.Command;
+            entity.Sender = this.Sender;
+            //entity.IsDuplex = this.IsDuplex;
+            DuplexType = this.DuplexType;
+            entity.Expiration = this.Expiration;
+            entity.Modified = this.Modified;
+            entity.Args = this.Args;
+            entity.TransformType = (byte)this.TransformType;
+            entity.EncodingName = this.EncodingName;
+           
             return entity;
 
         }
@@ -945,21 +954,25 @@ namespace Nistec.Channels
                 body = BinarySerializer.ConvertFromStream(BodyStream);
             }
 
-            serializer.WriteToken("Command", Command);
-            serializer.WriteToken("Sender", Sender);
+            
             serializer.WriteToken("Id", Id);
+            serializer.WriteToken("BodyStream", BodyStream == null ? null : BodyStream.ToBase64String());
             serializer.WriteToken("TypeName", TypeName);
-            serializer.WriteToken("EncodingName", EncodingName);
+            serializer.WriteToken("Formatter", Formatter);
             serializer.WriteToken("Label", Label, null);
             serializer.WriteToken("GroupId", GroupId, null);
-            serializer.WriteToken("BodyStream", BodyStream == null ? null : BodyStream.ToBase64String());
-            serializer.WriteToken("Modified", Modified);
-            serializer.WriteToken("Formatter", Formatter);
-            //serializer.WriteToken("IsDuplex", IsDuplex);
+            serializer.WriteToken("Command", Command);
+            serializer.WriteToken("Sender", Sender);
+
             serializer.WriteToken("DuplexType", (int)DuplexType);
             serializer.WriteToken("Expiration", Expiration);
+            serializer.WriteToken("Modified", Modified);
+
+            //serializer.WriteToken("IsDuplex", IsDuplex);
             serializer.WriteToken("Args", Args);
             serializer.WriteToken("TransformType", TransformType);
+            serializer.WriteToken("EncodingName", EncodingName);
+
             serializer.WriteToken("Body", body);
 
             return serializer.WriteOutput(pretty);
@@ -977,21 +990,22 @@ namespace Nistec.Channels
 
             if (dic != null)
             {
-                Command = dic.Get<string>("Command".ToLower());
-                Sender = dic.Get<string>("Sender".ToLower());
-                Id = dic.Get<string>("Id".ToLower());
-                TypeName = dic.Get<string>("TypeName".ToLower());
-                EncodingName = Types.NZorEmpty(dic.Get<string>("EncodingName".ToLower()), DefaultEncoding);
-                Label = dic.Get<string>("Label".ToLower());
-                GroupId = dic.Get<string>("GroupId".ToLower());
-                var body = dic.Get<string>("BodyStream".ToLower());
-                Modified = dic.Get<DateTime>("Modified".ToLower());
-                Formatter = dic.GetEnum<Formatters>("Formatter".ToLower(), Formatters.BinarySerializer);
-                //IsDuplex = dic.Get<bool>("IsDuplex".ToLower());
-                DuplexType =(DuplexTypes) dic.Get<int>("DuplexType".ToLower());
-                Expiration = dic.Get<int>("Expiration".ToLower());
-                Args = NameValueArgs.Convert((IDictionary<string, object>)dic.Get("Args".ToLower()));// dic.Get<NameValueArgs>("Args".ToLower());
-                TransformType =(TransformType) dic.GetEnum<TransformType>("TransformType".ToLower(), TransformType.Object);
+                Id = dic.Get<string>("Id");
+                var body = dic.Get<string>("BodyStream");
+                TypeName = dic.Get<string>("TypeName");
+                Formatter = dic.GetEnum<Formatters>("Formatter", Formatters.BinarySerializer);
+                Label = dic.Get<string>("Label");
+                GroupId = dic.Get<string>("GroupId");
+                Command = dic.Get<string>("Command");
+                Sender = dic.Get<string>("Sender");
+
+                DuplexType = (DuplexTypes)dic.Get<int>("DuplexType");
+                Expiration = dic.Get<int>("Expiration");
+                Modified = dic.Get<DateTime>("Modified");
+                //IsDuplex = dic.Get<bool>("IsDuplex");
+                Args = NameValueArgs.Convert((IDictionary<string, object>)dic.Get("Args"));// dic.Get<NameValueArgs>("Args");
+                TransformType =(TransformType) dic.GetEnum<TransformType>("TransformType", TransformType.Object);
+                EncodingName = Types.NZorEmpty(dic.Get<string>("EncodingName"), DefaultEncoding);
                 if (body != null && body.Length > 0)
                     BodyStream = NetStream.FromBase64String(body);
             }
@@ -1006,27 +1020,29 @@ namespace Nistec.Channels
 
             if (queryString != null)
             {
-                Command = queryString.Get<string>("Command".ToLower());
-                Sender = queryString.Get<string>("Sender".ToLower());
-                Id = queryString.Get<string>("Id".ToLower());
-                TypeName = queryString.Get<string>("TypeName".ToLower());
-                EncodingName = Types.NZorEmpty(queryString.Get<string>("EncodingName".ToLower()), DefaultEncoding);
-                Label = queryString.Get<string>("Label".ToLower());
-                GroupId = queryString.Get<string>("GroupId".ToLower());
-                var body = queryString.Get<string>("BodyStream".ToLower());
-                Modified = queryString.Get<DateTime>("Modified".ToLower(), DateTime.Now);
-                Formatter = queryString.GetEnum<Formatters>("Formatter".ToLower(), Formatters.Json);
-                //IsDuplex = queryString.Get<bool>("IsDuplex".ToLower());
-                DuplexType =(DuplexTypes) queryString.Get<int>("DuplexType".ToLower());
-                Expiration = queryString.Get<int>("Expiration".ToLower());
-                var args= queryString.Get("Args".ToLower());
+
+                Id = queryString.Get<string>("Id");
+                var body = queryString.Get<string>("BodyStream");
+                TypeName = queryString.Get<string>("TypeName");
+                Formatter = queryString.GetEnum<Formatters>("Formatter", Formatters.Json);
+                Label = queryString.Get<string>("Label");
+                GroupId = queryString.Get<string>("GroupId");
+                Command = queryString.Get<string>("Command");
+                Sender = queryString.Get<string>("Sender");
+
+                DuplexType = (DuplexTypes)queryString.Get<int>("DuplexType");
+                Expiration = queryString.Get<int>("Expiration");
+                Modified = queryString.Get<DateTime>("Modified", DateTime.Now);
+                //IsDuplex = queryString.Get<bool>("IsDuplex");
+                var args= queryString.Get("Args");
                 if(args!=null)
                 {
                     string[] nameValue= args.SplitTrim(':', ',', ';');
                     Args = NameValueArgs.Get(nameValue);
                 }
-                //Args = NameValueArgs.Convert((IDictionary<string, object>)queryString.Get("Args".ToLower()));//queryString.Get<NameValueArgs>("Args".ToLower());
-                TransformType = (TransformType)queryString.GetEnum<TransformType>("TransformType".ToLower(), TransformType.Object);
+                //Args = NameValueArgs.Convert((IDictionary<string, object>)queryString.Get("Args"));//queryString.Get<NameValueArgs>("Args");
+                TransformType = (TransformType)queryString.GetEnum<TransformType>("TransformType", TransformType.Object);
+                EncodingName = Types.NZorEmpty(queryString.Get<string>("EncodingName"), DefaultEncoding);
                 if (body != null && body.Length > 0)
                     BodyStream = NetStream.FromBase64String(body);
             }
@@ -1089,21 +1105,24 @@ namespace Nistec.Channels
         {
             MessageStream message = Factory(protocol);
 
-            message.Command = dict.Get<string>("Command");
-            message.Sender = dict.Get<string>("Sender");
+
             message.Id = dict.Get<string>("Id");
-            message.Args = dict.Get<NameValueArgs>("Args");
             message.BodyStream = dict.Get<NetStream>("Body", null);//, ConvertDescriptor.Implicit),
-            message.Expiration = dict.Get<int>("Expiration", 0);
-            //message.IsDuplex = dict.Get<bool>("IsDuplex", true);
-            message.DuplexType =(DuplexTypes) dict.Get<int>("DuplexType", 0);
-            
-            message.Modified = dict.Get<DateTime>("Modified", DateTime.Now);
             message.TypeName = dict.Get<string>("TypeName");
-            message.EncodingName = Types.NZorEmpty(dict.Get<string>("EncodingName"), DefaultEncoding);
+            message.Formatter = (Formatters)dict.Get<byte>("Formatter");
             message.Label = dict.Get<string>("Label");
             message.GroupId = dict.Get<string>("GroupId");
+            message.Command = dict.Get<string>("Command");
+            message.Sender = dict.Get<string>("Sender");
+
+            message.DuplexType = (DuplexTypes)dict.Get<int>("DuplexType", 0);
+            message.Expiration = dict.Get<int>("Expiration", 0);
+            //message.IsDuplex = dict.Get<bool>("IsDuplex", true);
+            
+            message.Modified = dict.Get<DateTime>("Modified", DateTime.Now);
+            message.Args = dict.Get<NameValueArgs>("Args");
             message.TransformType = (TransformType)dict.Get<byte>("TransformType");
+            message.EncodingName = Types.NZorEmpty(dict.Get<string>("EncodingName"), DefaultEncoding);
 
             return message;
         }
