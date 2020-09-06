@@ -51,6 +51,10 @@ namespace Nistec.Channels
         /// Get the default formatter.
         /// </summary>
         public static Formatters DefaultFormatter { get { return Formatters.BinarySerializer; } }
+        /// <summary>
+        /// DefaultEncoding utf-8
+        /// </summary>
+        public const string DefaultEncoding = "utf-8";
 
         /// <summary>
         /// Get or Set The message Id.
@@ -114,7 +118,7 @@ namespace Nistec.Channels
         }
 
         /// <summary>
-        ///  Get or Set The message expiration.
+        ///  Get or Set The message expiration int minutes.
         /// </summary>
         public int Expiration { get; set; }
         /// <summary>
@@ -133,7 +137,11 @@ namespace Nistec.Channels
         /// Get or Set The message GroupId.
         /// </summary>
         public string GroupId { get; set; }
- 
+
+        /// <summary>
+        /// Get or set The message encoding, Default=utf-8.
+        /// </summary>
+        public string EncodingName { get; set; }
 
         #endregion
 
@@ -144,6 +152,7 @@ namespace Nistec.Channels
         public MessageStream()
         {
             Modified = DateTime.Now;
+            EncodingName = "utf-8";
         }
         /// <summary>
         /// Initialize a new instance of MessageStream from stream using for <see cref="ISerialEntity"/>.
@@ -163,6 +172,7 @@ namespace Nistec.Channels
             Id = info.GetValue<string>("Id");
             BodyStream = (NetStream)info.GetValue("BodyStream");
             TypeName = info.GetValue<string>("TypeName");
+            EncodingName = info.GetValue<string>("EncodingName");
             Formatter = (Formatters)info.GetValue<int>("Formatter");
             Label = info.GetValue<string>("Label");
             GroupId = info.GetValue<string>("GroupId");
@@ -179,6 +189,7 @@ namespace Nistec.Channels
             Id = copy.Id;
             BodyStream = copy.BodyStream;
             TypeName = copy.TypeName;
+            EncodingName = copy.EncodingName;
             Formatter = copy.Formatter;
             Label = copy.Label;
             GroupId = copy.GroupId;
@@ -335,11 +346,35 @@ namespace Nistec.Channels
         #endregion
 
         #region Convert
+
+        /// <summary>
+        /// Convert body to string.
+        /// </summary>
+        /// <returns></returns>
+        public string BodyToString()
+        {
+            if (BodyStream == null)
+                return null;
+            return System.Text.Encoding.GetEncoding(Types.NZorEmpty(EncodingName, DefaultEncoding)).GetString(BodyStream.ToArray());
+        }
+
+        /// <summary>
+        /// Convert body to json string.
+        /// </summary>
+        /// <returns></returns>
+        public string BodyToJson<T>()
+        {
+            if (BodyStream == null)
+                return null;
+            T body = DecodeBody<T>();
+            return JsonSerializer.Serialize(body);
+        }
+
         /// <summary>
         /// Convert body to base 64 string.
         /// </summary>
         /// <returns></returns>
-        public string ConvertToBase64()
+        public string BodyToBase64()
         {
             if (BodyStream == null)
                 return null;
@@ -374,6 +409,7 @@ namespace Nistec.Channels
             streamer.WriteString(Id);
             streamer.WriteValue(BodyStream);
             streamer.WriteString(TypeName);
+            streamer.WriteString(EncodingName);
             streamer.WriteValue((int)Formatter);
             streamer.WriteString(Label);
             streamer.WriteString(GroupId);
@@ -403,6 +439,7 @@ namespace Nistec.Channels
             Id = streamer.ReadString();
             BodyStream = (NetStream)streamer.ReadValue();
             TypeName = streamer.ReadString();
+            EncodingName = Types.NZorEmpty(streamer.ReadString(), DefaultEncoding);
             Formatter = (Formatters)streamer.ReadValue<int>();
             Label = streamer.ReadString();
             GroupId = streamer.ReadString();
@@ -425,6 +462,7 @@ namespace Nistec.Channels
             info.Add("Id", Id);
             info.Add("BodyStream", BodyStream);
             info.Add("TypeName", TypeName);
+            info.Add("EncodingName", EncodingName);
             info.Add("Formatter", (int)Formatter);
             info.Add("Label", Label);
             info.Add("GroupId", GroupId);
@@ -451,6 +489,7 @@ namespace Nistec.Channels
             Id = info.GetValue<string>("Id");
             BodyStream = (NetStream)info.GetValue("BodyStream");
             TypeName = info.GetValue<string>("TypeName");
+            EncodingName = Types.NZorEmpty(info.GetValue<string>("EncodingName"), DefaultEncoding);
             Formatter = (Formatters)info.GetValue<int>("Formatter");
             Label = info.GetValue<string>("Label");
             GroupId = info.GetValue<string>("GroupId");
@@ -835,6 +874,7 @@ namespace Nistec.Channels
             dict.Add("Expiration", message.Expiration);
             dict.Add("Modified", message.Modified);
             dict.Add("TypeName", message.TypeName);
+            dict.Add("EncodingName", message.EncodingName);
             dict.Add("TransformType", message.TransformType);
 
             if (message.IsDuplex)
@@ -864,6 +904,7 @@ namespace Nistec.Channels
             dynamic entity = new DynamicEntity();
             entity.Id = this.Id;
             entity.TypeName = this.TypeName;
+            entity.EncodingName = this.EncodingName;
             entity.Formatter = this.Formatter;
             entity.Label = this.Label;
             entity.GroupId = this.GroupId;
@@ -908,6 +949,7 @@ namespace Nistec.Channels
             serializer.WriteToken("Sender", Sender);
             serializer.WriteToken("Id", Id);
             serializer.WriteToken("TypeName", TypeName);
+            serializer.WriteToken("EncodingName", EncodingName);
             serializer.WriteToken("Label", Label, null);
             serializer.WriteToken("GroupId", GroupId, null);
             serializer.WriteToken("BodyStream", BodyStream == null ? null : BodyStream.ToBase64String());
@@ -939,6 +981,7 @@ namespace Nistec.Channels
                 Sender = dic.Get<string>("Sender".ToLower());
                 Id = dic.Get<string>("Id".ToLower());
                 TypeName = dic.Get<string>("TypeName".ToLower());
+                EncodingName = Types.NZorEmpty(dic.Get<string>("EncodingName".ToLower()), DefaultEncoding);
                 Label = dic.Get<string>("Label".ToLower());
                 GroupId = dic.Get<string>("GroupId".ToLower());
                 var body = dic.Get<string>("BodyStream".ToLower());
@@ -967,6 +1010,7 @@ namespace Nistec.Channels
                 Sender = queryString.Get<string>("Sender".ToLower());
                 Id = queryString.Get<string>("Id".ToLower());
                 TypeName = queryString.Get<string>("TypeName".ToLower());
+                EncodingName = Types.NZorEmpty(queryString.Get<string>("EncodingName".ToLower()), DefaultEncoding);
                 Label = queryString.Get<string>("Label".ToLower());
                 GroupId = queryString.Get<string>("GroupId".ToLower());
                 var body = queryString.Get<string>("BodyStream".ToLower());
@@ -1056,6 +1100,7 @@ namespace Nistec.Channels
             
             message.Modified = dict.Get<DateTime>("Modified", DateTime.Now);
             message.TypeName = dict.Get<string>("TypeName");
+            message.EncodingName = Types.NZorEmpty(dict.Get<string>("EncodingName"), DefaultEncoding);
             message.Label = dict.Get<string>("Label");
             message.GroupId = dict.Get<string>("GroupId");
             message.TransformType = (TransformType)dict.Get<byte>("TransformType");
@@ -1190,9 +1235,7 @@ namespace Nistec.Channels
             return TransformType.Object;
         }
         #endregion
-
-
-
+               
         #region Read/Write pipe
 
         public string ReadResponseAsJson(NamedPipeClientStream stream, int ReceiveBufferSize, TransformType transformType, bool isTransStream)
