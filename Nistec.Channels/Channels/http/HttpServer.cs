@@ -396,12 +396,12 @@ namespace Nistec.Channels.Http
 
         #region Run
 
-        protected void OnReadRequest(HttpListenerContext context)
+        protected virtual void OnReadRequest(HttpListenerContext context)
         {
 
 
         }
-        protected void OnWriteResponse(HttpListenerResponse response)
+        protected virtual void OnWriteResponse(HttpListenerResponse response)
         {
 
 
