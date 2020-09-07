@@ -354,6 +354,8 @@ namespace Nistec.Channels.Http
             response.ContentLength64 = buffer.Length;
             response.OutputStream.Write(buffer, 0, buffer.Length);
             response.OutputStream.Close();
+
+            OnWriteResponse(response);
         }
 
         /// <summary>
@@ -396,12 +398,17 @@ namespace Nistec.Channels.Http
 
         #region Run
 
-        protected virtual void OnReadRequest(HttpListenerContext context)
+        protected virtual void OnReadRequest(HttpListenerRequest request)
         {
 
 
         }
         protected virtual void OnWriteResponse(HttpListenerResponse response)
+        {
+
+
+        }
+        protected virtual void RequestClientInfo(System.Security.Principal.IPrincipal user)
         {
 
 
@@ -542,7 +549,10 @@ namespace Nistec.Channels.Http
         {
             try
             {
-                OnReadRequest(context);
+                OnReadRequest(context.Request);
+
+                if (context.User != null)
+                    RequestClientInfo(context.User);
 
                 HttpRequestInfo requestInfo = HttpRequestInfo.Read(context.Request);
 
