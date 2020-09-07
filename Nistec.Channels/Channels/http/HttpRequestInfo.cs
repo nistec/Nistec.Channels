@@ -37,7 +37,7 @@ using System.Collections.Specialized;
 namespace Nistec.Channels.Http
 {
 
-    public enum HttpBodyType {Body,QueryString, UrlArgs }
+    public enum HttpBodyType { Body, QueryString, UrlArgs }
 
     public class HttpRequestInfo
     {
@@ -50,8 +50,9 @@ namespace Nistec.Channels.Http
         public Uri Url { get; set; }
         public NameValueCollection QueryString { get; set; }
         public HttpBodyType BodyType { get; private set; }
+        public HttpListenerRequest Request { get; private set; }
 
-    public override string ToString()
+        public override string ToString()
         {
             var sb = new StringBuilder();
             sb.AppendLine(string.Format("HttpMethod {0}", HttpMethod));
@@ -65,6 +66,7 @@ namespace Nistec.Channels.Http
         public static HttpRequestInfo Read(HttpListenerRequest request)
         {
             var info = new HttpRequestInfo();
+            info.Request = request;
             info.HttpMethod = request.HttpMethod;
             info.Url = request.Url;
             if (request.ContentType != null)
@@ -142,6 +144,7 @@ namespace Nistec.Channels.Http
         public string ContentType { get; set; }
         public HttpStatusCode StatusCode { get; set; }
         public string StatusDescription { get; set; }
+        public HttpWebResponse Response { get; set; }
 
         public override string ToString()
         {
@@ -154,6 +157,7 @@ namespace Nistec.Channels.Http
         public static HttpResponseInfo Read(HttpWebResponse response)
         {
             var info = new HttpResponseInfo();
+            info.Response = response;
             info.StatusCode = response.StatusCode;
             info.StatusDescription = response.StatusDescription;
             info.ContentEncoding = response.ContentEncoding;

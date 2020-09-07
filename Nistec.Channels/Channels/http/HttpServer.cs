@@ -388,11 +388,24 @@ namespace Nistec.Channels.Http
             response.ContentLength64 = buffer.Length;
             response.OutputStream.Write(buffer, 0, buffer.Length);
             response.OutputStream.Close();
+
+            OnWriteResponse(response);
         }
 
         #endregion
 
         #region Run
+
+        protected void OnReadRequest(HttpListenerContext context)
+        {
+
+
+        }
+        protected void OnWriteResponse(HttpListenerResponse response)
+        {
+
+
+        }
 
         private void HandleRequests()
         {
@@ -410,6 +423,7 @@ namespace Nistec.Channels.Http
 
                     var contextState = _listener.BeginGetContext(ContextCallback, null);
                     context = (HttpListenerContext)contextState.AsyncState;
+
                     //connected = true;
                     if (IsReady == false)
                     {
@@ -528,6 +542,7 @@ namespace Nistec.Channels.Http
         {
             try
             {
+                OnReadRequest(context);
 
                 HttpRequestInfo requestInfo = HttpRequestInfo.Read(context.Request);
 
