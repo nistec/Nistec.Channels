@@ -99,6 +99,10 @@ namespace Nistec.Channels.Http
         /// </summary>
         public const string DefaultMethod = "post";
         /// <summary>
+        /// DefaultMethod
+        /// </summary>
+        public const string DefaultResponseContentType = "text/plain";
+        /// <summary>
         /// DefaultPort
         /// </summary>
         public const int DefaultPort = 13010;
@@ -148,7 +152,10 @@ namespace Nistec.Channels.Http
         ///  Get or Set request method.
         /// </summary>
         public string Method { get; set; }
-
+        /// <summary>
+        ///  Get or Set response content type, default="text/plain".
+        /// </summary>
+        public string ResponseContentType { get; set; }
         /// <summary>
         ///  Get or Set if ssl is enabled.
         /// </summary>
@@ -195,9 +202,10 @@ namespace Nistec.Channels.Http
 
         public string AllowAccessOrigin { get; set; }
         public string AllowAccessHeaders { get; set; }
-
+        public string AllowAccessMethods { get; set; }
         public bool Allow_Origin { get{ return !string.IsNullOrEmpty(AllowAccessOrigin); } }
         public bool Allow_Headers { get { return !string.IsNullOrEmpty(AllowAccessHeaders); } }
+        public bool Allow_Methos { get { return !string.IsNullOrEmpty(AllowAccessMethods); } }
 
 
         /// <summary>
@@ -324,6 +332,8 @@ namespace Nistec.Channels.Http
             SslHostAddress = GetSslHostAddress();
             AllowAccessOrigin = "*";
             AllowAccessOrigin = "*";
+            AllowAccessMethods = "*";
+            ResponseContentType= "text/plain";
         }
 
        
@@ -382,6 +392,7 @@ namespace Nistec.Channels.Http
             SslPort = table.Get<int>("SslPort");
             SslEnabled = table.Get<bool>("SslEnabled", false);
             Method = table.GetValue("Method");
+            ResponseContentType = table.Get<string>("ResponseContentType", DefaultResponseContentType);
             ConnectTimeout = (int)table.Get<int>("ConnectTimeout", DefaultConnectTimeout);
             //ProcessTimeout = (int)table.Get<int>("ProcessTimeout", DefaultProcessTimeout);
             ReadTimeout = (int)table.Get<int>("ReadTimeout", DefaultReadTimeout);
@@ -394,6 +405,7 @@ namespace Nistec.Channels.Http
             SslHostAddress = GetSslHostAddress();
             AllowAccessOrigin = table.GetValue("AllowAccessOrigin");
             AllowAccessHeaders = table.GetValue("AllowAccessHeaders");
+            AllowAccessMethods = table.GetValue("AllowAccessMethods");
         }
 
         /// <summary>

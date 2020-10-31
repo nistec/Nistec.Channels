@@ -51,14 +51,14 @@ namespace Nistec.Channels.Http
         public NameValueCollection QueryString { get; set; }
         public HttpBodyType BodyType { get; private set; }
         public HttpListenerRequest Request { get; private set; }
-
+        public HttpListenerContext Context { get; internal set; }
         public override string ToString()
         {
             var sb = new StringBuilder();
-            sb.AppendLine(string.Format("HttpMethod {0}", HttpMethod));
-            sb.AppendLine(string.Format("Url {0}", Url));
-            sb.AppendLine(string.Format("ContentType {0}", ContentType));
-            sb.AppendLine(string.Format("ContentLength {0}", ContentLength));
+            sb.AppendLine(string.Format("HttpMethod {0},", HttpMethod));
+            sb.AppendLine(string.Format("Url {0},", Url));
+            sb.AppendLine(string.Format("ContentType {0},", ContentType));
+            sb.AppendLine(string.Format("ContentLength {0},", ContentLength));
             sb.AppendLine(string.Format("Body {0}", Body));
             return sb.ToString();
         }
@@ -149,7 +149,7 @@ namespace Nistec.Channels.Http
         public override string ToString()
         {
             var sb = new StringBuilder();
-            sb.AppendLine(string.Format("StatusCode {0} StatusDescripton {1}", StatusCode, StatusDescription));
+            sb.AppendLine(string.Format("StatusCode {0} StatusDescripton {1},", StatusCode, StatusDescription));
             sb.AppendLine(string.Format("ContentType {0} ContentEncoding {1} ContentLength {2}", ContentType, ContentEncoding, ContentLength));
             sb.AppendLine(string.Format("Body {0}", Body));
             return sb.ToString();

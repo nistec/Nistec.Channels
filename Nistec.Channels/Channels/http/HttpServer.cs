@@ -36,10 +36,10 @@ using TCP = System.Net.Sockets;
 
 namespace Nistec.Channels.Http
 {
-   /// <summary>
-   /// Represent a base class for tcp server listner.
-   /// </summary>
-   /// <typeparam name="TRequest"></typeparam>
+    /// <summary>
+    /// Represent a base class for tcp server listner.
+    /// </summary>
+    /// <typeparam name="TRequest"></typeparam>
     public abstract class HttpServer<TRequest>
     {
 
@@ -62,7 +62,7 @@ namespace Nistec.Channels.Http
         /// <summary>
         /// Get or Set Logger that implements <see cref="ILogger"/> interface.
         /// </summary>
-        public ILogger Log { get { return _Logger; } set { if (value != null)_Logger = value; } }
+        public ILogger Log { get { return _Logger; } set { if (value != null) _Logger = value; } }
 
         /// <summary>
         /// Get current <see cref="HttpSettings"/> settings.
@@ -73,7 +73,7 @@ namespace Nistec.Channels.Http
 
         #region ctor
 
- 
+
         /// <summary>
         /// Constractor using host configuration.
         /// </summary>
@@ -100,7 +100,7 @@ namespace Nistec.Channels.Http
         #endregion
 
         #region Initilize
-        
+
         int httpErrors = 0;
         int MAX_ERRORS = HttpSettings.DefaultMaxErrors;
 
@@ -177,7 +177,7 @@ namespace Nistec.Channels.Http
             Log.Exception(message, ex, true, true);
         }
 
-        
+
         public void Start()
         {
             try
@@ -314,6 +314,16 @@ namespace Nistec.Channels.Http
         protected abstract string ExecString(TRequest request);
 
         /// <summary>
+        /// Exec client requset.
+        /// </summary>
+        /// <param name="requestInfo"></param>
+        /// <returns></returns>
+        protected virtual string ExecHttpOptions(HttpRequestInfo requestInfo)
+        {
+            return "Ok";
+        }
+
+        /// <summary>
         /// Write response to client.
         /// </summary>
         /// <param name="context"></param>
@@ -340,7 +350,7 @@ namespace Nistec.Channels.Http
             if (bResponse.PeekTransType() == TransType.Json)
             {
                 var json = bResponse.ReadJson();
-                buffer=Encoding.UTF8.GetBytes(json);
+                buffer = Encoding.UTF8.GetBytes(json);
             }
             else
             {
@@ -373,6 +383,8 @@ namespace Nistec.Channels.Http
             }
             if (Settings.Allow_Origin)
                 response.AppendHeader("Access-Control-Allow-Origin", Settings.AllowAccessOrigin);
+            if (Settings.Allow_Methos)
+                response.AddHeader("Access-Control-Allow-Methods", Settings.AllowAccessMethods);
 
             if (strResponse == null)
             {
@@ -381,7 +393,7 @@ namespace Nistec.Channels.Http
                 return;
             }
 
-            response.ContentType = "text/plain";
+            response.ContentType = Settings.ResponseContentType;// "text/plain";
             byte[] buffer = System.Text.Encoding.UTF8.GetBytes(strResponse);
             int cbResponse = buffer.Length;
 
@@ -499,7 +511,7 @@ namespace Nistec.Channels.Http
                 try
                 {
                     //ProcessRequest(context);
-                    Task task = Task.Factory.StartNew(() => ProcessRequest(context));
+                    Task task = Task.Factory.StartNew(() => ProcessRequestInternal(context));
                     {
                         task.Wait(_timeout);
                         if (task.IsCompleted)
@@ -507,7 +519,7 @@ namespace Nistec.Channels.Http
                             //
                         }
                     }
-                    task.TryDispose();
+                    //task.TryDispose();
                 }
                 catch (Exception e)
                 {
@@ -545,7 +557,7 @@ namespace Nistec.Channels.Http
 
         }
 
-        void ProcessRequest(HttpListenerContext context)
+        void ProcessRequestInternal(HttpListenerContext context)
         {
             try
             {
@@ -555,7 +567,53 @@ namespace Nistec.Channels.Http
                     RequestClientInfo(context.User);
 
                 HttpRequestInfo requestInfo = HttpRequestInfo.Read(context.Request);
+                requestInfo.Context = context;
+                ProcessRequest(context, requestInfo);
 
+                //if (context.Request.HttpMethod == "OPTIONS")
+                //{
+                //    var res = ExecHttpOptions(requestInfo);
+                //    WriteResponse(context, res);
+                //}
+                //else {
+                //    TRequest req = ReadRequest(requestInfo);
+
+                //    if (requestInfo.BodyType == HttpBodyType.Body)
+                //    {
+                //        var res = ExecTransStream(req);
+                //        WriteResponse(context, res);
+                //    }
+                //    else
+                //    {
+                //        var response = ExecString(req);
+                //        WriteResponse(context, response);
+                //    }
+                //}
+                httpErrors = 0;
+                //connected = false;
+            }
+            catch (Exception ex)
+            {
+                ExecFault(context, "The http server throws Exception: " + ex.Message);
+                //OnFault("The http server async ProcessIncomingData throws the error: ", ex);
+            }
+        }
+
+        /// <summary>
+        /// ProcessRequest
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="requestInfo"></param>
+        protected virtual void ProcessRequest(HttpListenerContext context, HttpRequestInfo requestInfo)
+        {
+
+            if (context.Request.HttpMethod == "OPTIONS")
+            {
+                var res = ExecHttpOptions(requestInfo);
+                WriteResponse(context, res);
+            }
+            else
+            {
                 TRequest req = ReadRequest(requestInfo);
 
                 if (requestInfo.BodyType == HttpBodyType.Body)
@@ -568,17 +626,25 @@ namespace Nistec.Channels.Http
                     var response = ExecString(req);
                     WriteResponse(context, response);
                 }
-                httpErrors = 0;
-                //connected = false;
-            }
-            catch (Exception ex)
-            {
-                ExecFault(context, "The http server throws Exception: " + ex.Message);
-                //OnFault("The http server async ProcessIncomingData throws the error: ", ex);
             }
         }
-
         #endregion
+
+        /// <summary>
+        /// Print Headers to string 
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="writeToLoog"></param>
+        /// <returns></returns>
+        public string PrintHeaders(HttpListenerRequest request, bool writeToLoog)
+        {
+            string headers = String.Empty;
+            foreach (var key in request.Headers.AllKeys)
+                headers += key + "=" + request.Headers[key] + Environment.NewLine;
+            if (writeToLoog)
+                Log.Debug("HttpServerChannel OnReadRequest Headers :{0}", headers);
+            return headers;
+        }
     }
 
   
