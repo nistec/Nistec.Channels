@@ -122,19 +122,24 @@ namespace Nistec.Channels.Http
         /// <param name="timeout"></param>
         protected HttpClient(string hostAddress, string method, int timeout)
         {
-            string address;
-            int port;
-            HttpSettings.SplitHostAddress(hostAddress, out address,out port);
+            Settings = HttpSettings.Parse(hostAddress);
+            Settings.ConnectTimeout = timeout <= 0 ? HttpSettings.DefaultConnectTimeout : timeout;
+            Settings.ReadTimeout = timeout <= 0 ? HttpSettings.DefaultReadTimeout : timeout;
+            Settings.Method = method;
 
-            Settings = new HttpSettings()
-            {
-                HostName = address,
-                Address = address,
-                Port = port,
-                ConnectTimeout = timeout <= 0 ? HttpSettings.DefaultConnectTimeout : timeout,
-                ReadTimeout = timeout <= 0 ? HttpSettings.DefaultReadTimeout : timeout,
-                Method = method
-            };
+            //string address;
+            //int port;
+            //HttpSettings.SplitHostAddress(hostAddress, out address,out port);
+
+            //Settings = new HttpSettings()
+            //{
+            //    HostName = address,
+            //    Address = address,
+            //    Port = port,
+            //    ConnectTimeout = timeout <= 0 ? HttpSettings.DefaultConnectTimeout : timeout,
+            //    ReadTimeout = timeout <= 0 ? HttpSettings.DefaultReadTimeout : timeout,
+            //    Method = method
+            //};
 
         }
         /// <summary>
@@ -329,7 +334,7 @@ namespace Nistec.Channels.Http
 
             try
             {
-                response = HttpRequest.DoHttpRequest(Settings.HostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout);
+                response = HttpRequest.DoHttpRequest(Settings.RawHostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout);
                 return response;
 
                 //response = ExecuteJsonRequest(jsonRequest);
@@ -375,7 +380,7 @@ namespace Nistec.Channels.Http
                 //string qs = NameValueArgs GenericArgs.ArgsToQueryString;
 
                 string qs =KeyValueUtil.KeyValueToQueryString(keyValueArgs);
-                response = HttpRequest.DoHttpBinary(Settings.HostAddress, qs, Settings.Method, RequestContentType.Form, Settings.ConnectTimeout);
+                response = HttpRequest.DoHttpBinary(Settings.RawHostAddress, qs, Settings.Method, RequestContentType.Form, Settings.ConnectTimeout);
                 return response;
 
 
@@ -422,7 +427,7 @@ namespace Nistec.Channels.Http
                 //string qs = NameValueArgs GenericArgs.ArgsToQueryString;
 
                 string qs = KeyValueUtil.KeyValueToQueryString(keyValueArgs);
-                response = HttpRequest.DoHttpStream(Settings.HostAddress, qs, Settings.Method, RequestContentType.Form, Settings.ConnectTimeout);
+                response = HttpRequest.DoHttpStream(Settings.RawHostAddress, qs, Settings.Method, RequestContentType.Form, Settings.ConnectTimeout);
                 return response;
 
 
@@ -466,7 +471,7 @@ namespace Nistec.Channels.Http
 
             try
             {
-                response = HttpRequest.DoHttpRequest(Settings.HostAddress, request, Settings.Method, contentType, Settings.ConnectTimeout);
+                response = HttpRequest.DoHttpRequest(Settings.RawHostAddress, request, Settings.Method, contentType, Settings.ConnectTimeout);
                 return response;
 
                 //response = ExecuteRequest(request, contentType);
@@ -512,7 +517,7 @@ namespace Nistec.Channels.Http
                 {
                     var brequest = RequestToStream(message);
                     //var streamResponse = ExecuteRequestStream(brequest);
-                    var streamResponse = HttpRequest.DoHttpTransStream(Settings.HostAddress, brequest, Settings.ConnectTimeout);
+                    var streamResponse = HttpRequest.DoHttpTransStream(Settings.RawHostAddress, brequest, Settings.ConnectTimeout);
 
                     if (message.IsDuplex && brequest != null)
                         return streamResponse;// brequest==null? null: streamResponse.ReadValue();
@@ -522,7 +527,7 @@ namespace Nistec.Channels.Http
                 else
                 {
                     string jsonRequest = RequestToJson(message);
-                    var strResponse = HttpRequest.DoRequestString(Settings.HostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true);
+                    var strResponse = HttpRequest.DoRequestString(Settings.RawHostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true);
                     //var strResponse = ExecuteJsonRequest(jsonRequest);
                     if (message.IsDuplex)
                         return ReadJsonResponse(strResponse, type);
@@ -578,7 +583,7 @@ namespace Nistec.Channels.Http
             try
             {
                 string jsonRequest = RequestToJson(message);
-                return HttpRequest.DoRequestString(Settings.HostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true);
+                return HttpRequest.DoRequestString(Settings.RawHostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true);
                 //return ExecuteJsonRequest(jsonRequest);
 
             }
@@ -632,7 +637,7 @@ namespace Nistec.Channels.Http
                 {
                     var brequest = RequestToStream(message);
                     //var streamResponse = ExecuteRequestStream(brequest);
-                    var streamResponse = HttpRequest.DoHttpTransStream(Settings.HostAddress, brequest, Settings.ConnectTimeout);
+                    var streamResponse = HttpRequest.DoHttpTransStream(Settings.RawHostAddress, brequest, Settings.ConnectTimeout);
                     if (message.IsDuplex && streamResponse!=null)
                     {
                         return GenericTypes.Cast<TResponse>(streamResponse);
@@ -646,7 +651,7 @@ namespace Nistec.Channels.Http
                 else
                 {
                     string jsonRequest = RequestToJson(message);
-                    var strResponse = HttpRequest.DoRequestString(Settings.HostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true);
+                    var strResponse = HttpRequest.DoRequestString(Settings.RawHostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true);
                     //var strResponse = ExecuteJsonRequest(jsonRequest);
                     if (message.IsDuplex)
                         return ReadJsonResponse<TResponse>(strResponse);
@@ -710,7 +715,7 @@ namespace Nistec.Channels.Http
                 {
                     var brequest = RequestToStream(message);
                     //var streamResponse = ExecuteRequestStream(brequest);
-                    HttpRequest.DoHttpTransStreamAsync(Settings.HostAddress, brequest, Settings.ConnectTimeout,(TransStream streamResponse) =>
+                    HttpRequest.DoHttpTransStreamAsync(Settings.RawHostAddress, brequest, Settings.ConnectTimeout,(TransStream streamResponse) =>
                     {
                         if (message.IsDuplex && streamResponse != null)
                         {
@@ -728,7 +733,7 @@ namespace Nistec.Channels.Http
                 else
                 {
                     string jsonRequest = RequestToJson(message);
-                    HttpRequest.DoRequestStringAsync(Settings.HostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true, (string strResponse) => {
+                    HttpRequest.DoRequestStringAsync(Settings.RawHostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true, (string strResponse) => {
                     //var strResponse = ExecuteJsonRequest(jsonRequest);
                     if (message.IsDuplex)
                         onCompleted(ReadJsonResponse<TResponse>(strResponse));
@@ -1029,7 +1034,7 @@ namespace Nistec.Channels.Http
         /// <param name="port"></param>
         /// <param name="method"></param>
         /// <param name="timeout"></param>
-        public HttpClient(string address, int port, string method, int timeout)
+        public HttpClient(string address, int port,string method, int timeout)
             : base(address, port, method, timeout)
         {
 

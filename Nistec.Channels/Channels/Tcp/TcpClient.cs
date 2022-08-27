@@ -108,7 +108,7 @@ namespace Nistec.Channels.Tcp
                 HostName = hostAddress, 
                 Address=hostAddress,
                 ConnectTimeout= connectTimeout,
-                ReadTimeout = readTimeout,
+                ReadTimeout = TcpSettings.EnsureReadTimeout(readTimeout),
                 IsAsync = isAsync,
                 Port = port
             };

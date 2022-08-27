@@ -784,6 +784,34 @@ namespace Nistec.Channels
         }
 
         /// <summary>
+        /// Convert an object of the specified type and whose value is equivalent to the specified object.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="o"></param>
+        /// <returns></returns>
+        public T Cast<T>(object o, bool enableException = false)
+        {
+            if (o is T)
+            {
+                return (T)o;
+            }
+            else
+            {
+                try
+                {
+                    return (T)System.Convert.ChangeType(o, typeof(T));
+                }
+                catch (InvalidCastException cex)
+                {
+                    if (enableException)
+                        throw cex;
+                    return default(T);
+                }
+            }
+
+        }
+
+        /// <summary>
         /// Read response from server.
         /// </summary>
         /// <typeparam name="TResponse"></typeparam>
@@ -795,8 +823,9 @@ namespace Nistec.Channels
         {
             if (TransReader.IsTransStream(typeof(TResponse)))
             {
-                TransStream ts = TransStream.CopyFrom(stream, readTimeout, ReceiveBufferSize);
-                return GenericTypes.Cast<TResponse>(ts, true);
+                TransStream ts = new TransStream(stream, readTimeout, ReceiveBufferSize, TransformType.Stream,true);
+                //TransStream ts = TransStream.CopyFrom(stream, readTimeout, ReceiveBufferSize);
+                return Cast<TResponse>(ts, true);
             }
             using (TransStream ts = new TransStream(stream, readTimeout,ReceiveBufferSize, TransReader.ToTransformType(typeof(TResponse)), false))
             {

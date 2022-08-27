@@ -129,9 +129,9 @@ namespace Nistec.Channels.Http
 
             _listener.Prefixes.Clear();
             if (Settings.IsValidHostAddress())
-                _listener.Prefixes.Add(Settings.HostAddress);
+                _listener.Prefixes.Add(Settings.UriPrefix);// Settings.RawHostAddress);
             if (Settings.IsValidSslHostAddress())
-                _listener.Prefixes.Add(Settings.SslHostAddress);
+                _listener.Prefixes.Add(Settings.SslUriPrefix);// Settings.SslHostAddress);
 
             if (_listener.Prefixes.Count == 0)
             {

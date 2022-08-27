@@ -160,7 +160,10 @@ namespace Nistec.Channels.Http
         ///  Get or Set if ssl is enabled.
         /// </summary>
         public bool SslEnabled { get; set; }
-
+        /// <summary>
+        ///  Get or Set Query String.
+        /// </summary>
+        public string Query { get; set; }
         /// <summary>
         /// Get or Set MaxServerConnections (Only for server side) (Default=1).
         /// </summary>
@@ -219,17 +222,24 @@ namespace Nistec.Channels.Http
         }
 
         /// <summary>
-        ///  Get or Set Full Host Address like "site.com:13010".
+        ///  Get Full Host Address like "site.com:13010".
         /// </summary>
-        public string HostAddress { get; private set; }
+        public string HostAddress { get { return string.Format("{0}:{1}", Address, Port); } }        // private set; }
         /// <summary>
-        ///  Get Raw Host Address.
+        ///  Get Full Host Address like "site.com:13010".
         /// </summary>
-        public string RawHostAddress { get { return string.Format("http:{0}", HostAddress); } }
+        public string SslHostAddress { get { return string.Format("{0}:{1}", Address, SslPort); } }  
+        /// <summary>
+        ///  Get Ssl Host Address.
+        /// </summary>
+        public string RawHostAddress { get { return string.Format("http://{0}{1}", HostAddress, string.IsNullOrEmpty(Query) ? "": "?"+ Query); } }
         /// <summary>
         ///  Get or Set Host Address ssl.
         /// </summary>
-        public string SslHostAddress { get; private set; }
+        public string RawSslHostAddress { get { return string.Format("https://{0}:{1}", SslHostAddress, string.IsNullOrEmpty(Query) ? "" : "?" + Query); } }
+
+        public string UriPrefix { get { return string.Format("http://{0}/", HostAddress); } }
+        public string SslUriPrefix { get { return string.Format("https://{0}/", SslHostAddress); } }
 
         /// <summary>
         /// Get or Set Logger that implements <see cref="ILogger"/> interface.
@@ -245,32 +255,137 @@ namespace Nistec.Channels.Http
                 Port = DefaultPort;
                 return Address.TrimEnd('/') + ":" + Port.ToString() + "/";
         }
-
-        public static void SplitHostAddress(string hostAddress,out string address, out int port)
+        /// <summary>
+        /// Parse rawHostAddress to HttpSettings
+        /// </summary>
+        /// <param name="rawHostAddress"></param>
+        /// <returns></returns>
+        public static HttpSettings Parse(string rawHostAddress)
         {
-            if(hostAddress==null)
+            if (rawHostAddress == null)
             {
-                address = null;
-                port = 0;
+                return null;
             }
-            string[] args= hostAddress.SplitTrim(':');
-
-            if (args.Length == 1)
+            HttpSettings hs = new HttpSettings();
+            string rawaddess = rawHostAddress;
+            string[] qargs = rawHostAddress.SplitTrim('?');
+            if (qargs.Length > 1)
             {
-                address = args[0];
-                port = 0;
-            }
-            else if (args.Length ==2)
-            {
-                address = args[0];
-                port = Types.ToInt(args[1]);
+                rawaddess = qargs[0];
+                hs.Query = qargs[1];
             }
             else
             {
-                address = null;
-                port = 0;
+                rawaddess = qargs[0];
             }
+            if (Regx.RegexValidate("https://", rawaddess))
+            {
+                hs.SslEnabled = true;
+                rawaddess = rawaddess.Replace("https://", "");
+            }
+            else
+            {
+                hs.SslEnabled = false;
+                rawaddess = rawaddess.Replace("http://", "");
+            }
+            string[] args = rawaddess.SplitTrim(':');
+
+            if (args.Length > 2)
+            {
+                hs.Address = args[0];
+                if (hs.SslEnabled)
+                    hs.SslPort = Types.ToInt(args[1]);
+                else
+                    hs.Port = Types.ToInt(args[1]);
+            }
+            else
+            {
+                hs.Address = args[0];
+                hs.Port = 0;
+            }
+            hs.HostName = hs.Address;
+            hs.ConnectTimeout = HttpSettings.DefaultConnectTimeout;
+            hs.ReadTimeout = HttpSettings.DefaultReadTimeout;
+            //hs.Method = method
+
+            return hs;
         }
+
+        //public static void SplitRawHostAddress(string hostAddress, out string address, out int port, out string query,out bool isSsl)
+        //{
+        //    if (hostAddress == null)
+        //    {
+        //        address = null;
+        //        port = 0;
+        //        query = null;
+        //    }
+        //    string rawaddess = hostAddress;
+        //    string[] qargs = hostAddress.SplitTrim('?');
+        //    if (qargs.Length > 1)
+        //    {
+        //        rawaddess = qargs[0];
+        //        query = qargs[1];
+        //    }
+        //    else
+        //    {
+        //        rawaddess = qargs[0];
+        //        query = null;
+        //    }
+        //    if (Regx.RegexValidate("https://", rawaddess))
+        //    {
+        //        isSsl = true;
+        //        rawaddess = rawaddess.Replace("https://", "");
+        //    }
+        //    else
+        //    {
+        //        isSsl = false;
+        //        rawaddess = rawaddess.Replace("http://", "");
+        //    }
+
+        //    string[] args = rawaddess.SplitTrim(':');
+
+        //    if (args.Length == 1)
+        //    {
+        //        address = args[0];
+        //        port = 0;
+        //    }
+        //    else if (args.Length == 2)
+        //    {
+        //        address = args[0];
+        //        port = Types.ToInt(args[1]);
+        //    }
+        //    else
+        //    {
+        //        address = null;
+        //        port = 0;
+        //    }
+        //}
+
+        //public static void SplitHostAddress(string hostAddress,out string address, out int port)
+        //{
+        //    if(hostAddress==null)
+        //    {
+        //        address = null;
+        //        port = 0;
+        //    }
+        //    string[] args= hostAddress.SplitTrim(':');
+
+        //    if (args.Length == 1)
+        //    {
+        //        address = args[0];
+        //        port = 0;
+        //    }
+        //    else if (args.Length ==2)
+        //    {
+        //        address = args[0];
+        //        port = Types.ToInt(args[1]);
+        //    }
+        //    else
+        //    {
+        //        address = null;
+        //        port = 0;
+        //    }
+        //}
         /// <summary>
         /// Get host adress ssl.
         /// </summary>
@@ -285,7 +400,7 @@ namespace Nistec.Channels.Http
 
         public bool IsValidHostAddress()
         {
-            if (HostAddress == null || HostAddress.Length == 0 || !HostAddress.ToLower().StartsWith("http://"))
+            if (HostAddress == null || HostAddress.Length == 0 || !RawHostAddress.ToLower().StartsWith("http://"))
             {
                 return false;
             }
@@ -296,7 +411,7 @@ namespace Nistec.Channels.Http
         {
             if (!SslEnabled)
                 return false;
-            if (HostAddress == null || HostAddress.Length == 0 || !HostAddress.ToLower().StartsWith("https://"))
+            if (HostAddress == null || HostAddress.Length == 0 || !RawSslHostAddress.ToLower().StartsWith("https://"))
             {
                 return false;
             }
@@ -308,8 +423,15 @@ namespace Nistec.Channels.Http
         /// </summary>
         public void EnsureSettings() {
 
-            HostAddress = GetHostAddress();
-            SslHostAddress = GetSslHostAddress();
+            if (Port <= 0)
+                Port = DefaultPort;
+            if (Address != null)
+                Address = Address.TrimEnd('/');
+            if (SslPort <= 0)
+                Port = DefaultSslPort;
+
+            //HostAddress = GetHostAddress();
+            //SslHostAddress = GetSslHostAddress();
         }
 
         /// <summary>
@@ -328,8 +450,8 @@ namespace Nistec.Channels.Http
             ReadTimeout = DefaultReadTimeout;
             MaxServerConnections = 0;
             MaxErrors = DefaultMaxErrors;
-            HostAddress = GetHostAddress();
-            SslHostAddress = GetSslHostAddress();
+            //HostAddress = GetHostAddress();
+            //SslHostAddress = GetSslHostAddress();
             AllowAccessOrigin = "*";
             AllowAccessOrigin = "*";
             AllowAccessMethods = "*";
@@ -352,8 +474,8 @@ namespace Nistec.Channels.Http
             SslPort = DefaultSslPort;
             SslEnabled = false;
             Method = method;
-            HostAddress = GetHostAddress();
-            SslHostAddress = GetSslHostAddress();
+            //HostAddress = GetHostAddress();
+            //SslHostAddress = GetSslHostAddress();
         }
 
         /// <summary>
@@ -401,8 +523,8 @@ namespace Nistec.Channels.Http
                 MaxErrors = table.Get<int>("MaxErrors", DefaultMaxErrors);
                 MaxServerConnections = table.Get<int>("MaxServerConnections", 1);
             }
-            HostAddress = GetHostAddress();
-            SslHostAddress = GetSslHostAddress();
+            //HostAddress = GetHostAddress();
+            //SslHostAddress = GetSslHostAddress();
             AllowAccessOrigin = table.GetValue("AllowAccessOrigin");
             AllowAccessHeaders = table.GetValue("AllowAccessHeaders");
             AllowAccessMethods = table.GetValue("AllowAccessMethods");

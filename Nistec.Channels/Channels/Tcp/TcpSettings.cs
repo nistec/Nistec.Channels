@@ -200,7 +200,10 @@ namespace Nistec.Channels.Tcp
             return host == null || host == "" ? "Any" : host == "localhost" ? "127.0.0.1" : host;
         }
 
-
+        public static int EnsureReadTimeout(int readTimeout)
+        {
+            return (readTimeout == 0 || readTimeout < -1) ? DefaultReadTimeout : readTimeout;
+        }
 
         /// <summary>
         /// Default constractor.
