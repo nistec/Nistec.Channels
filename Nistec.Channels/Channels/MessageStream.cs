@@ -360,7 +360,11 @@ namespace Nistec.Channels
         {
             if (BodyStream == null)
                 return null;
-            return System.Text.Encoding.GetEncoding(Types.NZorEmpty(EncodingName, DefaultEncoding)).GetString(BodyStream.ToArray());
+            var body = DecodeBody();
+            if (body == null)
+                return null;
+            return body.ToString();
+            //return System.Text.Encoding.GetEncoding(Types.NZorEmpty(EncodingName, DefaultEncoding)).GetString(BodyStream.ToArray());
         }
 
         /// <summary>
@@ -696,7 +700,7 @@ namespace Nistec.Channels
                 }
             }
             task.TryDispose();
-            return TransStream.Write(messageOnError, TransType.Error);
+            return TransStream.WriteState(-1, messageOnError);//, TransType.Error);
         }
 
         /// <summary>
@@ -718,7 +722,7 @@ namespace Nistec.Channels
                 }
             }
             task.TryDispose();
-            return TransStream.Write(messageOnError, TransType.Error);
+            return TransStream.WriteState(-1, messageOnError);//, TransType.Error);
         }
 
    
@@ -749,11 +753,11 @@ namespace Nistec.Channels
                 if (task.IsCompleted)
                 {
                     if (task.Result != null)
-                        return TransStream.Write(task.Result, TransType.Object);// TransWriter.Write(task.Result, TransType.Object);
+                        return new TransStream(task.Result,0, task.Result.Length, TransType.Stream);// TransWriter.Write(task.Result, TransType.Object);
                 }
             }
             task.TryDispose();
-            return TransStream.Write((int)nullState, TransType.State);//TransStream.GetAckStream(nullState, actionName);//null;
+            return TransStream.WriteState((int)nullState, nullState.ToString());// TransType.State);  //TransStream.GetAckStream(nullState, actionName);//null;
         }
         #endregion
 
@@ -770,14 +774,14 @@ namespace Nistec.Channels
         /// <param name="stream"></param>
         /// <param name="readTimeout"></param>
         /// <param name="ReceiveBufferSize"></param>
-        public object ReadResponse(NetworkStream stream, int readTimeout, int ReceiveBufferSize, TransformType transformType, bool isTransStream)
+        public object ReadResponse(NetworkStream stream, int readTimeout, int ReceiveBufferSize,  bool isTransStream)//TransformType transformType,
         {
             if (isTransStream)
             {
                 return TransStream.CopyFrom(stream, readTimeout, ReceiveBufferSize);
             }
 
-            using (TransStream ts = new TransStream(stream, readTimeout, ReceiveBufferSize, transformType, isTransStream))
+            using (TransStream ts = new TransStream(stream, readTimeout, ReceiveBufferSize, TransformType.Stream))//, transformType, isTransStream))
             {
                 return ts.ReadValue();
             }
@@ -821,13 +825,15 @@ namespace Nistec.Channels
         /// <returns></returns>
         public TResponse ReadResponse<TResponse>(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
         {
-            if (TransReader.IsTransStream(typeof(TResponse)))
+            if (TransStream.IsTransStream(typeof(TResponse)))
             {
-                TransStream ts = new TransStream(stream, readTimeout, ReceiveBufferSize, TransformType.Stream,true);
-                //TransStream ts = TransStream.CopyFrom(stream, readTimeout, ReceiveBufferSize);
-                return Cast<TResponse>(ts, true);
+                TransStream ts = new TransStream(stream, readTimeout, ReceiveBufferSize, TransformType.Stream);// , TransformType.Stream,true);
+                
+                    //TransStream ts = TransStream.CopyFrom(stream, readTimeout, ReceiveBufferSize);
+                    return Cast<TResponse>(ts, true);
+                
             }
-            using (TransStream ts = new TransStream(stream, readTimeout,ReceiveBufferSize, TransReader.ToTransformType(typeof(TResponse)), false))
+            using (TransStream ts = new TransStream(stream, readTimeout, ReceiveBufferSize, TransformType.Stream)) //, TransReader.ToTransformType(typeof(TResponse)), false))
             {
                 return ts.ReadValue<TResponse>();
             }
@@ -845,19 +851,19 @@ namespace Nistec.Channels
                 return TransStream.CopyFrom(stream, ReceiveBufferSize);
             }
 
-            using (TransStream ts = new TransStream(stream, ReceiveBufferSize, transformType, isTransStream))
+            using (TransStream ts = new TransStream(stream, ReceiveBufferSize, transformType))//, transformType, isTransStream))
             {
                 return ts.ReadValue();
             }
         }
         public TResponse ReadResponse<TResponse>(NamedPipeClientStream stream, int ReceiveBufferSize = 8192)
         {
-            if (TransReader.IsTransStream(typeof(TResponse)))
+            if (TransStream.IsTransStream(typeof(TResponse)))
             {
                 TransStream ts = TransStream.CopyFrom(stream, ReceiveBufferSize);
                 return GenericTypes.Cast<TResponse>(ts, true);
             }
-            using (TransStream ts = new TransStream(stream, ReceiveBufferSize, TransReader.ToTransformType(typeof(TResponse)), false))
+            using (TransStream ts = new TransStream(stream, ReceiveBufferSize, TransStream.ToTransformType(typeof(TResponse)), false))
             {
                 return ts.ReadValue<TResponse>();
             }
@@ -1297,7 +1303,7 @@ namespace Nistec.Channels
                 }
             }
 
-            using (TransStream ack = new TransStream(stream, ReceiveBufferSize, transformType, isTransStream))
+            using (TransStream ack = new TransStream(stream, ReceiveBufferSize, transformType)) //, transformType, isTransStream))
             {
                 return ack.ReadJson();
             }

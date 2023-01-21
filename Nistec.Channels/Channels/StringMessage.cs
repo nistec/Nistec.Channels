@@ -35,23 +35,34 @@ namespace Nistec.Channels
     /// <summary>
     /// String message stream
     /// </summary>
+    [Serializable]
     public class StringMessage : ITransformMessage
     {
+        public StringMessage()
+        {
+            IsDuplex = true;
+        }
+
         public StringMessage(string message, bool isDuplex, int expiration)
         {
             Message = message;
+            IsDuplex = isDuplex;
+            Expiration = expiration;
         }
-        public StringMessage(string message)
+        public StringMessage(string message, bool isDuplex=true)
         {
             Message = message;
+            IsDuplex = isDuplex;
         }
-        public StringMessage(Stream stream)
+        public StringMessage(Stream stream, bool isDuplex = true)
         {
             Message = ReadString(stream);
+            IsDuplex = isDuplex;
         }
-        public StringMessage(HttpRequestInfo request)
+        public StringMessage(HttpRequestInfo request, bool isDuplex = true)
         {
             Message= request.Body;
+            IsDuplex = isDuplex;
         }
 
         public string Message { get; internal set; }

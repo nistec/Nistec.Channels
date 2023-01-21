@@ -86,10 +86,10 @@ namespace Nistec.Channels.Tcp
             {
                 HostName = hostAddress,
                 Address = hostAddress,
-                ConnectTimeout = connectTimeout,
+                ConnectTimeout = Math.Max(TcpSettings.DefaultConnectTimeout, connectTimeout),
                 ReadTimeout = TcpSettings.DefaultReadTimeout,
                 IsAsync = isAsync,
-                Port = port
+                Port = Types.NZero(port, TcpSettings.DefaultPort)
             };
         }
 
@@ -107,10 +107,10 @@ namespace Nistec.Channels.Tcp
             {
                 HostName = hostAddress, 
                 Address=hostAddress,
-                ConnectTimeout= connectTimeout,
+                ConnectTimeout = Math.Max(TcpSettings.DefaultConnectTimeout, connectTimeout),
                 ReadTimeout = TcpSettings.EnsureReadTimeout(readTimeout),
                 IsAsync = isAsync,
-                Port = port
+                Port = Types.NZero(port, TcpSettings.DefaultPort)
             };
         }
         /// <summary>
@@ -148,8 +148,8 @@ namespace Nistec.Channels.Tcp
                 HostName = hostAddress,
                 Address = hostAddress,
                 IsAsync = isAsync,
-                Port = port,
-                ConnectTimeout = connectTimeout,
+                Port=Types.NZero(port, TcpSettings.DefaultPort),
+                ConnectTimeout = Math.Max(TcpSettings.DefaultConnectTimeout, connectTimeout),
                 ReadTimeout = TcpSettings.DefaultReadTimeout,
                 ReceiveBufferSize = receiveBufferSize,
                 SendBufferSize = sendBufferSize
@@ -174,9 +174,9 @@ namespace Nistec.Channels.Tcp
                 HostName = hostAddress,
                 Address=hostAddress,
                 IsAsync = isAsync,
-                Port = port,
-                ConnectTimeout= connectTimeout,
-                ReadTimeout= readTimeout,
+                Port = Types.NZero(port, TcpSettings.DefaultPort),
+                ConnectTimeout = Math.Max(TcpSettings.DefaultConnectTimeout, connectTimeout),
+                ReadTimeout = readTimeout,
                 ReceiveBufferSize = receiveBufferSize,
                 SendBufferSize = sendBufferSize
             };
@@ -902,11 +902,27 @@ namespace Nistec.Channels.Tcp
             }
 
             // Receive a response from server.
-            response = message.ReadResponse(stream, Settings.ReadTimeout, Settings.ReceiveBufferSize, message.TransformType, false);
+            response = message.ReadResponse(stream, Settings.ReadTimeout, Settings.ReceiveBufferSize, false);
 
             return response;
         }
+        //protected override object ExecuteMessage(NetworkStream stream, MessageStream message)//, Type type)
+        //{
+        //    object response = null;
 
+        //    // Send a request from client to server
+        //    message.EntityWrite(stream, null);
+
+        //    if (message.IsDuplex == false)
+        //    {
+        //        return response;
+        //    }
+
+        //    // Receive a response from server.
+        //    response = message.ReadResponse(stream, Settings.ReadTimeout, Settings.ReceiveBufferSize, message.TransformType, false);
+
+        //    return response;
+        //}
         protected override TResponse ExecuteMessage<TResponse>(NetworkStream stream, MessageStream message)
         {
             TResponse response = default(TResponse);

@@ -171,7 +171,7 @@ namespace Nistec.Channels
         //}
         //public TResponse ReadResponse<TResponse>(NamedPipeClientStream stream, int ReceiveBufferSize = 8192)
         //{
-        //    if (TransReader.IsTransStream(typeof(TResponse)))
+        //    if (TransStream.IsTransStream(typeof(TResponse)))
         //    {
         //        TransStream ts = new TransStream(stream, ReceiveBufferSize);
         //        return GenericTypes.Cast<TResponse>(ts, true);

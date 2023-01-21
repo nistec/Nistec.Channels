@@ -470,7 +470,7 @@ namespace Nistec.Channels.Http
         {
             HostName = hostAddress;
             Address = hostAddress;
-            Port = port;
+            Port = Types.NZero(port, HttpSettings.DefaultPort);
             SslPort = DefaultSslPort;
             SslEnabled = false;
             Method = method;

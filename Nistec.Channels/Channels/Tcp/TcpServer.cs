@@ -296,7 +296,8 @@ namespace Nistec.Channels.Tcp
         /// <returns></returns>
         protected virtual TransStream FaultAck(string reason)
         {
-            return TransStream.Write(new TcpMessage("Fault", "ack", reason, 0), TransType.Object);//.ToStream();
+            return TransStream.WriteState(-1, reason);//.ToStream();
+            //return TransStream.Write(new TcpMessage("Fault", "ack", reason, 0), TransType.Object);//.ToStream();
         }
         /// <summary>
         /// Read Request from client.

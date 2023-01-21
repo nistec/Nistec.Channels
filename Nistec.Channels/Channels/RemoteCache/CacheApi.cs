@@ -269,8 +269,7 @@ namespace Nistec.Channels.RemoteCache
                 case NetProtocol.Tcp:
                     break;
             }
-            return TcpClient.SendDuplexStream(message as TcpMessage, hostAddress, port, timeout,
-                            CacheApi.EnableRemoteException);
+            return TcpClient.SendDuplexStream(message as TcpMessage, hostAddress, port, timeout, CacheApi.EnableRemoteException);
         }
 
         internal void SendOutAsync(IMessageStream message)
@@ -1851,6 +1850,10 @@ namespace Nistec.Channels.RemoteCache
             public string[] GetAllEntityNames()
             {
                 IMessageStream message = MessageStream.Create(protocol, SyncCacheCmd.GetAllEntityNames, "*", null, 0);
+                //NISSIM-EDIT
+                //var ts=SendDuplexStream(message);
+                //var val = ts.ReadValue<string[]>();
+                //return val;
                 return SendDuplexStream<string[]>(message, OnFault);
             }
 

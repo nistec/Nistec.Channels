@@ -164,6 +164,7 @@ namespace Nistec.Channels.Tcp
         /// <summary>
         /// Get or Set ConnectTimeout (Default=5000).
         /// </summary>
+        [System.ComponentModel.DefaultValue(DefaultConnectTimeout)]
         public int ConnectTimeout { get; set; }
         /// <summary>
         /// Get or Set ReadTimeout (Default=5000).
@@ -203,6 +204,11 @@ namespace Nistec.Channels.Tcp
         public static int EnsureReadTimeout(int readTimeout)
         {
             return (readTimeout == 0 || readTimeout < -1) ? DefaultReadTimeout : readTimeout;
+        }
+
+        public static int EnsureValue(int val, int defaultValue)
+        {
+            return (val == 0 || val < -1) ? defaultValue : val;
         }
 
         /// <summary>

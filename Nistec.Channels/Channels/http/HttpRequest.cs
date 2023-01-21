@@ -1298,7 +1298,7 @@ namespace Nistec.Channels.Http
             }
             catch (Exception ex)
             {
-                return TransStream.Write("Response error: " + ex.Message, TransType.Error);
+                return TransStream.WriteState(-1, "Response error: " + ex.Message);//, TransType.Error);
             }
         }
 
@@ -1348,7 +1348,7 @@ namespace Nistec.Channels.Http
             }
             catch (Exception ex)
             {
-                onCompleted(TransStream.Write("Response error: " + ex.Message, TransType.Error));
+                onCompleted(TransStream.WriteState(-1, "Response error: " + ex.Message));//, TransType.Error));
             }
         }
 
@@ -1649,7 +1649,8 @@ namespace Nistec.Channels.Http
 
                 } while (count != 0);
             }
-            return new TransStream(netStream, Runtime.TransformType.Stream, true);
+            //return new TransStream(netStream, Runtime.TransformType.Stream, true);
+            return new TransStream(netStream);
         }
 
         public static NetStream ReadStream(Stream stream, int bufferSize = 4096)

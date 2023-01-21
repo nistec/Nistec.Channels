@@ -328,12 +328,13 @@ namespace Nistec.Channels
             //BinaryWriter bw = new BinaryWriter(pipeServer);
             //bw.Write(bResponse.ToArray(), 0, cbResponse);
             //bw.Flush();
-
+            
             var ns= bResponse.GetStream();
             if(ns==null)
             {
                 return;
             }
+            //ns.Position = 0;
             pipeServer.Write(ns.ToArray(), 0, ns.iLength);
 
             pipeServer.Flush();
@@ -755,7 +756,5 @@ namespace Nistec.Channels
 
         #endregion
     }
-
-    
 
 }

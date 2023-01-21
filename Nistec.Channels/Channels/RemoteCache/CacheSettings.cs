@@ -152,9 +152,14 @@ namespace Nistec.Channels.RemoteCache
             if (port > 0)
                 return port;
             if (protocol == NetProtocol.Http)
-                return (IsHttpSsl()) ? DefaultHttpSslPort : DefaultHttpPort;
+            {
+                if (IsHttpSsl())
+                    return HttpSslPort > 0 ? HttpSslPort : DefaultHttpSslPort;
+                else
+                    return HttpPort > 0 ? HttpPort : DefaultHttpPort;
+            }
             if (protocol == NetProtocol.Tcp)
-                return DefaultTcpPort;
+                return TcpPort > 0 ? TcpPort:DefaultTcpPort;
             return 0;
         }
 

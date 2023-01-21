@@ -717,8 +717,10 @@ namespace Nistec.Channels
             }
 
             // Receive a response from server.
-            response = message.ReadResponse(pipeClientStream,  Settings.ReceiveBufferSize, message.TransformType, false);
-            
+            //response = message.ReadResponse(pipeClientStream,  Settings.ReceiveBufferSize, message.TransformType, false);
+            var ts = message.ReadResponse<TransStream>(pipeClientStream, Settings.ReceiveBufferSize);
+            if (ts != null)
+                response = ts.ReadValue();
             return response;
         }
 
@@ -736,7 +738,11 @@ namespace Nistec.Channels
             {
                 return response;
             }
-
+            //var ts = message.ReadResponse<TransStream>(pipeClientStream, Settings.ReceiveBufferSize);
+            //if (ts != null)
+            //{
+            //    response = ts.ReadValue<TResponse>();
+            //}
             // Receive a response from server.
             response = message.ReadResponse<TResponse>(pipeClientStream, Settings.ReceiveBufferSize);
 

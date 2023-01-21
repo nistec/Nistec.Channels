@@ -243,7 +243,8 @@ namespace Nistec.Channels
 
         public object ReadAck(AnonymousPipeClientStream stream, TransformType type, int ReceiveBufferSize = 8192)
         {
-            return TransReader.ReadValue(CopyStream(stream));
+            //return TransReader.ReadValue(CopyStream(stream));
+            return TransStream.ReadValue(CopyStream(stream));
             //var ns = CopyStream(stream);
             //using (TransStream ack = TransStream.Read(ns, type, ReceiveBufferSize))
             //{
@@ -253,7 +254,8 @@ namespace Nistec.Channels
 
         public TResponse ReadAck<TResponse>(AnonymousPipeClientStream stream, int ReceiveBufferSize = 8192)
         {
-            return TransReader.ReadValue<TResponse>(CopyStream(stream));
+            //return TransReader.ReadValue<TResponse>(CopyStream(stream));
+            return TransStream.ReadValue<TResponse>(CopyStream(stream));
 
             //var ns = CopyStream(stream);
             //using (TransStream ack = TransStream.Read(ns, MessageStream.GetTransformType(typeof(TResponse)), ReceiveBufferSize))

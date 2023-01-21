@@ -289,7 +289,7 @@ namespace Nistec.Channels.Http
         /// <returns></returns>
         protected virtual TransStream FaultAck(string reason)
         {
-            return TransStream.Write(new HttpMessage("Fault", "ack", reason, 0), TransType.Object);
+            return TransStream.WriteAck(-1, reason);// new HttpMessage("Fault", "ack", reason, 0));//, TransType.Object);
             //return new HttpMessage("Fault", "ack", reason, 0).ToStream();
         }
         /// <summary>

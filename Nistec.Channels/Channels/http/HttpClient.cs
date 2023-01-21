@@ -633,7 +633,7 @@ namespace Nistec.Channels.Http
             try
             {
 
-                if (TransReader.IsTransStream(typeof(TResponse)))// message.TransformType == TransformType.Stream)
+                if (TransStream.IsTransStream(typeof(TResponse)))// message.TransformType == TransformType.Stream)
                 {
                     var brequest = RequestToStream(message);
                     //var streamResponse = ExecuteRequestStream(brequest);
@@ -711,7 +711,7 @@ namespace Nistec.Channels.Http
             try
             {
 
-                if (TransReader.IsTransStream(typeof(TResponse)))// message.TransformType == TransformType.Stream)
+                if (TransStream.IsTransStream(typeof(TResponse)))// message.TransformType == TransformType.Stream)
                 {
                     var brequest = RequestToStream(message);
                     //var streamResponse = ExecuteRequestStream(brequest);
