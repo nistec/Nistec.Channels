@@ -34,13 +34,28 @@ namespace Nistec.Channels
     /// Represent a response message for named pipe/tcp communication.
     /// </summary>
     [Serializable]
-    public class MessageAck : ISerialEntity, IDisposable
+    public class MessageAck : ISerialEntity, ITransformResponse //IDisposable
     {
         #region properties
         public MessageState State { get; set; }
         public Formatters Formatter { get { return Formatters.BinarySerializer; } }
         public string Message { get; set; }
         public DateTime Modified { get; protected set; }
+        #endregion
+
+        #region ITransformResponse
+
+        public byte[] GetBytes()
+        {
+            return Encoding.UTF8.GetBytes(Message);
+        }
+
+        public void SetState(int state, string message)
+        {
+            State =(MessageState)state;
+            Message = message;
+        }
+
         #endregion
 
         #region ctor

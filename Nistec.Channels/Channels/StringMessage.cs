@@ -21,6 +21,7 @@
 using Nistec.Channels.Http;
 using Nistec.IO;
 using Nistec.Runtime;
+using Nistec.Serialization;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -36,34 +37,43 @@ namespace Nistec.Channels
     /// String message stream
     /// </summary>
     [Serializable]
-    public class StringMessage : ITransformMessage
+    public class StringMessage : ITransformMessage, ITransformResponse
     {
+
+        #region ctor
+
         public StringMessage()
         {
             IsDuplex = true;
+            TransformType = TransformType.Json;
         }
 
-        public StringMessage(string message, bool isDuplex, int expiration)
+        public StringMessage(string message, bool isDuplex, int expiration, StringFormatType formatType = StringFormatType.Json)
         {
             Message = message;
             IsDuplex = isDuplex;
             Expiration = expiration;
+            TransformType =(TransformType)(int) formatType;
         }
-        public StringMessage(string message, bool isDuplex=true)
+        public StringMessage(string message, bool isDuplex=true, StringFormatType formatType = StringFormatType.Json)
         {
             Message = message;
             IsDuplex = isDuplex;
+            TransformType = (TransformType)(int)formatType;
         }
-        public StringMessage(Stream stream, bool isDuplex = true)
+        public StringMessage(Stream stream, bool isDuplex = true, StringFormatType formatType = StringFormatType.Json)
         {
             Message = ReadString(stream);
             IsDuplex = isDuplex;
+            TransformType = (TransformType)(int)formatType;
         }
-        public StringMessage(HttpRequestInfo request, bool isDuplex = true)
+        public StringMessage(HttpRequestInfo request, bool isDuplex = true, StringFormatType formatType = StringFormatType.Json)
         {
             Message= request.Body;
             IsDuplex = isDuplex;
+            TransformType = (TransformType)(int)formatType;
         }
+        #endregion
 
         public string Message { get; internal set; }
 
@@ -104,11 +114,25 @@ namespace Nistec.Channels
         ///  Get or Set The message expiration.
         /// </summary>
         public int Expiration { get; set; }
+
+        TransformType _TransformType;
         /// <summary>
         /// Get or Set The result type name.
         /// </summary>
-        public TransformType TransformType { get; set; }
+        public TransformType TransformType
+        {
+            get { return _TransformType; }
+            set
+            {
+                if (!(value == TransformType.Json || value == TransformType.Base64 || value == TransformType.Csv || value == TransformType.Text || value == TransformType.None))
+                    _TransformType = TransformType.None;
+                else
+                    _TransformType = value;
+            }
+        }
+        //public TransformType TransformType { get; set; }
 
+        public StringFormatType FormatType { get { return (StringFormatType)(int)TransformType; } }
         #endregion
 
         #region IDisposable
@@ -119,8 +143,46 @@ namespace Nistec.Channels
         }
         #endregion
 
-        #region Stream Read\Write
-                
+        #region ITransformResponse
+
+        public void SetState(int state, string message)
+        {
+            //State = (MessageState)state;
+            Message = message;
+            TransformType = TransformType.State;
+        }
+
+        public byte[] GetBytes()
+        {
+            return Encoding.UTF8.GetBytes(Message);
+        }
+        public byte[] GetBytes(Encoding encoding)
+        {
+            return encoding.GetBytes(Message);
+        }
+
+        //[SecuritySafeCritical]
+        //public unsafe static byte[] GetBytes(int value)
+        //{
+        //    byte[] buffer = new byte[4];
+        //    fixed (byte* numRef = buffer)
+        //    {
+        //        *((int*)numRef) = value;
+        //    }
+        //    return buffer;
+
+        //}
+
+        #endregion
+
+        #region Static Stream Read\Write
+
+        public static StringMessage WriteState(int state,string message)
+        {
+            return new StringMessage() { Message = message, TransformType = TransformType.State, DuplexType = DuplexTypes.None };
+        }
+        //return new TransStream(message, TransType.State, state);
+
         public static int WriteString(string outString, Stream stream)
         {
             return WriteString(outString, stream, Encoding.UTF8);
@@ -142,10 +204,21 @@ namespace Nistec.Channels
 
         public static string ReadString(Stream stream, Encoding encoding)
         {
+            byte[] buffer = ReadToBytes(stream, encoding);
+
+            if (buffer == null)
+                return null;
+            var response= encoding.GetString(buffer);
+
+            return response;
+        }
+
+        public static byte[] ReadToBytes(Stream stream, Encoding encoding)
+        {
             byte[] buffer = null;
             if (stream is NetworkStream)
             {
-                buffer=((NetworkStream)stream).ReadStream();
+                buffer = ((NetworkStream)stream).ReadStream();
             }
             else if (stream is PipeStream)
             {
@@ -167,9 +240,7 @@ namespace Nistec.Channels
             if (buffer == null)
                 return null;
 
-            var response= encoding.GetString(buffer);
-
-            return response;
+            return buffer;
         }
 
         public static int WriteStringWithCount(string outString, Stream stream, Encoding encoding)
@@ -217,23 +288,11 @@ namespace Nistec.Channels
             stream.Write(buffer, 0, 4);
         }
 
-
-        //[SecuritySafeCritical]
-        //public unsafe static byte[] GetBytes(int value)
-        //{
-        //    byte[] buffer = new byte[4];
-        //    fixed (byte* numRef = buffer)
-        //    {
-        //        *((int*)numRef) = value;
-        //    }
-        //    return buffer;
-
-        //}
-
         static int ReadInt32(byte[] buffer, int offset)
         {
             return (((buffer[offset + 0] | (buffer[offset + 1] << 8)) | (buffer[offset + 2] << 0x10)) | (buffer[offset + 3] << 0x18));
         }
         #endregion
+
     }
 }

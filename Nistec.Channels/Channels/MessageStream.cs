@@ -44,7 +44,7 @@ namespace Nistec.Channels
     /// This message can serialize/desrialize fast and easly using the <see cref="BinaryStreamer"/>
     /// </summary>
     [Serializable]//IMessageStream,
-    public abstract class MessageStream : ISerialEntity,  ISerialJson, IMessageStream, ITransformMessage, IBodyStream//, IDisposable
+    public abstract class MessageStream : ISerialEntity,  ISerialJson, IMessageStream, ITransformMessage, IBodyStream, ITransformResponse//, IDisposable
     {
         #region properties
         /// <summary>
@@ -538,11 +538,19 @@ namespace Nistec.Channels
             return BodyStream.Copy();
         }
 
-        public byte[] GetBinary()
+        public byte[] GetBytes()
         {
             if (BodyStream == null)
                 return null;
             return BodyStream.ToArray();
+        }
+
+        public void SetState(int state, string message)
+        {
+            //State = (MessageState)state;
+            //Message = message;
+
+            this.SetBody(message);
         }
 
         /// <summary>

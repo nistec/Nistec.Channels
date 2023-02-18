@@ -36,13 +36,14 @@ namespace Nistec.Channels
 
     //public enum TransType : byte { None = 0, Object = 100, Stream = 101, Json = 102, State = 121, Info = 122, Error = 123 }
 
-    public enum TransType : byte { None = 0, Object = 100, Stream = 101, Json = 102, Base64 = 103, Text=104, State = 105, Ack=106 }
+    public enum TransType : byte { None = 0, Object = 100, Stream = 101, Json = 102, Base64 = 103, Text = 104, Ack = 105, State = 106, Csv = 107, Xml=108 }
+    public enum StringFormatType : byte { None = 0, Json = 102, Base64 = 103, Text = 104, Csv = 107, Xml = 108 }
 
     /// <summary>
     /// Represent a ack stream for named pipe/tcp communication.
     /// </summary>
     [Serializable]
-    public class TransStream : IDisposable
+    public class TransStream : ITransformResponse// IDisposable
     {
 
         #region Stream
@@ -65,7 +66,7 @@ namespace Nistec.Channels
         {
             return _Stream;
         }
-
+        
         public int GetLength()
         {
             return _Stream == null ? 0 : _Stream.iLength;
@@ -138,6 +139,20 @@ namespace Nistec.Channels
 
         #endregion
 
+        #region ITransformResponse
+
+        public void SetState(int state, string message)
+        {
+            WriteTrans(message, TransType.State, state);
+        }
+
+        public byte[] GetBytes()
+        {
+            return Stream.ToArray();
+        }
+
+        #endregion
+
         #region internal 
         internal static object StreamToValue(NetStream stream)
         {
@@ -204,26 +219,49 @@ namespace Nistec.Channels
         //    }
         //}
 
-        public static TransType ToTransType(Type type)
+        public static TransType ToTransType(StringFormatType format)
+        {
+            return (TransType)format;
+        }
+        public static TransformType ToTransformType(StringFormatType format)
+        {
+            return (TransformType)format;
+        }
+
+        public static StringFormatType ToStringFormatType(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+                return StringFormatType.None;
+            if (Strings.IsJsonString(message))
+                return StringFormatType.Json;
+            if (Strings.IsXmlString(message))
+                return StringFormatType.Xml;
+            if (Strings.IsBase64String(message))
+                return StringFormatType.Base64;
+            else 
+                return StringFormatType.Text;
+        }
+
+        public static TransType ToTransType(Type type, StringFormatType format= StringFormatType.Json)
         {
             if (type == typeof(TransStream))
                 return TransType.Stream;
             else if (SerializeTools.IsStream(type))
                 return TransType.Stream;
             else if (type == typeof(string))
-                return TransType.Json;
+                return ToTransType(format);// TransType.Json;
             else //if (type == typeof(object))
                 return TransType.Object;
 
         }
-        public static TransformType ToTransformType(Type type)
+        public static TransformType ToTransformType(Type type, StringFormatType format = StringFormatType.Json)
         {
             if (type == typeof(TransStream))
                 return TransformType.Stream;
             else if (SerializeTools.IsStream(type))
                 return TransformType.Stream;
             else if (type == typeof(string))
-                return TransformType.Json;
+                return ToTransformType(format);// TransformType.Json;
             else //if (type == typeof(object))
                 return TransformType.Object;
 

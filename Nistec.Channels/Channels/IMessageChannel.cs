@@ -6,6 +6,11 @@ using System.Text;
 
 namespace Nistec.Channels
 {
+    public interface ITransformResponse : IDisposable
+    {
+        byte[] GetBytes();
+        void SetState(int state, string message);
+    }
     public interface ITransformMessage : IDisposable
     {
 
