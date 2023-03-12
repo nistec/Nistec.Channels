@@ -293,7 +293,7 @@ namespace Nistec.Channels
         {
             if (bs == null)
             {
-                return new TransStream(TransAck.DoAck((int)MessageState.ItemNotFound, action + ", Item Not Found"), TransType.Ack);
+                return new TransStream(TransAck.DoAck((int)ChannelState.ItemNotFound, action + ", Item Not Found"), TransType.Ack);
                 //return new TransStream(action + ", Item Not Found", TransType.Error);
             }
             else
@@ -302,7 +302,7 @@ namespace Nistec.Channels
         public static TransStream Write(object item, string action, TransformType transformType)
         {
             if (item == null)
-                return new TransStream(TransAck.DoAck((int)MessageState.ItemNotFound, action + ", Item Not Found"), TransType.Ack);  //return new TransStream(action + ", Item Not Found", TransType.Error);
+                return new TransStream(TransAck.DoAck((int)ChannelState.ItemNotFound, action + ", Item Not Found"), TransType.Ack);  //return new TransStream(action + ", Item Not Found", TransType.Error);
             else
                 return new TransStream(item, ToTransType(transformType));
         }
@@ -504,7 +504,7 @@ namespace Nistec.Channels
                 if (IsEmpty)
                 {
                     Value = null;
-                    State = (int)MessageState.ItemNotFound;
+                    State = (int)ChannelState.ItemNotFound;
                     return TransType.None;
                 }
 
@@ -784,7 +784,7 @@ namespace Nistec.Channels
                 if (stream == null || stream.Length < HeaderBytes)
                 {
                     Value = null;
-                    State = (int)MessageState.ItemNotFound;
+                    State = (int)ChannelState.ItemNotFound;
                     return TransType.None;
                 }
 
@@ -1189,7 +1189,7 @@ namespace Nistec.Channels
         {
             return new TransPack() { State = State, Value = Value }.ToJson();
         }
-        public static string ToAck(MessageState state)
+        public static string ToAck(ChannelState state)
         {
             return string.Format("State:{0}, Value:{1}", (int)state, state.ToString());
         }
@@ -2227,12 +2227,12 @@ namespace Nistec.Channels
             }
         }
 
-        public static TransType ToTransType(MessageState state)
+        public static TransType ToTransType(ChannelState state)
         {
             switch (state)
             {
-                case MessageState.None:
-                case MessageState.Ok:
+                case ChannelState.None:
+                case ChannelState.Ok:
                     return TransType.Info;
                 default:
                     return TransType.Error;

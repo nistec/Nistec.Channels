@@ -30,18 +30,18 @@ namespace Nistec.Channels
     /// <summary>
     /// The exception that is thrown when a non-fatal application error occurs.
     /// </summary>
-    public class MessageException : ApplicationException
+    public class ChannelException : ApplicationException
     {
         /// <summary>
         /// Get state.
         /// </summary>
-        public MessageState State { get; private set; }
+        public ChannelState State { get; private set; }
         /// <summary>
         /// Initializes a new instance of the MessageException class.
         /// </summary>
         /// <param name="state"></param>
         /// <param name="message"></param>
-        public MessageException(MessageState state, string message)
+        public ChannelException(ChannelState state, string message)
             : base(message)
         {
             State = state;
@@ -52,7 +52,7 @@ namespace Nistec.Channels
         /// <param name="state"></param>
         /// <param name="message"></param>
         /// <param name="innerException"></param>
-        public MessageException(MessageState state, string message, Exception innerException)
+        public ChannelException(ChannelState state, string message, Exception innerException)
             : base(message, innerException)
         {
             State = state;

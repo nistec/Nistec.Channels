@@ -149,7 +149,7 @@ namespace Nistec.Channels
             {
                 Log.Exception("AnonymousPipeClient error ", ex);
 
-                AnonymousMessage.WriteResponse(_Sender, AnonymousMessage.CreateAnonymousAck(MessageState.Failed,ex.Message));
+                AnonymousMessage.WriteResponse(_Sender, AnonymousMessage.CreateAnonymousAck(ChannelState.Failed,ex.Message));
             }
             finally
             {

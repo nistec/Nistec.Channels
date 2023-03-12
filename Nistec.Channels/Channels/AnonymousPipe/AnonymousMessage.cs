@@ -234,7 +234,7 @@ namespace Nistec.Channels
             return message;
         }
 
-        internal static NetStream CreateAnonymousAck(MessageState state, string message)
+        internal static NetStream CreateAnonymousAck(ChannelState state, string message)
         {
             return new AnonymousMessage("ack", state.ToString(), message, 0).ToStream();
         }

@@ -121,7 +121,7 @@
     <Compile Include="Channels\RemoteTrace\TraceApi.cs" />
     <Compile Include="Channels\RemoteTrace\TraceCmd.cs" />
     <Compile Include="Channels\RemoteTrace\TraceSettings.cs" />
-    <Compile Include="Channels\MessageException.cs" />
+    <Compile Include="Channels\ChannelException.cs" />
     <Compile Include="Channels\RemoteCache\CacheCmd.cs" />
     <Compile Include="Channels\AppDomainStarter.cs" />
     <Compile Include="Channels\MessageAck.cs" />

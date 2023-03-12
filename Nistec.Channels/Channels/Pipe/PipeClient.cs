@@ -227,7 +227,7 @@ namespace Nistec.Channels
                         retry++;
                         if (retry >= MaxRetry)
                         {
-                            throw new Exception("Unable to connect to pipe: " + Settings.PipeName);
+                            throw new ChannelException(ChannelState.ConnectionError,"Unable to connect to pipe: " + Settings.PipeName);
                         }
                         Thread.Sleep(10);
 
@@ -243,7 +243,7 @@ namespace Nistec.Channels
                     if (retry >= MaxRetry)
                     {
                         Log.Error("PipeClient connection has timeout exception after retry: {0},timeout:{1}, msg: {2}", retry, Settings.ConnectTimeout, toex.Message);
-                        throw toex;
+                        throw new ChannelException(ChannelState.TimeoutError, string.Format("PipeClient connection error after retry: {0}, PipeName: {1}", retry, Settings.PipeName), toex);
                     }
                     retry++;
                 }
@@ -252,7 +252,7 @@ namespace Nistec.Channels
                     if (retry >= MaxRetry)
                     {
                         Log.Error("PipeClient connection error after retry: {0}, msg: {1}", retry, pex.Message);
-                        throw pex;
+                        throw new ChannelException(ChannelState.ConnectionError, string.Format("PipeClient connection error after retry: {0}, PipeName: {1}", retry, Settings.PipeName), pex);
                     }
                     retry++;
                 }
@@ -291,10 +291,9 @@ namespace Nistec.Channels
                 bool ok=Connect();
                 if (!ok)
                 {
-                    throw new Exception("Unable to connect to pipe:" + PipeName);
+                    throw new ChannelException(ChannelState.ConnectionError, "Unable to connect to pipe:" + PipeName);
                 }
-
-
+                
                 // Set the read mode and the blocking mode of the named pipe.
                 pipeClientStream.ReadMode = PipeTransmissionMode.Message;
 
@@ -308,6 +307,13 @@ namespace Nistec.Channels
                     return null;
                 }
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                return response;
+            }
             catch (TimeoutException toex)
             {
                 Log.Exception("The client throws the TimeoutException : ", toex, true);
@@ -320,13 +326,6 @@ namespace Nistec.Channels
                 Log.Exception("The client throws the SerializationException : ", sex, true);
                 if (enableException)
                     throw sex;
-                return response;
-            }
-            catch (MessageException mex)
-            {
-                Log.Exception("The client throws the MessageException : ", mex, true);
-                if (enableException)
-                    throw mex;
                 return response;
             }
             catch (Exception ex)
@@ -383,6 +382,13 @@ namespace Nistec.Channels
                 }
 
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                return response;
+            }
             catch (TimeoutException toex)
             {
                 Log.Exception("The client throws the TimeoutException : ", toex, true);
@@ -395,13 +401,6 @@ namespace Nistec.Channels
                 Log.Exception("The client throws the SerializationException : ", sex, true);
                 if (enableException)
                     throw sex;
-                return response;
-            }
-            catch (MessageException mex)
-            {
-                Log.Exception("The client throws the MessageException : ", mex, true);
-                if (enableException)
-                    throw mex;
                 return response;
             }
             catch (Exception ex)
@@ -455,6 +454,13 @@ namespace Nistec.Channels
                 }
 
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                onCompleted(response);
+            }
             catch (TimeoutException toex)
             {
                 Log.Exception("The client throws the TimeoutException : ", toex, true);
@@ -467,13 +473,6 @@ namespace Nistec.Channels
                 Log.Exception("The client throws the SerializationException : ", sex, true);
                 if (enableException)
                     throw sex;
-                onCompleted(response);
-            }
-            catch (MessageException mex)
-            {
-                Log.Exception("The client throws the MessageException : ", mex, true);
-                if (enableException)
-                    throw mex;
                 onCompleted(response);
             }
             catch (Exception ex)
@@ -508,6 +507,25 @@ namespace Nistec.Channels
     {
         #region static send methods
 
+        public static bool Ping(string ServerName, string PipeName, int ConnectTimeout = 5000)
+        {
+           try
+            {
+                NamedPipeClientStream pipeClientStream = new NamedPipeClientStream(ServerName, PipeName, PipeDirection.InOut, PipeOptions.None);
+
+                pipeClientStream.Connect();
+
+                return pipeClientStream.IsConnected;
+            }
+            catch (TimeoutException toex)
+            {
+                throw toex;
+            }
+            catch (Exception pex)
+            {
+                throw pex;
+            }
+        }
 
         /// <summary>
         /// Send Duplex message with return value.

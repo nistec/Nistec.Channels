@@ -327,7 +327,7 @@ namespace Nistec.Channels.Tcp
                     throw sex;
                 return response;
             }
-            catch (MessageException mex)
+            catch (ChannelException mex)
             {
                 Log.Exception("The tcp client throws the MessageException : ", mex, true);
                 if (enableException)
@@ -371,6 +371,12 @@ namespace Nistec.Channels.Tcp
                 ExecuteOneWay(tcpClient.GetStream(), message);
 
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The tcp client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+            }
             catch (SocketException se)
             {
                 Log.Exception("The tcp client throws SocketException: {0}", se);
@@ -388,12 +394,6 @@ namespace Nistec.Channels.Tcp
                 Log.Exception("The tcp client throws the SerializationException : ", sex, true);
                 if (enableException)
                     throw sex;
-            }
-            catch (MessageException mex)
-            {
-                Log.Exception("The tcp client throws the MessageException : ", mex, true);
-                if (enableException)
-                    throw mex;
             }
             catch (Exception ex)
             {
@@ -440,6 +440,13 @@ namespace Nistec.Channels.Tcp
                     return default(TResponse);
                 }
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The tcp client throws the MessageException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                return response;
+            }
             catch (SocketException se)
             {
                 Log.Exception("The tcp client throws SocketException: {0}", se);
@@ -459,13 +466,6 @@ namespace Nistec.Channels.Tcp
                 Log.Exception("The tcp client throws the SerializationException : ", sex, true);
                 if (enableException)
                     throw sex;
-                return response;
-            }
-            catch (MessageException mex)
-            {
-                Log.Exception("The tcp client throws the MessageException : ", mex, true);
-                if (enableException)
-                    throw mex;
                 return response;
             }
             catch (Exception ex)
@@ -513,6 +513,13 @@ namespace Nistec.Channels.Tcp
                     onCompleted(default(TResponse));
                 }
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The tcp client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                onCompleted(response);
+            }
             catch (SocketException se)
             {
                 Log.Exception("The tcp client throws SocketException: {0}", se);
@@ -532,13 +539,6 @@ namespace Nistec.Channels.Tcp
                 Log.Exception("The tcp client throws the SerializationException : ", sex, true);
                 if (enableException)
                     throw sex;
-                onCompleted(response);
-            }
-            catch (MessageException mex)
-            {
-                Log.Exception("The tcp client throws the MessageException : ", mex, true);
-                if (enableException)
-                    throw mex;
                 onCompleted(response);
             }
             catch (Exception ex)
@@ -571,7 +571,7 @@ namespace Nistec.Channels.Tcp
     public static class SocketConnector
     {
         private static bool IsConnected = false;
-        private static Exception socketexception;
+        //private static SocketException socketexception;
         private static ManualResetEvent tcpConnector = new ManualResetEvent(false);
 
         /// <summary>
@@ -583,7 +583,7 @@ namespace Nistec.Channels.Tcp
         public static TCP.TcpClient Connect(IPEndPoint remoteEndPoint, int timeout)
         {
             tcpConnector.Reset();
-            socketexception = null;
+            //socketexception = null;
 
             string serverIp = Convert.ToString(remoteEndPoint.Address);
             int port = remoteEndPoint.Port;
@@ -599,13 +599,13 @@ namespace Nistec.Channels.Tcp
                 }
                 else
                 {
-                    throw socketexception;
+                    throw new ChannelException(ChannelState.ConnectionError, "Unable to connect to tcp address: " + serverIp);// socketexception;
                 }
             }
             else
             {
                 tcpClient.Close();
-                throw new TimeoutException("TimeOut Exception");
+                throw new TimeoutException("TimeOut Exception, Unable to connect to tcp address: " + serverIp);
             }
         }
         private static void CallBackMethod(IAsyncResult asyncresult)
@@ -624,7 +624,8 @@ namespace Nistec.Channels.Tcp
             catch (Exception ex)
             {
                 IsConnected = false;
-                socketexception = ex;
+                //socketexception = ex;
+                throw new ChannelException(ChannelState.ConnectionError, "Unable to connect to tcp, using asyncresult", ex);// socketexception;
             }
             finally
             {
@@ -656,6 +657,43 @@ namespace Nistec.Channels.Tcp
         }
 
         #region static send methods
+
+        public static bool Ping(string HostAddress, int Port, int ConnectTimeout = 5000)
+        {
+           
+            TCP.TcpClient tcpClient = null;
+            string rawAddress = HostAddress;
+            try
+            {
+                rawAddress = string.Format("{0}:{1}", HostAddress,Port);
+                IPEndPoint ep = new IPEndPoint(IPAddress.Parse(HostAddress), Port);
+                tcpClient = new TCP.TcpClient();
+                tcpClient.SendTimeout = ConnectTimeout;
+                tcpClient.SendBufferSize = TcpSettings.DefaultSendBufferSize;
+                tcpClient.ReceiveBufferSize = TcpSettings.DefaultReceiveBufferSize;
+                tcpClient.ReceiveTimeout = TcpSettings.DefaultReadTimeout;
+                tcpClient.Connect(ep);
+
+                if (!tcpClient.Connected)
+                {
+                    tcpClient.Close();
+                    throw new ChannelException(ChannelState.ConnectionError, "Unable to connect to tcp address: " + rawAddress);
+                }
+                else
+                {
+                    tcpClient.Close();
+                    return true;
+                }
+            }
+            catch (TimeoutException toex)
+            {
+                throw new ChannelException(ChannelState.TimeoutError, "Unable to connect to tcp address: " + rawAddress, toex);
+            }
+            catch (Exception pex)
+            {
+                throw new ChannelException(ChannelState.ConnectionError, "Unable to connect to tcp address: " + rawAddress, pex);
+            }
+        }
 
         /// <summary>
         /// Send Duplex

@@ -321,6 +321,13 @@ namespace Nistec.Channels.Http
                 //}
 
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The http client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                return response;
+            }
             catch (HttpException se)
             {
                 Log.Exception("The http client throws SocketException: {0}", se);

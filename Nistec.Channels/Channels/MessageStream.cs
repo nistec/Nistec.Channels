@@ -753,7 +753,7 @@ namespace Nistec.Channels
         /// <param name="actionName"></param>
         /// <param name="nullState"></param>
         /// <returns></returns>
-        public TransStream AsyncBinaryTask(Func<byte[]> action, string actionName, MessageState nullState = MessageState.ItemNotFound)
+        public TransStream AsyncBinaryTask(Func<byte[]> action, string actionName, ChannelState nullState = ChannelState.ItemNotFound)
         {
             Task<byte[]> task = Task.Factory.StartNew<byte[]>(action);
             {

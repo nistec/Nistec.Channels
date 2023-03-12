@@ -37,7 +37,7 @@ namespace Nistec.Channels
     public class MessageAck : ISerialEntity, ITransformResponse //IDisposable
     {
         #region properties
-        public MessageState State { get; set; }
+        public ChannelState State { get; set; }
         public Formatters Formatter { get { return Formatters.BinarySerializer; } }
         public string Message { get; set; }
         public DateTime Modified { get; protected set; }
@@ -52,7 +52,7 @@ namespace Nistec.Channels
 
         public void SetState(int state, string message)
         {
-            State =(MessageState)state;
+            State =(ChannelState)state;
             Message = message;
         }
 
@@ -65,7 +65,7 @@ namespace Nistec.Channels
             Modified = DateTime.Now;
         }
 
-        public MessageAck(MessageState state, string message)
+        public MessageAck(ChannelState state, string message)
             : this()
         {
             State = state;
@@ -126,7 +126,7 @@ namespace Nistec.Channels
             if (streamer == null)
                 streamer = new BinaryStreamer(stream);
 
-            State = (MessageState)streamer.ReadValue();
+            State = (ChannelState)streamer.ReadValue();
             Message = streamer.ReadString();
             Modified = streamer.ReadValue<DateTime>();
         }
@@ -144,7 +144,7 @@ namespace Nistec.Channels
             return ns;
         }
 
-        public static NetStream DoResponse(MessageState state, string message)
+        public static NetStream DoResponse(ChannelState state, string message)
         {
             MessageAck pm = new MessageAck(state,message);
             return pm.Serialize();

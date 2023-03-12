@@ -298,6 +298,13 @@ namespace Nistec.Channels.Tcp
                 return response;
 
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The tcp client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                return response;
+            }
             catch (TCP.SocketException se)
             {
                 Log.Exception("The tcp client throws SocketException: {0}", se);
@@ -317,13 +324,6 @@ namespace Nistec.Channels.Tcp
                 Log.Exception("The tcp client throws the SerializationException : ", sex, true);
                 if (enableException)
                     throw sex;
-                return response;
-            }
-            catch (MessageException mex)
-            {
-                Log.Exception("The tcp client throws the MessageException : ", mex, true);
-                if (enableException)
-                    throw mex;
                 return response;
             }
             catch (Exception ex)
@@ -366,7 +366,7 @@ namespace Nistec.Channels.Tcp
             tcpClient.SendBufferSize = SendBufferSize;
             tcpClient.ReceiveBufferSize = ReceiveBufferSize;
 
-            Exception connectEx = null;
+            ChannelException connectEx = null;
 
             do
             {
@@ -379,7 +379,7 @@ namespace Nistec.Channels.Tcp
                     if (retry >= MaxRetry)
                     {
                         Log.Error("TcpClient connection has timeout exception after retry: {0},timeout:{1}, msg: {2}", retry, ConnectTimeout, toex.Message);
-                        connectEx= toex;
+                        connectEx = new ChannelException(ChannelState.TimeoutError,string.Format("TcpClient connection has timeout exception after retry: {0},timeout:{1}",retry, ConnectTimeout), toex);
                     }
                 }
                 catch (Exception pex)
@@ -387,7 +387,7 @@ namespace Nistec.Channels.Tcp
                     if (retry >= MaxRetry)
                     {
                         Log.Error("TcpClient connection error after retry: {0}, msg: {1}", retry, pex.Message);
-                        connectEx= pex;
+                        connectEx = new ChannelException(ChannelState.ConnectionError, string.Format("TcpClient connection has timeout exception after retry: {0}", retry), pex);
                     }
                 }
                 retry++;
@@ -400,7 +400,7 @@ namespace Nistec.Channels.Tcp
                 if (connectEx != null)
                     throw connectEx;
                 else
-                    throw new Exception("Unable to connect to tcp address: " + HostName);
+                    throw new ChannelException(ChannelState.ConnectionError, "Unable to connect to tcp address: " + HostName);
             }
 
             return tcpClient;

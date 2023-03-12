@@ -37,12 +37,12 @@ using System.Collections.Generic;
 using System.Web;
 using Nistec.Serialization;
 using System.Collections.Specialized;
-
+using System.Net.NetworkInformation;
 
 namespace Nistec.Channels.Http
 {
     /// <summary>
-    /// Represent a base class for tcp client.
+    /// Represent a base class for http client.
     /// </summary>
     /// <typeparam name="TRequest"></typeparam>
     public abstract class HttpClient<TRequest> : IDisposable where TRequest : ITransformMessage
@@ -341,6 +341,13 @@ namespace Nistec.Channels.Http
                 //return response;
 
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The http client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                return response;
+            }
             catch (HttpException se)
             {
                 Log.Exception("The http client throws SocketException: {0}", se);
@@ -387,6 +394,11 @@ namespace Nistec.Channels.Http
                 //response = ExecuteQuery(args);
                 //return response;
 
+            }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The http client throws the ChannelException : ", mex, true);
+                return response;
             }
             catch (HttpException se)
             {
@@ -435,6 +447,11 @@ namespace Nistec.Channels.Http
                 //return response;
 
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The http client throws the ChannelException : ", mex, true);
+                return response;
+            }
             catch (HttpException se)
             {
                 Log.Exception("The http client throws SocketException: {0}", se);
@@ -477,6 +494,13 @@ namespace Nistec.Channels.Http
                 //response = ExecuteRequest(request, contentType);
                 //return response;
 
+            }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The http client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                return response;
             }
             catch (HttpException se)
             {
@@ -535,6 +559,13 @@ namespace Nistec.Channels.Http
                         return null;
                 }
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The http client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                return response;
+            }
             catch (HttpException se)
             {
                 Log.Exception("The http client throws SocketException: {0}", se);
@@ -556,13 +587,6 @@ namespace Nistec.Channels.Http
                     throw sex;
                 return response;
             }
-          catch (MessageException mex)
-          {
-              Log.Exception("The tcp client throws the MessageException : ", mex, true);
-              if (enableException)
-                  throw mex;
-              return response;
-          }
             catch (Exception ex)
             {
                 Log.Exception("The http client throws the error: ", ex, true);
@@ -587,6 +611,12 @@ namespace Nistec.Channels.Http
                 //return ExecuteJsonRequest(jsonRequest);
 
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The http client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+            }
             catch (SocketException se)
             {
                 Log.Exception("The http client throws SocketException: {0}", se);
@@ -604,12 +634,6 @@ namespace Nistec.Channels.Http
                 Log.Exception("The http client throws the SerializationException : ", sex, true);
                 if (enableException)
                     throw sex;
-            }
-            catch (MessageException mex)
-            {
-                Log.Exception("The tcp client throws the MessageException : ", mex, true);
-                if (enableException)
-                    throw mex;
             }
             catch (Exception ex)
             {
@@ -661,6 +685,13 @@ namespace Nistec.Channels.Http
             
                 //return ReadJsonResponse<TResponse>(strResponse);
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The http client throws the MessageException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                return response;
+            }
             catch (SocketException se)
             {
                 Log.Exception("The http client throws SocketException: {0}", se);
@@ -682,14 +713,7 @@ namespace Nistec.Channels.Http
                     throw sex;
                 return response;
             }
-            catch (MessageException mex)
-            {
-                Log.Exception("The tcp client throws the MessageException : ", mex, true);
-                if (enableException)
-                    throw mex;
-                return response;
-            }
-            catch (Exception ex)
+             catch (Exception ex)
             {
                 Log.Exception("The http client throws the error: ", ex, true);
 
@@ -746,6 +770,13 @@ namespace Nistec.Channels.Http
 
                 //return ReadJsonResponse<TResponse>(strResponse);
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The http client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                onCompleted(response);
+            }
             catch (SocketException se)
             {
                 Log.Exception("The http client throws SocketException: {0}", se);
@@ -767,13 +798,6 @@ namespace Nistec.Channels.Http
                     throw sex;
                 onCompleted(response);
             }
-            catch (MessageException mex)
-            {
-                Log.Exception("The tcp client throws the MessageException : ", mex, true);
-                if (enableException)
-                    throw mex;
-                onCompleted(response);
-            }
             catch (Exception ex)
             {
                 Log.Exception("The http client throws the error: ", ex, true);
@@ -790,7 +814,7 @@ namespace Nistec.Channels.Http
 
 
     /// <summary>
-    /// Represent tcp client.
+    /// Represent http client.
     /// </summary>
     public class HttpClient : HttpClient<MessageStream>, IDisposable
     {
@@ -806,7 +830,7 @@ namespace Nistec.Channels.Http
             client = new HttpClient(hostName);
             if (client == null)
             {
-                throw new Exception("Invalid configuration for tcp client with host name:" + hostName);
+                throw new Exception("Invalid configuration for http client with host name:" + hostName);
             }
             ClientsCache[hostName] = client;
             return client;
@@ -814,6 +838,30 @@ namespace Nistec.Channels.Http
 
         #region static send methods
 
+        public static bool Ping(string HostAddress,int Port, int ConnectTimeout = 5000)
+        {
+
+            try
+            {
+                if (Port > 0)
+                    HostAddress = string.Format("{0}:{1}", HostAddress, Port);
+
+                Ping ping = new Ping();
+                var hostName = new Uri(HostAddress).Host;
+
+                PingReply result = ping.Send(hostName, ConnectTimeout);
+                return result.Status == IPStatus.Success;
+
+            }
+            catch (TimeoutException toex)
+            {
+                throw toex;
+            }
+            catch (Exception pex)
+            {
+                throw pex;
+            }
+        }
         /// <summary>
         /// Send Duplex
         /// </summary>

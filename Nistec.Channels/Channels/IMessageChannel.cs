@@ -19,15 +19,15 @@ namespace Nistec.Channels
         /// </summary>
         bool IsDuplex { get; }//{ get; set; }
 
-        /// <summary>
-        /// Get or Set DuplexType.
-        /// </summary>
-        DuplexTypes DuplexType { get; set; }
+        ///// <summary>
+        ///// Get or Set DuplexType.
+        ///// </summary>
+        //DuplexTypes DuplexType { get; set; }
 
-        /// <summary>
-        ///  Get or Set The message expiration.
-        /// </summary>
-        int Expiration { get; set; }
+        ///// <summary>
+        /////  Get or Set The message expiration.
+        ///// </summary>
+        //int Expiration { get; set; }
         /// <summary>
         /// Get or Set The result type name.
         /// </summary>

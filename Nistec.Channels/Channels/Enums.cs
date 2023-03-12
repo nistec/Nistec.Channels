@@ -63,5 +63,29 @@ namespace Nistec.Channels
         Response
     }
 
-
+    public enum ChannelState
+    {
+        None = 0,
+        Ok = 200,
+        BadRequest = 400,
+        Unauthorized = 401,
+        Failed = 403,
+        ItemNotFound = 404,
+        RequestTimeout = 408,
+        Unsupported = 415,
+        InternalServerError = 500,
+        NotImplemented = 501,
+        ConnectionError = 502,
+        ServiceError = 503,
+        //MessageError = 503,
+        TimeoutError = 504,
+        NetworkError = 505,
+        ArgumentsError = 506,
+        //NotSupportedError = 507,
+        OperationError = 508,
+        SerializeError = 510,
+        SecurityError = 511,
+        UnexpectedError = 599,
+        Exception = -1
+    }
 }

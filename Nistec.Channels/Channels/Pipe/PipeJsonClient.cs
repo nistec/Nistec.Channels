@@ -286,6 +286,13 @@ namespace Nistec.Channels
                     return response;
                 }
             }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                return response;
+            }
             catch (TimeoutException toex)
             {
                 Log.Exception("The client throws the TimeoutException : ", toex, true);
@@ -298,13 +305,6 @@ namespace Nistec.Channels
                 Log.Exception("The client throws the SerializationException : ", sex, true);
                 if (enableException)
                     throw sex;
-                return response;
-            }
-            catch (MessageException mex)
-            {
-                Log.Exception("The client throws the MessageException : ", mex, true);
-                if (enableException)
-                    throw mex;
                 return response;
             }
             catch (Exception ex)

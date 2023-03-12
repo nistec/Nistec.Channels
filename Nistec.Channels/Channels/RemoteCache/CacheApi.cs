@@ -562,7 +562,7 @@ namespace Nistec.Channels.RemoteCache
                                 throw new ArgumentNullException("key is required");
                             }
                             SendHttpJsonOut(new GenericMessage() { Command = cmd, Id = key });
-                            return MessageState.Ok.ToString();
+                            return ChannelState.Ok.ToString();
                         }
 
                     //case CacheCmd.LoadData:
