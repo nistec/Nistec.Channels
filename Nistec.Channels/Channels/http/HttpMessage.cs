@@ -64,7 +64,8 @@ namespace Nistec.Channels.Http
             : this()
         {
             Command = command;
-            Id = key;
+            //Identifier = key;
+            CustomId = key;
             Expiration = expiration;
             SetBody(value);
         }
@@ -80,9 +81,10 @@ namespace Nistec.Channels.Http
             : this()
         {
             Command = command;
-            Id = key;
+            //Identifier = key;
+            CustomId = key;
             Expiration = expiration;
-            Label = sessionId;
+            SessionId = sessionId;
             SetBody(value);
         }
         #endregion

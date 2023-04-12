@@ -9,6 +9,44 @@ using System.Text;
 
 namespace Nistec.Channels
 {
+    public static class ChannelsExtension
+    {
+        public static bool IsStateOk(this ChannelState State)
+        {
+            return (int)State > 0 && (int)State < 300;
+        }
+        public static bool IsConnectionError(this ChannelState state)
+        {
+            return state == ChannelState.ConnectionError;
+        }
+
+        public static ChannelStateSection SectionState(this ChannelState State)
+        {
+            if ((int)State > 0 && (int)State < 300)
+                return ChannelStateSection.Ok;
+            if ((int)State > 399 && (int)State < 500)
+                return ChannelStateSection.ClientError;
+            if ((int)State > 499 && (int)State < 590)
+                return ChannelStateSection.ServerError;
+            if ((int)State <0 ||((int)State > 499 && (int)State < 590))
+                return ChannelStateSection.FatalError;
+            else
+                return ChannelStateSection.None;
+        }
+        
+        //public static bool IsClientError(this ChannelState State)
+        //{
+        //    return (int)State > 399 && (int)State < 500;
+        //}
+        //public static bool IsServerError(this ChannelState State)
+        //{
+        //    return (int)State > 499 && (int)State < 590;
+        //}
+        //public static bool IsFatalError(this ChannelState State)
+        //{
+        //    return (int)State > 499 && (int)State < 590;
+        //}
+    }
     public static class StreamExtension
     {
 

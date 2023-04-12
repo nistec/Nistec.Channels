@@ -89,7 +89,7 @@ namespace Nistec.Channels
 
                 var request = AnonymousMessage.ReadRequest(_Receiver);
 
-                Console.WriteLine("Client ReadRequest Command:{0}, Key:{1}, Size:{1}", request.Command, request.Id, request.Size);
+                Console.WriteLine("Client ReadRequest Command:{0}, Key:{1}, Size:{1}", request.Command, request.Identifier, request.Size);
 
                 if (isOneWay)
                 {
@@ -106,7 +106,7 @@ namespace Nistec.Channels
                     {
                         throw new Exception("Error invalid response");
                     }
-                    Console.WriteLine("Client Response :Command:{0}, Key:{1}, Size:{1}", response.Command, response.Id, response.Size);
+                    Console.WriteLine("Client Response :Command:{0}, Key:{1}, Size:{1}", response.Command, response.Identifier, response.Size);
                     AnonymousMessage.WriteResponse(_Sender, response.ToStream());
                     
                     

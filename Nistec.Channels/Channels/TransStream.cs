@@ -39,6 +39,69 @@ namespace Nistec.Channels
     public enum TransType : byte { None = 0, Object = 100, Stream = 101, Json = 102, Base64 = 103, Text = 104, Ack = 105, State = 106, Csv = 107, Xml=108 }
     public enum StringFormatType : byte { None = 0, Json = 102, Base64 = 103, Text = 104, Csv = 107, Xml = 108 }
 
+    public class TransStreamValue :  IDisposable
+    {
+
+        #region Stream / properties
+
+        TransType _TransType;
+        public TransType TransType { get { return _TransType; } }
+        int _State;
+        public int State { get { return _State; } }
+        object _Value;
+        public object Value { get { return _Value; } }
+
+
+        NetStream _Stream;
+
+        NetStream Stream
+        {
+            get
+            {
+                if (_Stream == null)
+                {
+                    _Stream = new NetStream();
+                }
+                return _Stream;
+            }
+        }
+
+        #endregion
+
+        #region Dispose
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        /// <summary>
+        /// Dispose
+        /// </summary>
+        /// <param name="disposing"></param>
+        protected void Dispose(bool disposing)
+        {
+            try
+            {
+                if (disposing)
+                {
+                    if (_Stream != null)
+                    {
+                        _Stream.Dispose();
+                    }
+                }
+                _Value = null;
+            }
+            catch (Exception)
+            {
+
+            }
+        }
+        #endregion
+
+    }
+
+
     /// <summary>
     /// Represent a ack stream for named pipe/tcp communication.
     /// </summary>
@@ -46,7 +109,14 @@ namespace Nistec.Channels
     public class TransStream : ITransformResponse// IDisposable
     {
 
-        #region Stream
+        #region Stream / properties
+
+        TransType _TransType;
+        //public TransType TransType { get { return _TransType; } }
+        int _State;
+        //public int State { get { return _State; } }
+        object _Value;
+
 
         NetStream _Stream;
 
@@ -66,7 +136,7 @@ namespace Nistec.Channels
         {
             return _Stream;
         }
-        
+
         public int GetLength()
         {
             return _Stream == null ? 0 : _Stream.iLength;
@@ -153,8 +223,8 @@ namespace Nistec.Channels
 
         #endregion
 
-        #region internal 
-        internal static object StreamToValue(NetStream stream)
+        #region static read 
+        public static object ReadValue(NetStream stream)
         {
 
             using (IBinaryStreamer streamer = new BinaryStreamer(stream))
@@ -169,14 +239,14 @@ namespace Nistec.Channels
                 return value;
             }
         }
-        internal static T StreamToValue<T>(NetStream stream)
+        public static T ReadValue<T>(NetStream stream)
         {
-            object val = StreamToValue(stream);
+            object val = ReadValue(stream);
             return GenericTypes.Cast<T>(val, true);
         }
         #endregion
 
-        #region static
+        #region static TransType
 
         public static bool IsEmptyStream(TransStream ts)
         {
@@ -238,11 +308,11 @@ namespace Nistec.Channels
                 return StringFormatType.Xml;
             if (Strings.IsBase64String(message))
                 return StringFormatType.Base64;
-            else 
+            else
                 return StringFormatType.Text;
         }
 
-        public static TransType ToTransType(Type type, StringFormatType format= StringFormatType.Json)
+        public static TransType ToTransType(Type type, StringFormatType format = StringFormatType.Json)
         {
             if (type == typeof(TransStream))
                 return TransType.Stream;
@@ -266,6 +336,9 @@ namespace Nistec.Channels
                 return TransformType.Object;
 
         }
+        #endregion
+
+        #region Static Write
 
         public static TransStream Write(object value, TransType type)
         {
@@ -286,14 +359,14 @@ namespace Nistec.Channels
 
         public static TransStream WriteAck(int state, string message)
         {
-            return new TransStream(new TransAck(state, message), TransType.Ack);
+            return new TransStream(new MessageAck((ChannelState)state, message), TransType.Ack);
         }
 
         public static TransStream WriteBody(IBodyStream bs, string action, TransformType transformType)
         {
             if (bs == null)
             {
-                return new TransStream(TransAck.DoAck((int)ChannelState.ItemNotFound, action + ", Item Not Found"), TransType.Ack);
+                return new TransStream(MessageAck.DoAck(ChannelState.ItemNotFound, action + ", Item Not Found"), TransType.Ack);
                 //return new TransStream(action + ", Item Not Found", TransType.Error);
             }
             else
@@ -302,7 +375,7 @@ namespace Nistec.Channels
         public static TransStream Write(object item, string action, TransformType transformType)
         {
             if (item == null)
-                return new TransStream(TransAck.DoAck((int)ChannelState.ItemNotFound, action + ", Item Not Found"), TransType.Ack);  //return new TransStream(action + ", Item Not Found", TransType.Error);
+                return new TransStream(MessageAck.DoAck(ChannelState.ItemNotFound, action + ", Item Not Found"), TransType.Ack);  //return new TransStream(action + ", Item Not Found", TransType.Error);
             else
                 return new TransStream(item, ToTransType(transformType));
         }
@@ -337,7 +410,6 @@ namespace Nistec.Channels
             }
             return ts;
         }
-
         public static NetStream ToStream(object value)
         {
             NetStream ns = new NetStream();
@@ -471,7 +543,8 @@ namespace Nistec.Channels
         }
         #endregion
 
-        #region  WriteTrans
+        #region  Write/Read Trans
+
         const int HeaderBytes = 11;
         const int Signature = -2147483647;// Int32.MaxValue-1 ;
         //const string Sig = "TransStream";
@@ -487,11 +560,85 @@ namespace Nistec.Channels
             streamer.Flush();
         }
 
+        object ReadTrans()
+        {
 
+            if (IsEmpty)
+            {
+                _TransType = TransType.None;
+                _State = -1;
+                Console.WriteLine("ReadTrans IsEmpty.");
+                return null;
+            }
+            using (IBinaryStreamer streamer = new BinaryStreamer(Stream))
+            {
+                if (IsTransStream(Stream))
+                {
+                    streamer.ReadValue<int>();//signature
+                    _TransType = (TransType)streamer.ReadValue<byte>();//TransType
+                    _State = streamer.ReadValue<int>();//State
+                }
+                var value = streamer.ReadValue();
+                return value;
+            }
+        }
+        T ReadTrans<T>()
+        {
+            object val = ReadTrans();
+            return GenericTypes.Cast<T>(val, true);
+        }
         #endregion
 
         #region read
 
+        public object ReadValue(Action<string> onFault)
+        {
+            try
+            {
+                return ReadTrans();
+            }
+            catch (Exception ex)
+            {
+                _State = -1;
+                onFault(ex.Message);
+                return null;
+            }
+        }
+
+        public T ReadValue<T>(Action<string> onFault)
+        {
+            try
+            {
+                return ReadTrans<T>();
+            }
+            catch (Exception ex)
+            {
+                _State = -1;
+                onFault(ex.Message);
+                return default(T);
+            }
+        }
+
+        public T ReadValue<T>()
+        {
+            try
+            {
+                return ReadTrans<T>();
+            }
+            catch (Exception ex)
+            {
+                _State = -1;
+                return default(T);
+            }
+        }
+         
+
+        public int ReadState()
+        {
+            return PeekState();
+        }
+
+        /*
         public TransType TryRead(Action<string> onFault, out int State, out object Value)
         {
             TransType TransType = TransType.None;
@@ -529,9 +676,9 @@ namespace Nistec.Channels
                             break;
                         case TransType.Ack:
                             if (Value is NetStream)
-                                Value = StreamToValue((NetStream)Value);
-                            if (Value is TransAck)
-                                State = ((TransAck)Value).State;
+                                Value = ReadValue((NetStream)Value);
+                            //if (Value is TransAck)
+                            //    State = ((TransAck)Value).State;
                             else if (Value is MessageAck)
                                 State = (int)((MessageAck)Value).State;
                             else
@@ -542,7 +689,7 @@ namespace Nistec.Channels
                             break;
                         case TransType.Text:
                             if (Value is NetStream)
-                                Value = StreamToValue((NetStream)Value);
+                                Value = ReadValue((NetStream)Value);
                             if (!(Value is String))
                             {
                                 Value = JsonSerializer.Serialize(Value);
@@ -551,12 +698,12 @@ namespace Nistec.Channels
                             break;
                         case TransType.Base64:
                             if (Value is NetStream)
-                                Value = StreamToValue((NetStream)Value);
+                                Value = ReadValue((NetStream)Value);
                             State = (Value is String) ? 0 : -1;
                             break;
                         case TransType.Json:
                             if (Value is NetStream)
-                                Value = StreamToValue((NetStream)Value);
+                                Value = ReadValue((NetStream)Value);
                             if (!(Value is String))
                             {
                                 Value = JsonSerializer.Serialize(Value);
@@ -565,7 +712,7 @@ namespace Nistec.Channels
                             break;
                         case TransType.Object:
                             if (Value is NetStream)
-                                Value = StreamToValue((NetStream)Value);
+                                Value = ReadValue((NetStream)Value);
                             State = Value == null ? -1 : 0;
                             break;
                         default:
@@ -606,7 +753,7 @@ namespace Nistec.Channels
             }
 
         }
-
+                
         public object ReadValue(Action<string> onFault)
         {
             object Value;
@@ -616,6 +763,12 @@ namespace Nistec.Channels
                 return null;
             return Value;
         }
+
+         public T ReadValue<T>()
+        {
+            return ReadValue<T>((message) => { throw new Exception(message); });
+        }
+
         /// <summary>
         /// ReadValue, Exception if failed
         /// </summary>
@@ -639,7 +792,7 @@ namespace Nistec.Channels
                 if (typeof(T) == typeof(NetStream))
                     return GenericTypes.Cast<T>(Value, onFault);
                 else
-                    return TransStream.StreamToValue<T>((NetStream)Value);
+                    return TransStream.ReadValue<T>((NetStream)Value);
             }
             //T val;
             //if (GenericTypes.TryConvert<T>(Value, out val))
@@ -647,20 +800,8 @@ namespace Nistec.Channels
 
             return GenericTypes.Cast<T>(Value, onFault);
         }
-        /// <summary>
-        /// ReadValue, Exception if failed
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public T ReadValue<T>()
-        {
-            return ReadValue<T>((message) => { throw new Exception(message); });
-        }
-
-        public int ReadState()
-        {
-            return PeekState();
-        }
+        */
+        /*
         public NetStream ReadStream()
         {
             return _Stream;
@@ -678,7 +819,7 @@ namespace Nistec.Channels
             {
                 case TransType.Stream:
                     {
-                        var o = StreamToValue((NetStream)Value);
+                        var o = ReadValue((NetStream)Value);
                         return JsonSerializer.Serialize(o);
                     }
                 case TransType.Text:
@@ -749,7 +890,7 @@ namespace Nistec.Channels
                         return Value.ToString();
                     if (Value is NetStream)
                     {
-                        var o = StreamToValue((NetStream)Value);
+                        var o = ReadValue((NetStream)Value);
                         if (o != null && SerializeTools.IsPrimitiveOrString(o.GetType()))
                             return o.ToString();
                     }
@@ -766,12 +907,140 @@ namespace Nistec.Channels
         {
             return ReadString((message) => { throw new Exception(message); });
         }
+        */
+        #endregion
 
+        #region ReadTo
 
+        public object ReadValue()
+        {
+            try
+            {
+                return ReadTrans();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ReadTo error: " + ex.Message);
+                _State = -1;
+                return null;
+            }
+        }
+
+        public T ReadTo<T>() where T : class
+        {
+            try
+            {
+                var o = ReadTrans();
+                if (o == null)
+                    return default(T);
+                if (typeof(T) == o.GetType())
+                    return Nistec.GenericTypes.Convert<T>(o);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ReadTo error: " + ex.Message);
+            }
+            return default(T);
+        }
+
+        public NetStream ReadToSteam()
+        {
+            try
+            {
+                object Value = ReadTrans();
+                if (Value != null)
+                {
+                    if (Value is string)
+                        return NetStream.WriteTo(Value.ToString());
+                    if (Value is NetStream)
+                        return (NetStream)Value;
+                    else if (Value is Stream)
+                        return NetStream.CopyStream((Stream)Value);
+                    else
+                        return BinarySerializer.SerializeToStream(Value);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ReadTo error: " + ex.Message);
+                _State = -1;
+                return null;
+            }
+            return null;
+        }
+
+        public string ReadToText()
+        {
+            try
+            {
+                object Value = ReadTrans();
+                if (Value != null)
+                {
+                    if (Value is string)
+                        return Value.ToString();
+                    if (Value is NetStream)
+                        return NetStream.ReadTo((NetStream)Value);
+                    if (typeof(IAck).IsAssignableFrom(Value.GetType()))
+                        return ((IAck)Value).Display();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ReadTo error: " + ex.Message);
+                _State = -1;
+                return null;
+            }
+            return null;
+        }
+        public string ReadToBase64String()
+        {
+            try
+            {
+                object Value = ReadTrans();
+                if (Value != null)
+                {
+                    if (Value is NetStream)
+                    {
+                        byte[] b = ((NetStream)Value).ToArray();
+                        return Convert.ToBase64String(b, 0, b.Length);
+                    }
+                    return BinarySerializer.SerializeToBase64(Value);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ReadTo error: " + ex.Message);
+                _State = -1;
+                return null;
+            }
+            return null;
+        }
+        public string ReadToJson()
+        {
+            try
+            {
+                object Value = ReadTrans();
+                if (Value != null)
+                {
+                    if (typeof(IAck).IsAssignableFrom(Value.GetType()))
+                        return ((IAck)Value).ToJson();
+
+                    return JsonSerializer.Serialize(Value);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ReadTo error: " + ex.Message);
+                _State = -1;
+                return null;
+            }
+            return null;
+        }
         #endregion
 
         #region static reader
-
+        
+        /*
         public static TransType TryRead(NetStream stream, Action<string> onFault, out int State, out object Value)
         {
             TransType TransType = TransType.None;
@@ -810,8 +1079,8 @@ namespace Nistec.Channels
                         case TransType.Ack:
                             if (Value is NetStream)
                                 Value = ((BinaryStreamer)streamer).StreamToValue((NetStream)Value);
-                            if (Value is TransAck)
-                                State = ((TransAck)Value).State;
+                            //if (Value is TransAck)
+                            //    State = ((TransAck)Value).State;
                             else if (Value is MessageAck)
                                 State = (int)((MessageAck)Value).State;
                             else
@@ -925,7 +1194,7 @@ namespace Nistec.Channels
             val = TransStream.ReadValue<T>(stream, (message) => { val = defaultValue; });
             return val;
         }
-
+       
         public static string ReadJson(NetStream stream, Action<string> onFault)
         {
             object Value;
@@ -964,11 +1233,11 @@ namespace Nistec.Channels
         {
             return TransStream.ReadJson(stream, (message) => { throw new Exception(message); });
         }
-
+         */
 
         #endregion
 
-        #region reader
+        #region old reader
 
         /*
         public ITransResult Read(Action<string> onFault)
@@ -1052,27 +1321,38 @@ namespace Nistec.Channels
 
     }
 
+    /*
     [Serializable]
     public class TransAck: ISerialEntity, IDisposable
     {
-        public static TransAck DoAck(int state, string message) { return new TransAck(state, message); }
 
         #region properties
         public int State { get; set; }
-
         public string Message { get; set; }
+        public object Response { get; set; }
+        public string StateType { get; set; }
+
+        public ChannelState ChannelState { get { return (ChannelState)State; } }
+
         #endregion
 
         #region ctor
 
         public TransAck()
         {
+            StateType = "NA";
         }
-
+        public TransAck(ChannelState state, string message)
+        {
+            State =(int) state;
+            Message = message;
+            StateType = "ChannelState";
+        }
         public TransAck(int state, string message)
         {
             State = state;
             Message = message;
+            StateType = "NA";
         }
 
         public TransAck(NetStream stream)
@@ -1108,7 +1388,7 @@ namespace Nistec.Channels
             disposed = true;
         }
         #endregion
-
+                
         #region  IEntityFormatter
 
         public void EntityWrite(Stream stream, IBinaryStreamer streamer)
@@ -1118,6 +1398,8 @@ namespace Nistec.Channels
 
             streamer.WriteValue((int)State);
             streamer.WriteString(Message);
+            streamer.WriteValue
+(Response);
             streamer.Flush();
         }
 
@@ -1128,12 +1410,34 @@ namespace Nistec.Channels
 
             State = streamer.ReadValue<int>();
             Message = streamer.ReadString();
+            Response = streamer.ReadValue();
         }
 
         #endregion
 
-    }
+        #region static
+        public static TransAck DoOk()
+        {
+            return new TransAck(ChannelState.Ok, "ok");
+        }
+        public static TransAck DoAck(int state, string message)
+        {
+            return new TransAck(state, message);
+        }
 
+        public static NetStream DoResponse(ChannelState state, string message)
+        {
+            TransAck pm = new TransAck(state, message);
+            return pm.Serialize();
+        }
+        #endregion
+
+        public override string ToString()
+        {
+            return string.Format("State: {0}, Message: {1}", State.ToString(), Message);
+        }
+    }
+    */
     public static class TransStreamExtension
     {
         public static TransType ToTransType(this TransformType type)

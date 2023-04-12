@@ -40,7 +40,7 @@ namespace Nistec.Channels
         NA = 0,
         Pipe = 1,
         Tcp = 2,
-        Http=4
+        Http = 4
     }
 
     /// <summary>
@@ -49,7 +49,7 @@ namespace Nistec.Channels
    // [Flags]
     public enum BundleFormatter
     {
-        NA=0,
+        NA = 0,
         Binary = 1,
         Json = 2
     }
@@ -67,25 +67,46 @@ namespace Nistec.Channels
     {
         None = 0,
         Ok = 200,
+        Scheduled = 201,
+        Received = 202,
+
+        //Client error
         BadRequest = 400,
         Unauthorized = 401,
         Failed = 403,
         ItemNotFound = 404,
+        NotAllowed = 405,
         RequestTimeout = 408,
         Unsupported = 415,
+        NotEnoughCredit = 416,
+        BadTargets = 417,
+
+        //Server error
         InternalServerError = 500,
         NotImplemented = 501,
         ConnectionError = 502,
         ServiceError = 503,
-        //MessageError = 503,
         TimeoutError = 504,
         NetworkError = 505,
         ArgumentsError = 506,
-        //NotSupportedError = 507,
         OperationError = 508,
         SerializeError = 510,
         SecurityError = 511,
+
+        //fatal error
+        FatalException = 590,
+        FatalCarrierException = 591,
+        FatalSchedulerException = 592,
         UnexpectedError = 599,
         Exception = -1
+    }
+
+    public enum ChannelStateSection
+    {
+        None,
+        Ok,
+        ClientError,
+        ServerError,
+        FatalError
     }
 }

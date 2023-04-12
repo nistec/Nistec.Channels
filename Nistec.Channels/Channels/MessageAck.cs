@@ -25,7 +25,7 @@ using System.Text;
 using Nistec.Serialization;
 using Nistec.IO;
 using System.IO;
-
+using Nistec.Generic;
 
 namespace Nistec.Channels
 {
@@ -34,13 +34,15 @@ namespace Nistec.Channels
     /// Represent a response message for named pipe/tcp communication.
     /// </summary>
     [Serializable]
-    public class MessageAck : ISerialEntity, ITransformResponse //IDisposable
+    public class MessageAck : ISerialEntity, ITransformResponse , IAck//IDisposable
     {
         #region properties
         public ChannelState State { get; set; }
-        public Formatters Formatter { get { return Formatters.BinarySerializer; } }
+        //public Formatters Formatter { get { return Formatters.BinarySerializer; } }
         public string Message { get; set; }
-        public DateTime Modified { get; protected set; }
+        //public DateTime Modified { get; protected set; }
+        public object Response { get; set; }
+
         #endregion
 
         #region ITransformResponse
@@ -62,7 +64,7 @@ namespace Nistec.Channels
 
         public MessageAck()
         { 
-            Modified = DateTime.Now;
+            //Modified = DateTime.Now;
         }
 
         public MessageAck(ChannelState state, string message)
@@ -71,7 +73,13 @@ namespace Nistec.Channels
             State = state;
             Message = message;
         }
-
+        public MessageAck(ChannelState state, string message, object response)
+            : this()
+        {
+            State = state;
+            Message = message;
+            Response = response;
+        }
         public MessageAck(NetStream stream)
             : this()
         {
@@ -117,7 +125,8 @@ namespace Nistec.Channels
 
             streamer.WriteValue((int)State);
             streamer.WriteString(Message);
-            streamer.WriteValue(Modified);
+            //streamer.WriteValue(Modified);
+            streamer.WriteValue(Response);
             streamer.Flush();
         }
 
@@ -128,33 +137,62 @@ namespace Nistec.Channels
 
             State = (ChannelState)streamer.ReadValue();
             Message = streamer.ReadString();
-            Modified = streamer.ReadValue<DateTime>();
+            //Modified = streamer.ReadValue<DateTime>();
+            Response = streamer.ReadValue();
         }
 
         #endregion
 
         #region static
-
-        public static NetStream DoAck<T>(T value)
+        public static MessageAck DoOk()
         {
-            NetStream ns = new NetStream();
-            BinaryStreamer streamer = new BinaryStreamer(ns);
-            streamer.WritePrimitive<T>(value);
-            ns.Position = 0;
-            return ns;
+            return new MessageAck(ChannelState.Ok, "ok");
+        }
+        public static MessageAck DoAck(ChannelState state, string message)
+        {
+            return new MessageAck(state, message);
         }
 
-        public static NetStream DoResponse(ChannelState state, string message)
+        //public static NetStream DoAck<T>(T value)
+        //{
+        //    NetStream ns = new NetStream();
+        //    BinaryStreamer streamer = new BinaryStreamer(ns);
+        //    streamer.WritePrimitive<T>(value);
+        //    ns.Position = 0;
+        //    return ns;
+        //}
+        public static MessageAck DoResponse(ChannelState state, string message, object response = null)
         {
-            MessageAck pm = new MessageAck(state,message);
+            return new MessageAck(state, message, response);
+        }
+        public static NetStream DoStream(ChannelState state, string message, object response=null)
+        {
+            MessageAck pm = new MessageAck(state, message, response);
             return pm.Serialize();
         }
+        //public static TransStream ToTransStream(ChannelState state, string message, object response = null)
+        //{
+        //    MessageAck pm = new MessageAck(state, message, response);
+        //    return pm.ToTransStream();
+        //}
         #endregion
+
+        public TransStream ToTransStream()
+        {
+            return new TransStream(this.Serialize(), TransType.Ack);
+        }
 
         public override string ToString()
         {
             return string.Format("State: {0}, Message: {1}", State.ToString(),Message);
         }
-
+        public string Display()
+        {
+            return Strings.ReflatJson(GenericKeyValue.Create("Message", Message, "Response", Response, "State", State.ToString()).ToJson());
+        }
+        public string ToJson()
+        {
+            return JsonSerializer.Serialize(this);
+        }
     }
 }

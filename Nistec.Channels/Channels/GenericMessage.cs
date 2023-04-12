@@ -38,7 +38,6 @@ namespace Nistec.Channels
     [Serializable]
     public class GenericMessage : MessageStream, ITransformMessage//, IDisposable
     {
-
         #region ctor
 
         /// <summary>
@@ -63,35 +62,38 @@ namespace Nistec.Channels
         /// Initialize a new instance of message stream.
         /// </summary>
         /// <param name="command"></param>
-        /// <param name="id"></param>
+        /// <param name="key"></param>
         /// <param name="value"></param>
         /// <param name="expiration"></param>
-        public GenericMessage(string command, string id, object value, int expiration)
+        public GenericMessage(string command, string key, object value, int expiration)
             : this()
         {
             Command = command;
-            Id = id;
+            //Identifier = id;
+            CustomId = key;
             Expiration = expiration;
             SetBody(value);
         }
 
-        ///// <summary>
-        ///// Initialize a new instance of message stream.
-        ///// </summary>
-        ///// <param name="command"></param>
-        ///// <param name="key"></param>
-        ///// <param name="value"></param>
-        ///// <param name="expiration"></param>
-        ///// <param name="sessionId"></param>
-        //public GenericMessage(string command, string key, object value, int expiration, string sessionId)
-        //    : this()
-        //{
-        //    Command = command;
-        //    Id = key;
-        //    Expiration = expiration;
-        //    Label = sessionId;
-        //    SetBody(value);
-        //}
+        /// <summary>
+        /// Initialize a new instance of message stream.
+        /// </summary>
+        /// <param name="command"></param>
+        /// <param name="key"></param>
+        /// <param name="label"></param>
+        /// <param name="value"></param>
+        /// <param name="expiration"></param>
+        /// <param name="sessionId"></param>
+        public GenericMessage(string command, string key, string label, object value, int expiration, string sessionId)
+            : this()
+        {
+            Command = command;
+            CustomId = key;
+            SessionId = sessionId;
+            Expiration = expiration;
+            Label = label;
+            SetBody(value);
+        }
         #endregion
 
         #region Dispose
@@ -102,51 +104,6 @@ namespace Nistec.Channels
         {
             Dispose(false);
         }
-        #endregion
-
-        #region Read/Write
-
-        //internal static GenericMessage ReadRequest(Stream streamServer, int ReceiveBufferSize = 8192)
-        //{
-        //    var message = new GenericMessage();
-        //    message.EntityRead(streamServer, null);
-
-        //    return message;
-        //}
-
-        #endregion
-
-        #region ReadResponse pipe
-
-        //public object ReadResponse(Stream stream, int ReceiveBufferSize = 8192)
-        //{
-        //    return TransStream.CopyFromStream(stream, ReceiveBufferSize);
-        //}
-        //public object ReadResponse(Stream stream, int ReceiveBufferSize, TransformType transformType, bool isTransStream)
-        //{
-        //    if (isTransStream)
-        //    {
-        //        return TransStream.CopyFromStream(stream, ReceiveBufferSize);
-        //    }
-
-        //    using (var ts=TransStream.CopyFromStream(stream, ReceiveBufferSize))
-        //    {
-        //        return ts.ReadValue();
-        //    }
-        //}
-        //public TResponse ReadResponse<TResponse>(Stream stream, int ReceiveBufferSize = 8192)
-        //{
-        //    if (TransStream.IsTransStream(typeof(TResponse)))
-        //    {
-        //        TransStream ts = TransStream.CopyFromStream(stream, ReceiveBufferSize);
-        //        return GenericTypes.Cast<TResponse>(ts, true);
-        //    }
-        //    using (TransStream ack = TransStream.CopyFromStream(stream, ReceiveBufferSize))
-        //    {
-        //        return ack.ReadValue<TResponse>();
-        //    }
-        //}
-
         #endregion
 
     }

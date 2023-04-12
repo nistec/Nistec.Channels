@@ -61,7 +61,7 @@ namespace Nistec.Channels
             : this()
         {
             Command = command;
-            Id = key;
+            CustomId = key;
             Expiration = expiration;
             SetBody(value);
         }
@@ -77,10 +77,14 @@ namespace Nistec.Channels
             : this()
         {
             Command = command;
-            Id = key;
+            CustomId = key;
             Expiration = expiration;
-            Label = sessionId;
+            SessionId = sessionId;
             SetBody(value);
+        }
+        public AnonymousMessage(IDictionary<string, object> dict):base(dict)
+        {
+
         }
         #endregion
 
@@ -214,24 +218,26 @@ namespace Nistec.Channels
         /// </summary>
         /// <param name="dict"></param>
         /// <returns></returns>
-        public static MessageStream ConvertFrom(IDictionary dict)
+        public static MessageStream ConvertFrom(IDictionary<string ,object> dict)
         {
-            AnonymousMessage message = new AnonymousMessage()
-            {
-                Command = dict.Get<string>("Command"),
-                Id = dict.Get<string>("Id"),
-                Args = dict.Get<NameValueArgs>("Args"),
-                BodyStream = dict.Get<NetStream>("Body", null),
-                Expiration = dict.Get<int>("Expiration", 0),
-                //IsDuplex = dict.Get<bool>("IsDuplex", true),
-                DuplexType = (DuplexTypes)dict.Get<int>("DuplexType", 0),
-                Modified = dict.Get<DateTime>("Modified", DateTime.Now),
-                TypeName = dict.Get<string>("TypeName"),
-                Label = dict.Get<string>("Label"),
-                TransformType=(TransformType) dict.Get<byte>("TransformType")
-            };
+            return new AnonymousMessage(dict);
 
-            return message;
+            //AnonymousMessage message = new AnonymousMessage(dict)
+            //{
+            //    Command = dict.Get<string>("Command"),
+            //    Identifier = dict.Get<string>("Identifier"),
+            //    Args = dict.Get<NameValueArgs>("Args"),
+            //    BodyStream = dict.Get<NetStream>("Body", null),
+            //    Expiration = dict.Get<int>("Expiration", 0),
+            //    //IsDuplex = dict.Get<bool>("IsDuplex", true),
+            //    DuplexType = (DuplexTypes)dict.Get<int>("DuplexType", 0),
+            //    Modified = dict.Get<DateTime>("Modified", DateTime.Now),
+            //    TypeName = dict.Get<string>("TypeName"),
+            //    Label = dict.Get<string>("Label"),
+            //    TransformType=(TransformType) dict.Get<byte>("TransformType")
+            //};
+
+            //return message;
         }
 
         internal static NetStream CreateAnonymousAck(ChannelState state, string message)

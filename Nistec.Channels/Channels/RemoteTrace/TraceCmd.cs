@@ -136,7 +136,7 @@ namespace Nistec.Channels.RemoteTrace
     /// <summary>
     /// Represent known args for api commands.
     /// </summary>
-    public class KnowsArgs
+    public class KnownArgs
     {
         //public const string SessionId = "SessionId";
         /// <summary>Source.</summary>

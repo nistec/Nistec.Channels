@@ -225,7 +225,7 @@ namespace Nistec.Channels.RemoteTrace
         internal static void Do(string command, string key, string[] keyValue, NetProtocol protocol)
         {
             IMessageStream message = MessageStream.Create(protocol, command, key, null, TypeEmpty, 0);
-            message.Args = NameValueArgs.Get(keyValue);
+            message.Args = NameValueArgs.Create(keyValue);
             SendOut(message,HostType.Trace,  protocol);
         }
 

@@ -184,19 +184,20 @@ namespace Nistec.Channels.RemoteCache
     /// <summary>
     /// Represent known args for api commands.
     /// </summary>
-    public class KnowsArgs
+    public class KnownArgs
     {
         /// <summary>Source.</summary>
         public const string Source = "Source";
         /// <summary>Destination.</summary>
         public const string Destination = "Destination";
-
         /// <summary>ConnectionKey.</summary>
         public const string ConnectionKey = "ConnectionKey";
         /// <summary>TableName.</summary>
         public const string TableName = "TableName";
         /// <summary>MappingName.</summary>
         public const string MappingName = "MappingName";
+        /// <summary>DbName.</summary>
+        public const string DbName = "DbName";
         /// <summary>SourceName.</summary>
         public const string SourceName = "SourceName";
         /// <summary>SourceType.</summary>
@@ -225,7 +226,6 @@ namespace Nistec.Channels.RemoteCache
         public const string StrArgs = "StrArgs";
         /// <summary>ShouldSerialized.</summary>
         public const string ShouldSerialized = "ShouldSerialized";
-
         /// <summary>CloneType.</summary>
         public const string CloneType = "CloneType";
         /// <summary>SyncType.</summary>

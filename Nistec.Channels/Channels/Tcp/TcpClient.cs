@@ -572,6 +572,7 @@ namespace Nistec.Channels.Tcp
     {
         private static bool IsConnected = false;
         //private static SocketException socketexception;
+        private static ChannelException socketexception;
         private static ManualResetEvent tcpConnector = new ManualResetEvent(false);
 
         /// <summary>
@@ -583,7 +584,7 @@ namespace Nistec.Channels.Tcp
         public static TCP.TcpClient Connect(IPEndPoint remoteEndPoint, int timeout)
         {
             tcpConnector.Reset();
-            //socketexception = null;
+            socketexception = null;
 
             string serverIp = Convert.ToString(remoteEndPoint.Address);
             int port = remoteEndPoint.Port;
@@ -613,19 +614,22 @@ namespace Nistec.Channels.Tcp
             try
             {
                 IsConnected = false;
-                TCP.TcpClient tcpclient = asyncresult.AsyncState as TCP.TcpClient;
-
-                if (tcpclient.Client != null)
+                if (asyncresult != null)
                 {
-                    tcpclient.EndConnect(asyncresult);
-                    IsConnected = true;
+                    TCP.TcpClient tcpclient = asyncresult.AsyncState as TCP.TcpClient;
+
+                    if (tcpclient.Client != null)
+                    {
+                        tcpclient.EndConnect(asyncresult);
+                        IsConnected = true;
+                    }
                 }
             }
             catch (Exception ex)
             {
                 IsConnected = false;
-                //socketexception = ex;
-                throw new ChannelException(ChannelState.ConnectionError, "Unable to connect to tcp, using asyncresult", ex);// socketexception;
+                socketexception = new ChannelException(ChannelState.ConnectionError, "Unable to connect to tcp, using asyncresult", ex);
+                //throw new ChannelException(ChannelState.ConnectionError, "Unable to connect to tcp, using asyncresult", ex);// socketexception;
             }
             finally
             {
@@ -989,8 +993,8 @@ namespace Nistec.Channels.Tcp
         }
 
         #endregion
-
   
     }
+
    
 }

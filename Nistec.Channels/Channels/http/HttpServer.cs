@@ -349,7 +349,7 @@ namespace Nistec.Channels.Http
 
             if (bResponse.PeekTransType() == TransType.Json)
             {
-                var json = bResponse.ReadJson();
+                var json = bResponse.ReadToJson();
                 buffer = Encoding.UTF8.GetBytes(json);
             }
             else

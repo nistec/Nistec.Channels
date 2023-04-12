@@ -92,6 +92,7 @@
     <Compile Include="Channels\http\HttpRequest.cs" />
     <Compile Include="Channels\GenericMessage.cs" />
     <Compile Include="Channels\IChannelSettings.cs" />
+    <Compile Include="Channels\Tcp\TcpFlexClient.cs" />
     <Compile Include="Channels\TransStream.cs" />
     <Compile Include="Channels\AnonymousPipe\AnonymousPipeClient.cs">
       <SubType>Code</SubType>
@@ -100,7 +101,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Channels\AnonymousPipe\AnonymousMessage.cs" />
-    <Compile Include="Channels\IMessageChannel.cs" />
+    <Compile Include="Channels\ITransformMessage.cs" />
     <Compile Include="Channels\RemoteCache\CacheApi.cs" />
     <Compile Include="Channels\StreamExtension.cs" />
     <Compile Include="Channels\Config\HttpConfigItem.cs" />
