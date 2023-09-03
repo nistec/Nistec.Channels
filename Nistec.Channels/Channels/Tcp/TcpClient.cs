@@ -36,6 +36,7 @@ using Nistec.Logging;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Nistec.Serialization;
+using System.Net.NetworkInformation;
 
 namespace Nistec.Channels.Tcp
 {
@@ -432,7 +433,7 @@ namespace Nistec.Channels.Tcp
 
                 //Console.WriteLine("SendDuplexStream-LocalEndPoint: {0}", tcpClient.Client.LocalEndPoint.ToString());
 
-                if (message.IsDuplex)
+                if (message.DuplexType.IsDuplex())
                     return ExecuteMessage<TResponse>(tcpClient.GetStream(), message);
                 else
                 {
@@ -502,7 +503,7 @@ namespace Nistec.Channels.Tcp
 
                 //Console.WriteLine("SendDuplexStream-LocalEndPoint: {0}", tcpClient.Client.LocalEndPoint.ToString());
 
-                if (message.IsDuplex)
+                if (message.DuplexType.IsDuplex())
                 {
                     response = ExecuteMessage<TResponse>(tcpClient.GetStream(), message);
                     onCompleted(response);
@@ -641,17 +642,17 @@ namespace Nistec.Channels.Tcp
     /// <summary>
     /// Represent tcp client.
     /// </summary>
-    public class TcpClient : TcpClient<MessageStream>, IDisposable
+    public class TcpStreamClient : TcpClient<MessageStream>, IDisposable
     {
-        static readonly Dictionary<string, TcpClient> ClientsCache = new Dictionary<string, TcpClient>();
-        static TcpClient GetClient(string hostName)
+        static readonly Dictionary<string, TcpStreamClient> ClientsCache = new Dictionary<string, TcpStreamClient>();
+        static TcpStreamClient GetClient(string hostName)
         {
-            TcpClient client = null;
+            TcpStreamClient client = null;
             if (ClientsCache.TryGetValue(hostName, out client))
             {
                 return client;
             }
-            client = new TcpClient(hostName);
+            client = new TcpStreamClient(hostName);
             if (client == null)
             {
                 throw new Exception("Invalid configuration for tcp client with host name:" + hostName);
@@ -662,7 +663,8 @@ namespace Nistec.Channels.Tcp
 
         #region static send methods
 
-        public static bool Ping(string HostAddress, int Port, int ConnectTimeout = 5000)
+
+        public static bool Ping(string HostAddress, int Port, int ConnectTimeout = 3000)
         {
            
             TCP.TcpClient tcpClient = null;
@@ -673,9 +675,9 @@ namespace Nistec.Channels.Tcp
                 IPEndPoint ep = new IPEndPoint(IPAddress.Parse(HostAddress), Port);
                 tcpClient = new TCP.TcpClient();
                 tcpClient.SendTimeout = ConnectTimeout;
-                tcpClient.SendBufferSize = TcpSettings.DefaultSendBufferSize;
-                tcpClient.ReceiveBufferSize = TcpSettings.DefaultReceiveBufferSize;
-                tcpClient.ReceiveTimeout = TcpSettings.DefaultReadTimeout;
+                tcpClient.SendBufferSize = TcpSettings.DefaultPingBufferSize;
+                tcpClient.ReceiveBufferSize = TcpSettings.DefaultPingBufferSize;
+                tcpClient.ReceiveTimeout = TcpSettings.DefaultPingReadTimeout;
                 tcpClient.Connect(ep);
 
                 if (!tcpClient.Connected)
@@ -708,9 +710,9 @@ namespace Nistec.Channels.Tcp
         /// <returns></returns>
         public static TransStream SendDuplexStream(MessageStream request, string hostName, bool enableException = false)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             request.TransformType = TransformType.Stream;
-            using (TcpClient client = new TcpClient(hostName))
+            using (TcpStreamClient client = new TcpStreamClient(hostName))
             {
                 return client.Execute<TransStream>(request, enableException);
             }
@@ -718,8 +720,8 @@ namespace Nistec.Channels.Tcp
         public static TransStream SendDuplexStream(MessageStream request, string HostAddress, int port, int connectTimeout, bool IsAsync, bool enableException = false)
         {
             request.TransformType = TransformType.Stream;
-            request.IsDuplex = true;
-            using (TcpClient client = new TcpClient(HostAddress, port, connectTimeout, IsAsync))
+            request.DuplexType = DuplexTypes.Respond;
+            using (TcpStreamClient client = new TcpStreamClient(HostAddress, port, connectTimeout, IsAsync))
             {
 
                 return client.Execute<TransStream>(request, enableException);
@@ -728,8 +730,8 @@ namespace Nistec.Channels.Tcp
         public static TransStream SendDuplexStream(MessageStream request, string HostAddress, int port, int connectTimeout, int readTimeout, bool IsAsync, bool enableException = false)
         {
             request.TransformType = TransformType.Stream;
-            request.IsDuplex = true;
-            using (TcpClient client = new TcpClient(HostAddress, port, connectTimeout, readTimeout, IsAsync))
+            request.DuplexType = DuplexTypes.Respond;
+            using (TcpStreamClient client = new TcpStreamClient(HostAddress, port, connectTimeout, readTimeout, IsAsync))
             {
 
                 return client.Execute<TransStream>(request, enableException);
@@ -738,8 +740,8 @@ namespace Nistec.Channels.Tcp
         public static void SendDuplexStreamAsync(MessageStream request, string HostAddress, int port, int connectTimeout, Action<TransStream> onCompleted, bool IsAsync, bool enableException = false)
         {
             request.TransformType = TransformType.Stream;
-            request.IsDuplex = true;
-            using (TcpClient client = new TcpClient(HostAddress, port, connectTimeout, IsAsync))
+            request.DuplexType = DuplexTypes.Respond;
+            using (TcpStreamClient client = new TcpStreamClient(HostAddress, port, connectTimeout, IsAsync))
             {
                 client.ExecuteAsync<TransStream>(request, onCompleted, enableException);
             }
@@ -748,8 +750,8 @@ namespace Nistec.Channels.Tcp
         public static void SendDuplexStreamAsync(MessageStream request, string HostAddress, int port, int connectTimeout, int readTimeout, Action<TransStream> onCompleted, bool IsAsync, bool enableException = false)
         {
             request.TransformType = TransformType.Stream;
-            request.IsDuplex = true;
-            using (TcpClient client = new TcpClient(HostAddress, port, connectTimeout, readTimeout, IsAsync))
+            request.DuplexType = DuplexTypes.Respond;
+            using (TcpStreamClient client = new TcpStreamClient(HostAddress, port, connectTimeout, readTimeout, IsAsync))
             {
                 client.ExecuteAsync<TransStream>(request, onCompleted, enableException);
             }
@@ -759,7 +761,7 @@ namespace Nistec.Channels.Tcp
         {
             TcpMessage message = new TcpMessage();
             message.EntityRead(json,null);
-            using (TcpClient client = new TcpClient(HostAddress, port, connectTimeout, readTimeout, IsAsync))
+            using (TcpStreamClient client = new TcpStreamClient(HostAddress, port, connectTimeout, readTimeout, IsAsync))
             {
                 var response= client.Execute(message, enableException);
                 return JsonSerializer.Serialize(response);
@@ -770,7 +772,7 @@ namespace Nistec.Channels.Tcp
         {
             TcpMessage message = new TcpMessage();
             message.EntityRead(json, null);
-            using (TcpClient client = new TcpClient(HostName))
+            using (TcpStreamClient client = new TcpStreamClient(HostName))
             {
                 return client.Execute(message, enableException);
             }
@@ -779,8 +781,8 @@ namespace Nistec.Channels.Tcp
         public static object SendDuplex(MessageStream request, string HostAddress,int port, int connectTimeout, bool IsAsync, bool enableException = false)
         {
             //Type type = request.BodyType;
-            request.IsDuplex = true;
-            using (TcpClient client = new TcpClient(HostAddress, port, connectTimeout, IsAsync))
+            request.DuplexType = DuplexTypes.Respond;
+            using (TcpStreamClient client = new TcpStreamClient(HostAddress, port, connectTimeout, IsAsync))
             {
                 return client.Execute(request, enableException);
             }
@@ -788,8 +790,8 @@ namespace Nistec.Channels.Tcp
 
         public static T SendDuplex<T>(MessageStream request, string HostAddress, int port, int connectTimeout, bool IsAsync, bool enableException = false)
         {
-            request.IsDuplex = true;
-            using (TcpClient client = new TcpClient(HostAddress, port, connectTimeout, IsAsync))
+            request.DuplexType = DuplexTypes.Respond;
+            using (TcpStreamClient client = new TcpStreamClient(HostAddress, port, connectTimeout, IsAsync))
             {
                 return client.Execute<T>(request, enableException);
             }
@@ -798,8 +800,8 @@ namespace Nistec.Channels.Tcp
         public static void SendOut(MessageStream request, string HostAddress, int port, int connectTimeout, bool IsAsync, bool enableException = false)
         {
             //Type type = request.BodyType;
-            request.IsDuplex = false;
-            using (TcpClient client = new TcpClient(HostAddress, port, connectTimeout, IsAsync))
+            request.DuplexType = DuplexTypes.None;
+            using (TcpStreamClient client = new TcpStreamClient(HostAddress, port, connectTimeout, IsAsync))
             {
                 client.ExecuteOut(request, enableException);
             }
@@ -808,8 +810,8 @@ namespace Nistec.Channels.Tcp
         public static object SendDuplex(MessageStream request, string HostName, bool enableException = false)
         {
             //Type type = request.BodyType;
-            request.IsDuplex = true;
-            using (TcpClient client = new TcpClient(HostName))
+            request.DuplexType = DuplexTypes.Respond;
+            using (TcpStreamClient client = new TcpStreamClient(HostName))
             {
                 return client.Execute(request, enableException);
             }
@@ -817,8 +819,8 @@ namespace Nistec.Channels.Tcp
 
         public static T SendDuplex<T>(MessageStream request, string HostName, bool enableException = false)
         {
-            request.IsDuplex = true;
-            using (TcpClient client = new TcpClient(HostName))
+            request.DuplexType = DuplexTypes.Respond;
+            using (TcpStreamClient client = new TcpStreamClient(HostName))
             {
                 return client.Execute<T>(request, enableException);
             }
@@ -827,8 +829,8 @@ namespace Nistec.Channels.Tcp
         public static void SendOut(MessageStream request, string HostName, bool enableException = false)
         {
             //Type type = request.BodyType;
-            request.IsDuplex = false;
-            using (TcpClient client = new TcpClient(HostName))
+            request.DuplexType = DuplexTypes.None;
+            using (TcpStreamClient client = new TcpStreamClient(HostName))
             {
                 client.ExecuteOut(request, enableException);
             }
@@ -837,8 +839,8 @@ namespace Nistec.Channels.Tcp
         public static void SendOut(MessageStream request, string HostAddress, int Port, bool enableException = false)
         {
             //Type type = request.BodyType;
-            request.IsDuplex = false;
-            using (TcpClient client = new TcpClient(HostAddress, Port))
+            request.DuplexType = DuplexTypes.None;
+            using (TcpStreamClient client = new TcpStreamClient(HostAddress, Port))
             {
                 client.ExecuteOut(request, enableException);
             }
@@ -853,7 +855,7 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         /// <param name="hostAddress"></param>
         /// <param name="port"></param>
-        public TcpClient(string hostAddress, int port)
+        public TcpStreamClient(string hostAddress, int port)
             : base(hostAddress, port, TcpSettings.DefaultConnectTimeout, TcpSettings.DefaultReadTimeout, false)
         {
 
@@ -865,7 +867,7 @@ namespace Nistec.Channels.Tcp
         /// <param name="port"></param>
         /// <param name="connectTimeout"></param>
         /// <param name="isAsync"></param>
-        public TcpClient(string hostAddress, int port, int connectTimeout, bool isAsync)
+        public TcpStreamClient(string hostAddress, int port, int connectTimeout, bool isAsync)
             : base(hostAddress, port, connectTimeout, isAsync)
         {
 
@@ -879,7 +881,7 @@ namespace Nistec.Channels.Tcp
         /// <param name="connectTimeout"></param>
         /// <param name="readTimeout"></param>
         /// <param name="isAsync"></param>
-        public TcpClient(string hostAddress, int port,int connectTimeout,int readTimeout, bool isAsync)
+        public TcpStreamClient(string hostAddress, int port,int connectTimeout,int readTimeout, bool isAsync)
             : base(hostAddress, port, connectTimeout, readTimeout, isAsync)
         {
 
@@ -895,7 +897,7 @@ namespace Nistec.Channels.Tcp
         /// <param name="inBufferSize"></param>
         /// <param name="outBufferSize"></param>
         /// <param name="isAsync"></param>
-        public TcpClient(string hostAddress, int port, int connectTimeout, int readTimeout, int inBufferSize, int outBufferSize, bool isAsync)
+        public TcpStreamClient(string hostAddress, int port, int connectTimeout, int readTimeout, int inBufferSize, int outBufferSize, bool isAsync)
             : base(hostAddress, port, connectTimeout, readTimeout, inBufferSize, outBufferSize, isAsync)
         {
 
@@ -905,7 +907,7 @@ namespace Nistec.Channels.Tcp
         /// Initialize a new instance of <see cref="TcpClient"/> from configuration.
         /// </summary>
         /// <param name="configHost"></param>
-        public TcpClient(string configHost)
+        public TcpStreamClient(string configHost)
             : base(configHost)
         {
            
@@ -915,7 +917,7 @@ namespace Nistec.Channels.Tcp
         /// Initialize a new instance of <see cref="TcpClient"/> with given <see cref="TcpSettings"/> settings.
         /// </summary>
         /// <param name="settings"></param>
-        public TcpClient(TcpSettings settings)
+        public TcpStreamClient(TcpSettings settings)
             : base(settings)
         {
 
@@ -938,7 +940,7 @@ namespace Nistec.Channels.Tcp
             // Send a request from client to server
             message.EntityWrite(stream, null);
 
-            if (message.IsDuplex == false)
+            if (message.DuplexType.IsDuplex() == false)
             {
                 return response;
             }
@@ -972,7 +974,7 @@ namespace Nistec.Channels.Tcp
             // Send a request from client to server
             message.EntityWrite(stream, null);
            
-            if (message.IsDuplex == false)
+            if (message.DuplexType.IsDuplex() == false)
             {
                 return response;
             }

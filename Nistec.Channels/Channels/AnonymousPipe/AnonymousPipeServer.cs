@@ -139,7 +139,7 @@ namespace Nistec.Channels
 
         public static AnonymousMessage SendDuplex(AnonymousMessage request, string Filename, bool IsAsync = false, bool enableException = false)
         {
-            request.IsDuplex = true;
+            request.DuplexType= DuplexTypes.Respond;
             using (AnonymousPipeServer server = new AnonymousPipeServer(Filename))
             {
                 if (IsAsync)
@@ -151,7 +151,7 @@ namespace Nistec.Channels
 
         public static T SendDuplex<T>(AnonymousMessage request, string Filename, bool IsAsync = false, bool enableException = false)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             using (AnonymousPipeServer server = new AnonymousPipeServer(Filename))
             {
                 if (IsAsync)
@@ -163,7 +163,7 @@ namespace Nistec.Channels
 
         public static void SendOut(AnonymousMessage request, string Filename, bool IsAsync = false, bool enableException = false)
         {
-            request.IsDuplex = false;
+            request.DuplexType = DuplexTypes.None;
             using (AnonymousPipeServer server = new AnonymousPipeServer(Filename))
             {
                 if (IsAsync)

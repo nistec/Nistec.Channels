@@ -37,7 +37,7 @@ namespace Nistec.Channels
     /// Represent a message for named pipe communication.
     /// </summary>
     [Serializable]
-    public class PipeMessage : MessageStream, ITransformMessage//, IDisposable
+    public class PipeMessage : MessageStream, ITransformMessage, IDisposable
     {
  
         #region ctor
@@ -48,7 +48,7 @@ namespace Nistec.Channels
         public PipeMessage() : base() 
         { 
             Formatter = MessageStream.DefaultFormatter;
-            Modified = DateTime.Now;
+            //mqh-Modified = DateTime.Now;
         }
         /// <summary>
         /// Initialize a new instance of pipe message.
@@ -62,8 +62,8 @@ namespace Nistec.Channels
         {
             Command = command;
             //Identifier = key;
-            CustomId = key;
-            Expiration = expiration;
+            //mqh-CustomId = key;
+            //mqh-Expiration = expiration;
             SetBody(value);
         }
         /// <summary>
@@ -79,9 +79,9 @@ namespace Nistec.Channels
         {
             Command = command;
             //Identifier = key;
-            CustomId = key;
-            Expiration = expiration;
-            SessionId = sessionId;
+            //mqh-CustomId = key;
+            //mqh-Expiration = expiration;
+            //mqh-SessionId = sessionId;
             SetBody(value);
         }
         #endregion

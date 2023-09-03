@@ -39,7 +39,7 @@ namespace Nistec.Channels.Tcp
     /// Represent a base class for tcp server listner.
     /// </summary>
     /// <typeparam name="TRequest"></typeparam>
-    public abstract class TcpServer<TRequest> : TcpServer<TRequest,TransStream> where TRequest : ITransformMessage
+    public abstract class TcpServer<TRequest> : TcpServer<TRequest,TransStream> where TRequest : ITransformMessage, IDisposable
     {
         #region ctor
 
@@ -619,7 +619,7 @@ namespace Nistec.Channels.Tcp
             {
                 if (Listen == false)
                 {
-                    Log.Warn("The tcp server async ProcessIncomingData not lisenning... ");
+                    Log.Warn("The tcp server async ProcessIncomingData not lisetnning... ");
                     Thread.Sleep(1000);
                     return;
                 }
@@ -628,7 +628,7 @@ namespace Nistec.Channels.Tcp
                     TRequest req = ReadRequest(stream);
 
                     var res = ExecRequset(req);
-                    if (req.IsDuplex)
+                    if (req.DuplexType.IsDuplex())
                         WriteResponse(stream, res);
                 }
                 sockeErrors = 0;
@@ -779,8 +779,6 @@ namespace Nistec.Channels.Tcp
         /// Read Request
         /// </summary>
         /// <param name="stream"></param>
-        /// <param name="readTimeout"></param>
-        /// <param name="ReceiveBufferSize"></param>
         /// <returns></returns>
         protected override TcpMessage ReadRequest(NetworkStream stream)
         {

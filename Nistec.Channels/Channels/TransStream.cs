@@ -19,6 +19,7 @@
 //===============================================================================================================
 //licHeader|
 //using Nistec.Channels;
+using Nistec.Generic;
 using Nistec.IO;
 using Nistec.Runtime;
 using Nistec.Serialization;
@@ -34,88 +35,20 @@ using System.Text;
 namespace Nistec.Channels
 {
 
-    //public enum TransType : byte { None = 0, Object = 100, Stream = 101, Json = 102, State = 121, Info = 122, Error = 123 }
-
-    public enum TransType : byte { None = 0, Object = 100, Stream = 101, Json = 102, Base64 = 103, Text = 104, Ack = 105, State = 106, Csv = 107, Xml=108 }
-    public enum StringFormatType : byte { None = 0, Json = 102, Base64 = 103, Text = 104, Csv = 107, Xml = 108 }
-
-    public class TransStreamValue :  IDisposable
-    {
-
-        #region Stream / properties
-
-        TransType _TransType;
-        public TransType TransType { get { return _TransType; } }
-        int _State;
-        public int State { get { return _State; } }
-        object _Value;
-        public object Value { get { return _Value; } }
-
-
-        NetStream _Stream;
-
-        NetStream Stream
-        {
-            get
-            {
-                if (_Stream == null)
-                {
-                    _Stream = new NetStream();
-                }
-                return _Stream;
-            }
-        }
-
-        #endregion
-
-        #region Dispose
-
-        public void Dispose()
-        {
-            Dispose(true);
-        }
-
-        /// <summary>
-        /// Dispose
-        /// </summary>
-        /// <param name="disposing"></param>
-        protected void Dispose(bool disposing)
-        {
-            try
-            {
-                if (disposing)
-                {
-                    if (_Stream != null)
-                    {
-                        _Stream.Dispose();
-                    }
-                }
-                _Value = null;
-            }
-            catch (Exception)
-            {
-
-            }
-        }
-        #endregion
-
-    }
-
-
     /// <summary>
     /// Represent a ack stream for named pipe/tcp communication.
     /// </summary>
     [Serializable]
-    public class TransStream : ITransformResponse// IDisposable
+    public class TransStream : ITransformResponse, IDisposable
     {
 
         #region Stream / properties
 
-        TransType _TransType;
+        private TransType _TransType;
         //public TransType TransType { get { return _TransType; } }
-        int _State;
+        private int _State;
         //public int State { get { return _State; } }
-        object _Value;
+        //object _Value;
 
 
         NetStream _Stream;
@@ -226,7 +159,6 @@ namespace Nistec.Channels
         #region static read 
         public static object ReadValue(NetStream stream)
         {
-
             using (IBinaryStreamer streamer = new BinaryStreamer(stream))
             {
                 if (IsTransStream(stream))
@@ -243,6 +175,12 @@ namespace Nistec.Channels
         {
             object val = ReadValue(stream);
             return GenericTypes.Cast<T>(val, true);
+        }
+        public static string ReadJson(NetStream stream)
+        {
+            var o = ReadValue(stream);
+            return (o == null) ? null : JsonSerializer.Serialize(o);
+            //return TransStream.ReadJson(stream, (message) => { throw new Exception(message); });
         }
         #endregion
 
@@ -1321,6 +1259,7 @@ namespace Nistec.Channels
 
     }
 
+
     /*
     [Serializable]
     public class TransAck: ISerialEntity, IDisposable
@@ -1438,6 +1377,8 @@ namespace Nistec.Channels
         }
     }
     */
+
+    /*
     public static class TransStreamExtension
     {
         public static TransType ToTransType(this TransformType type)
@@ -1455,8 +1396,125 @@ namespace Nistec.Channels
         }
 
     }
+    */
+    /*
+ [Serializable]
+ public class StreamBinary :  IDisposable
+ {
+     #region ctor
+     public StreamBinary()
+     {
 
+     }
+     public StreamBinary(object value)
+     {
+         if (value != null)
+         {
+             TypeName = value.GetType().FullName;
 
+             NetStream ns = new NetStream();
+             var ser = new BinarySerializer();
+             ser.Serialize(ns, value);
+             ns.Position = 0;
+             BodyStream = ns.ToArray();
+         }
+         else
+         {
+             TypeName = typeof(object).FullName;
+             BodyStream = null;
+         }
+     }
+     public StreamBinary(byte[] value, string typeName)
+     {
+         if (value != null)
+         {
+             TypeName = typeName;
+             BodyStream = value;
+         }
+      }
+     #endregion
+
+     #region Stream / properties
+
+     public string TypeName { get; private set; }
+     public byte[] BodyStream { get; set; }
+
+     #endregion
+
+     #region Encode/Decode Body
+
+     public NetStream ToStream()
+     {
+         if (BodyStream == null)
+             return null;
+         return new NetStream(BodyStream);
+     }
+
+     //public string ToJson(bool pretty = false)
+     //{
+     //    return GenericKeyValue.Create("TypeName", TypeName, "Body", ReadBody()).ToJson(pretty);
+     //}
+
+     public virtual object Read()
+     {
+         if (BodyStream == null)
+             return null;
+         var ser = new BinarySerializer();
+         return ser.Deserialize(new NetStream(BodyStream));
+     }
+
+     public T Read<T>()
+     {
+         return GenericTypes.Cast<T>(Read(), true);
+     }
+
+     public string ToJson(bool pretty = false)
+     {
+         return JsonSerializer.Serialize(Read(), pretty);
+     }
+
+     public static T Deserialize<T>(StreamBinary sb)
+     {
+         NetStream ns = new NetStream(sb.BodyStream);
+         var ser = new BinarySerializer();
+         return ser.Deserialize<T>(ns);
+     }
+
+     #endregion
+
+     #region Dispose
+
+     public void Dispose()
+     {
+         Dispose(true);
+     }
+
+     /// <summary>
+     /// Dispose
+     /// </summary>
+     /// <param name="disposing"></param>
+     protected void Dispose(bool disposing)
+     {
+         try
+         {
+             if (disposing)
+             {
+                 BodyStream = null;
+                 //if (BodyStream != null)
+                 //{
+                 //    BodyStream.Dispose();
+                 //}
+             }
+         }
+         catch (Exception)
+         {
+
+         }
+     }
+     #endregion
+
+ }
+ */
 
     #region interface
     /*

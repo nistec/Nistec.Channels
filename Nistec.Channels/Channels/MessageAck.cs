@@ -34,15 +34,28 @@ namespace Nistec.Channels
     /// Represent a response message for named pipe/tcp communication.
     /// </summary>
     [Serializable]
-    public class MessageAck : ISerialEntity, ITransformResponse , IAck//IDisposable
+    public class MessageAck : ISerialEntity, ITransformResponse , IAck,IDisposable
     {
         #region properties
         public ChannelState State { get; set; }
         //public Formatters Formatter { get { return Formatters.BinarySerializer; } }
-        public string Message { get; set; }
-        //public DateTime Modified { get; protected set; }
-        public object Response { get; set; }
 
+        #endregion
+
+        #region IAck
+        public string Identifier { get; set; }
+        public string Message { get; set; }
+        public object Response { get; set; }
+        public int Status { get { return (int)State; } }
+        public bool IsOk { get { return State.IsStateOk(); } }
+        public string ToJson()
+        {
+            return JsonSerializer.Serialize(this);
+        }
+        public string Display()
+        {
+            return Strings.ReflatJson(GenericKeyValue.Create("Message", Message, "Response", Response, "State", State.ToString()).ToJson());
+        }
         #endregion
 
         #region ITransformResponse
@@ -62,11 +75,11 @@ namespace Nistec.Channels
 
         #region ctor
 
-        public MessageAck()
-        { 
+        public MessageAck(string identifier = null)
+        {
             //Modified = DateTime.Now;
+            Identifier = (string.IsNullOrEmpty(identifier)) ? UUID.Identifier() : identifier;
         }
-
         public MessageAck(ChannelState state, string message)
             : this()
         {
@@ -125,6 +138,7 @@ namespace Nistec.Channels
 
             streamer.WriteValue((int)State);
             streamer.WriteString(Message);
+            streamer.WriteString(Identifier);
             //streamer.WriteValue(Modified);
             streamer.WriteValue(Response);
             streamer.Flush();
@@ -137,6 +151,7 @@ namespace Nistec.Channels
 
             State = (ChannelState)streamer.ReadValue();
             Message = streamer.ReadString();
+            Identifier = streamer.ReadString();
             //Modified = streamer.ReadValue<DateTime>();
             Response = streamer.ReadValue();
         }
@@ -152,7 +167,10 @@ namespace Nistec.Channels
         {
             return new MessageAck(state, message);
         }
-
+        public static MessageAck DoAck(ChannelState state, string message, string identifier)
+        {
+            return new MessageAck(identifier) { State = state, Message = message };
+        }
         //public static NetStream DoAck<T>(T value)
         //{
         //    NetStream ns = new NetStream();
@@ -186,13 +204,12 @@ namespace Nistec.Channels
         {
             return string.Format("State: {0}, Message: {1}", State.ToString(),Message);
         }
-        public string Display()
+
+        public string ToAckString()
         {
-            return Strings.ReflatJson(GenericKeyValue.Create("Message", Message, "Response", Response, "State", State.ToString()).ToJson());
+            return string.Format("Identifier: {0}, State: {1}, Message: {2}", Identifier, State.ToString(), Message);
         }
-        public string ToJson()
-        {
-            return JsonSerializer.Serialize(this);
-        }
+        
+
     }
 }

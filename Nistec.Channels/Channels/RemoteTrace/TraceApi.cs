@@ -29,6 +29,9 @@ using Nistec.Generic;
 using System.Data;
 using Nistec.IO;
 using Nistec.Channels.Tcp;
+using System.Net.NetworkInformation;
+using System.Net;
+using System.Net.Sockets;
 
 namespace Nistec.Channels.RemoteTrace
 {
@@ -116,7 +119,7 @@ namespace Nistec.Channels.RemoteTrace
             {
                 case NetProtocol.Tcp:
                     {
-                        return TcpClient.SendDuplex(message as TcpMessage,
+                        return TcpStreamClient.SendDuplex(message as TcpMessage,
                             GetHost(hostType),
                             TraceSettings.EnableRemoteException);
                     }
@@ -138,7 +141,7 @@ namespace Nistec.Channels.RemoteTrace
             {
                 case NetProtocol.Tcp:
                     {
-                        return TcpClient.SendDuplex<T>(message as TcpMessage,
+                        return TcpStreamClient.SendDuplex<T>(message as TcpMessage,
                             GetHost(hostType),
                             TraceSettings.EnableRemoteException);
                     }
@@ -161,7 +164,7 @@ namespace Nistec.Channels.RemoteTrace
             {
                 case NetProtocol.Tcp:
                     {
-                        TcpClient.SendOut(message as TcpMessage,
+                        TcpStreamClient.SendOut(message as TcpMessage,
                             GetHost(hostType),
                             TraceSettings.EnableRemoteException);
                         break;
@@ -279,6 +282,78 @@ namespace Nistec.Channels.RemoteTrace
 
         #endregion
 
- 
+        public static bool PingHost(string hostUri, int portNumber)
+        {
+            try
+            {
+                using (var client = new TcpClient(hostUri, portNumber))
+                    return true;
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine("Error pinging host:'" + hostUri + ":" + portNumber.ToString() + "'");
+                return false;
+            }
+        }
+
+        public static IPStatus DoPing(string hostAddress, string data, int timeout=2000)
+        {
+            // Ping's the local machine.
+            Ping pingSender = new Ping();
+
+            byte[] buffer = Encoding.ASCII.GetBytes(data);
+
+            // Set options for transmission:
+            // The data can go through 64 gateways or routers
+            // before it is destroyed, and the data packet
+            // cannot be fragmented.
+            PingOptions options = new PingOptions(64, true);
+            PingReply reply = pingSender.Send(hostAddress, timeout, buffer, options);
+
+            if (reply.Status == IPStatus.Success)
+            {
+                Console.WriteLine("Address: {0}", reply.Address.ToString());
+                Console.WriteLine("RoundTrip time: {0}", reply.RoundtripTime);
+                Console.WriteLine("Time to live: {0}", reply.Options.Ttl);
+                Console.WriteLine("Don't fragment: {0}", reply.Options.DontFragment);
+                Console.WriteLine("Buffer size: {0}", reply.Buffer.Length);
+            }
+            else
+            {
+                Console.WriteLine(reply.Status);
+            }
+
+            return reply.Status;
+        }
+        public static IPStatus DoPingLocal(string data, int timeout = 2000)
+        {
+            // Ping's the local machine.
+            Ping pingSender = new Ping();
+            IPAddress address = IPAddress.Loopback;
+
+            byte[] buffer = Encoding.ASCII.GetBytes(data);
+
+
+            // Set options for transmission:
+            // The data can go through 64 gateways or routers
+            // before it is destroyed, and the data packet
+            // cannot be fragmented.
+            PingOptions options = new PingOptions(64, true);
+            PingReply reply = pingSender.Send(address, timeout, buffer, options);
+
+            if (reply.Status == IPStatus.Success)
+            {
+                Console.WriteLine("Address: {0}", reply.Address.ToString());
+                Console.WriteLine("RoundTrip time: {0}", reply.RoundtripTime);
+                Console.WriteLine("Time to live: {0}", reply.Options.Ttl);
+                Console.WriteLine("Don't fragment: {0}", reply.Options.DontFragment);
+                Console.WriteLine("Buffer size: {0}", reply.Buffer.Length);
+            }
+            else
+            {
+                Console.WriteLine(reply.Status);
+            }
+            return reply.Status;
+        }
     }
 }

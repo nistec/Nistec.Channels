@@ -305,7 +305,7 @@ namespace Nistec.Channels
                     case HostProtocol.ipc:
                         return Nistec.Channels.PipeClient.Ping(HostAddress, HostPort, 5000);
                     case HostProtocol.tcp:
-                        return Nistec.Channels.Tcp.TcpClient.Ping(HostAddress, Port, 5000);
+                        return Nistec.Channels.Tcp.TcpStreamClient.Ping(HostAddress, Port, 5000);
                     case HostProtocol.http:
                         return Nistec.Channels.Http.HttpClient.Ping(HostAddress, Port, 5000);
                     default:

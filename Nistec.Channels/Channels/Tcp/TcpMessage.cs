@@ -38,7 +38,7 @@ namespace Nistec.Channels.Tcp
     /// Represent a message for named tcp communication.
     /// </summary>
     [Serializable]
-    public class TcpMessage : MessageStream, ITransformMessage, IDisposable
+    public class TcpMessage : MessageStream//, ITransformMessage, IDisposable
     {
         #region ctor
 
@@ -48,7 +48,7 @@ namespace Nistec.Channels.Tcp
         public TcpMessage() : base() 
         { 
             Formatter = MessageStream.DefaultFormatter;
-            Modified = DateTime.Now;
+            Creation = DateTime.Now;
         }
         /// <summary>
         /// Initialize a new instance of tcp message.
@@ -62,8 +62,8 @@ namespace Nistec.Channels.Tcp
         {
             Command = command;
             //Identifier = key;
-            CustomId = key;
-            Expiration = expiration;
+            //mqh-CustomId = key;
+            //mqh-Expiration = expiration;
             SetBody(value);
         }
         /// <summary>
@@ -79,9 +79,9 @@ namespace Nistec.Channels.Tcp
         {
             Command = command;
             //Identifier = key;
-            CustomId = key;
-            Expiration = expiration;
-            SessionId = sessionId;
+            //mqh-CustomId = key;
+            //mqh-Expiration = expiration;
+            //mqh-SessionId = sessionId;
             SetBody(value);
         }
         #endregion
@@ -107,7 +107,7 @@ namespace Nistec.Channels.Tcp
         /// <returns></returns>
         public object SendDuplex(string HostAddress,int Port, int ConnectTimeOut, bool IsAsync)
         {
-            return TcpClient.SendDuplex(this, HostAddress, Port,ConnectTimeOut, IsAsync);
+            return TcpStreamClient.SendDuplex(this, HostAddress, Port,ConnectTimeOut, IsAsync);
         }
         /// <summary>
         /// Send duplex message to tcp server using the host name and port arguments.
@@ -120,7 +120,7 @@ namespace Nistec.Channels.Tcp
         /// <returns></returns>
         public T SendDuplex<T>(string HostAddress, int Port, int ConnectTimeOut, bool IsAsync)
         {
-            return TcpClient.SendDuplex<T>(this, HostAddress, Port, ConnectTimeOut, IsAsync);
+            return TcpStreamClient.SendDuplex<T>(this, HostAddress, Port, ConnectTimeOut, IsAsync);
         }
         /// <summary>
         /// Send one way message to tcp server using the host name and port arguments.
@@ -131,7 +131,7 @@ namespace Nistec.Channels.Tcp
         /// <param name="IsAsync"></param>
         public void SendOut(string HostAddress, int Port, int ConnectTimeOut, bool IsAsync)
         {
-            TcpClient.SendOut(this, HostAddress, Port, ConnectTimeOut, IsAsync);
+            TcpStreamClient.SendOut(this, HostAddress, Port, ConnectTimeOut, IsAsync);
         }
 
         #endregion

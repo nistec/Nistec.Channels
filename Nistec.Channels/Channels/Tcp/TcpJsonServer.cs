@@ -38,7 +38,7 @@ namespace Nistec.Channels.Tcp
     /// <summary>
     /// Represent a json tcp server listner.
     /// </summary>
-    public abstract class TcpJsonServer : TcpServer<StringMessage,TransStream>
+    public abstract class TcpJsonServer : TcpServer<TransString,TransStream>
     {
 
         //public Func<string, NetStream> ActionRequset { get; set; }
@@ -99,7 +99,7 @@ namespace Nistec.Channels.Tcp
         ///// </summary>
         ///// <param name="message"></param>
         ///// <returns></returns>
-        //protected override NetStream ExecRequset(StringMessage message)
+        //protected override NetStream ExecRequset(TransString message)
         //{
         //    if (ActionRequset != null)
         //        return ActionRequset(message.Message);
@@ -110,7 +110,7 @@ namespace Nistec.Channels.Tcp
         //        if (response == null)
         //            return null;
         //        var nstream = new NetStream();
-        //        StringMessage.WriteString(response, nstream);
+        //        TransString.WriteString(response, nstream);
         //        return nstream;
         //    }
         //}
@@ -120,21 +120,21 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         /// <param name="networkStream"></param>
         /// <returns></returns>
-        protected override StringMessage ReadRequest(NetworkStream networkStream)
+        protected override TransString ReadRequest(NetworkStream networkStream)
         {
-            //StringMessage.ReadString(pipeServer);
+            //TransString.ReadString(pipeServer);
 
 
-            StringMessage message = null;
+            TransString message = null;
             using (var ntStream = new NetStream())
             {
                 ntStream.CopyFrom(networkStream, Settings.ReadTimeout, Settings.ReceiveBufferSize);
 
-                message = new StringMessage(ntStream);
+                message = new TransString(ntStream);
             }
             return message;
 
-            //return new StringMessage(networkStream);
+            //return new TransString(networkStream);
         }
 
         #endregion
@@ -203,7 +203,7 @@ namespace Nistec.Channels.Tcp
         ///// </summary>
         ///// <param name="message"></param>
         ///// <returns></returns>
-        //protected override NetStream ExecRequset(StringMessage message)
+        //protected override NetStream ExecRequset(TransString message)
         //{
         //    if (ActionRequset != null)
         //        return ActionRequset(message.Message);
@@ -214,7 +214,7 @@ namespace Nistec.Channels.Tcp
         //        if (response == null)
         //            return null;
         //        var nstream = new NetStream();
-        //        StringMessage.WriteString(response, nstream);
+        //        TransString.WriteString(response, nstream);
         //        return nstream;
         //    }
         //}
@@ -226,7 +226,7 @@ namespace Nistec.Channels.Tcp
         /// <returns></returns>
         protected override MessageFlex ReadRequest(NetworkStream networkStream)
         {
-            //StringMessage.ReadString(pipeServer);
+            //TransString.ReadString(pipeServer);
 
             MessageFlex message = null;
             using (var ntStream = new NetStream())
@@ -237,7 +237,7 @@ namespace Nistec.Channels.Tcp
             }
             return message;
 
-            //return new StringMessage(networkStream);
+            //return new TransString(networkStream);
         }
 
         #endregion
@@ -503,9 +503,9 @@ namespace Nistec.Channels.Tcp
     //    /// </summary>
     //    /// <param name="reason"></param>
     //    /// <returns></returns>
-    //    protected virtual StringMessage FaultAck(string reason)
+    //    protected virtual TransString FaultAck(string reason)
     //    {
-    //        return StringMessage.WriteState(-1, reason);//.ToStream();
+    //        return TransString.WriteState(-1, reason);//.ToStream();
     //        //return TransStream.Write(new TcpMessage("Fault", "ack", reason, 0), TransType.Object);//.ToStream();
     //    }
     //    /// <summary>
@@ -527,7 +527,7 @@ namespace Nistec.Channels.Tcp
     //    /// </summary>
     //    /// <param name="stream"></param>
     //    /// <param name="bResponse"></param>
-    //    protected virtual void WriteResponse(NetworkStream stream, StringMessage bResponse)
+    //    protected virtual void WriteResponse(NetworkStream stream, TransString bResponse)
     //    {
     //        if (bResponse == null)
     //        {

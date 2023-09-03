@@ -94,7 +94,14 @@
     <Compile Include="Channels\http\HttpRequest.cs" />
     <Compile Include="Channels\GenericMessage.cs" />
     <Compile Include="Channels\IChannelSettings.cs" />
+    <Compile Include="Channels\Tcp\TcpRequestClient.cs" />
+    <Compile Include="Channels\TransformMessage.cs" />
+    <Compile Include="Channels\MessageFlex.cs" />
+    <Compile Include="Channels\RemoteCache\CacheApi.cs" />
+    <Compile Include="Channels\RemoteCache\CacheCmd.cs" />
+    <Compile Include="Channels\RemoteCache\CacheSettings.cs" />
     <Compile Include="Channels\Tcp\TcpFlexClient.cs" />
+    <Compile Include="Channels\TransBinary.cs" />
     <Compile Include="Channels\TransStream.cs" />
     <Compile Include="Channels\AnonymousPipe\AnonymousPipeClient.cs">
       <SubType>Code</SubType>
@@ -104,7 +111,6 @@
     </Compile>
     <Compile Include="Channels\AnonymousPipe\AnonymousMessage.cs" />
     <Compile Include="Channels\ITransformMessage.cs" />
-    <Compile Include="Channels\RemoteCache\CacheApi.cs" />
     <Compile Include="Channels\StreamExtension.cs" />
     <Compile Include="Channels\Config\HttpConfigItem.cs" />
     <Compile Include="Channels\Config\HttpServerConfigItem.cs" />
@@ -120,12 +126,10 @@
     <Compile Include="Channels\Pipe\PipeJsonClient.cs" />
     <Compile Include="Channels\Pipe\PipeJsonServer.cs" />
     <Compile Include="Channels\HostChannel.cs" />
-    <Compile Include="Channels\RemoteCache\CacheSettings.cs" />
     <Compile Include="Channels\RemoteTrace\TraceApi.cs" />
     <Compile Include="Channels\RemoteTrace\TraceCmd.cs" />
     <Compile Include="Channels\RemoteTrace\TraceSettings.cs" />
     <Compile Include="Channels\ChannelException.cs" />
-    <Compile Include="Channels\RemoteCache\CacheCmd.cs" />
     <Compile Include="Channels\AppDomainStarter.cs" />
     <Compile Include="Channels\MessageAck.cs" />
     <Compile Include="Channels\ComplexKey.cs" />
@@ -146,11 +150,10 @@
     <Compile Include="Channels\Tcp\TcpMessage.cs" />
     <Compile Include="Channels\Tcp\TcpServer.cs" />
     <Compile Include="Channels\Tcp\TcpSettings.cs" />
-    <Compile Include="Channels\StringMessage.cs" />
+    <Compile Include="Channels\TransString.cs" />
     <Compile Include="Diagnostics\ProcessExtensions.cs" />
     <Compile Include="Diagnostics\ProcessTree.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Channels\MessageFlex.cs" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
@@ -185,7 +188,9 @@
   <ItemGroup>
     <Content Include="AsyncPipe.txt" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Channels\RemoteQueue\" />
+  </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

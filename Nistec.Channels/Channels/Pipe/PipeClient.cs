@@ -297,7 +297,7 @@ namespace Nistec.Channels
                 // Set the read mode and the blocking mode of the named pipe.
                 pipeClientStream.ReadMode = PipeTransmissionMode.Message;
 
-                if (message.IsDuplex)
+                if (message.DuplexType.IsDuplex())
                 {
                     return ExecuteMessage(message);
                 }
@@ -373,7 +373,7 @@ namespace Nistec.Channels
                 // Set the read mode and the blocking mode of the named pipe.
                 pipeClientStream.ReadMode = PipeTransmissionMode.Message;
 
-                if (message.IsDuplex)
+                if (message.DuplexType.IsDuplex())
                     return ExecuteMessage<TResponse>(message);
                 else
                 {
@@ -445,7 +445,7 @@ namespace Nistec.Channels
                 // Set the read mode and the blocking mode of the named pipe.
                 pipeClientStream.ReadMode = PipeTransmissionMode.Message;
 
-                if (message.IsDuplex)
+                if (message.DuplexType.IsDuplex())
                     onCompleted(ExecuteMessage<TResponse>(message));
                 else
                 {
@@ -507,13 +507,13 @@ namespace Nistec.Channels
     {
         #region static send methods
 
-        public static bool Ping(string ServerName, string PipeName, int ConnectTimeout = 5000)
+        public static bool Ping(string ServerName, string PipeName, int ConnectTimeout = 3000)
         {
            try
             {
                 NamedPipeClientStream pipeClientStream = new NamedPipeClientStream(ServerName, PipeName, PipeDirection.InOut, PipeOptions.None);
 
-                pipeClientStream.Connect();
+                pipeClientStream.Connect(ConnectTimeout);
 
                 return pipeClientStream.IsConnected;
             }
@@ -537,7 +537,7 @@ namespace Nistec.Channels
         /// <returns></returns>
         public static TransStream SendDuplexStream(MessageStream request, string hostName, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             request.TransformType = TransformType.Stream;
             using (PipeClient client = new PipeClient(hostName, true, option))
             {
@@ -546,7 +546,7 @@ namespace Nistec.Channels
         }
         public static TransStream SendDuplexStream(MessageStream request, string hostName,int timeout, int inBufferSize, int outBufferSize, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             request.TransformType = TransformType.Stream;
             using (PipeClient client = new PipeClient(hostName, timeout, inBufferSize, outBufferSize, true, option))
             {
@@ -556,7 +556,7 @@ namespace Nistec.Channels
         }
         public static TransStream SendDuplexStream(MessageStream request, string hostName, int timeout, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             request.TransformType = TransformType.Stream;
             using (PipeClient client = new PipeClient(hostName, timeout, PipeSettings.DefaultReceiveBufferSize, PipeSettings.DefaultSendBufferSize, true, option))
             {
@@ -566,7 +566,7 @@ namespace Nistec.Channels
         }
         public static void SendDuplexStreamAsync(MessageStream request, string hostName, Action<TransStream> onCompleted, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             request.TransformType = TransformType.Stream;
             using (PipeClient client = new PipeClient(hostName, true, option))
             {
@@ -575,7 +575,7 @@ namespace Nistec.Channels
         }
         public static void SendDuplexStreamAsync(MessageStream request, string hostName, int timeout, Action<TransStream> onCompleted, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             request.TransformType = TransformType.Stream;
             using (PipeClient client = new PipeClient(hostName, timeout, PipeSettings.DefaultReceiveBufferSize, PipeSettings.DefaultSendBufferSize, true, option))
             {
@@ -606,7 +606,7 @@ namespace Nistec.Channels
 
         public static object SendDuplex(MessageStream request, string hostName, bool enableException=false, PipeOptions option = PipeOptions.None)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             using (PipeClient client = new PipeClient(hostName, true, option))
             {
                 return client.Execute(request, enableException);
@@ -615,7 +615,7 @@ namespace Nistec.Channels
 
         public static T SendDuplex<T>(MessageStream request, string hostName, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             using (PipeClient client = new PipeClient(hostName, true, option))
             {
                 return client.Execute<T>(request, enableException);
@@ -625,7 +625,7 @@ namespace Nistec.Channels
       
         public static void SendOut(MessageStream request, string hostName, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
-            request.IsDuplex = false;
+            request.DuplexType = DuplexTypes.None;
             using (PipeClient client = new PipeClient(hostName, false, option))
             {
                 client.ExecuteOut(request, enableException);
@@ -634,7 +634,7 @@ namespace Nistec.Channels
 
         public static void SendIn(MessageStream request, string hostName, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
-            request.IsDuplex = false;
+            request.DuplexType = DuplexTypes.None;
             using (PipeClient client = new PipeClient(hostName, false, option))
             {
                 client.PipeDirection = PipeDirection.In;

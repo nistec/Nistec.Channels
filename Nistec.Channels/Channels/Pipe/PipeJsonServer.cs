@@ -30,7 +30,7 @@ namespace Nistec.Channels
     /// <summary>
     /// Represent a json pipe server listner.
     /// </summary>
-    public abstract class PipeJsonServer : PipeServer<StringMessage>
+    public abstract class PipeJsonServer : PipeServer<TransString>
     {
 
         //public Func<string, NetStream> ActionRequset { get; set; }
@@ -100,10 +100,10 @@ namespace Nistec.Channels
         /// </summary>
         /// <param name="pipeServer"></param>
         /// <returns></returns>
-        protected override StringMessage ReadRequest(NamedPipeServerStream pipeServer)
+        protected override TransString ReadRequest(NamedPipeServerStream pipeServer)
         {
-            //StringMessage.ReadString(pipeServer);
-            return new StringMessage(pipeServer);
+            //TransString.ReadString(pipeServer);
+            return new TransString(pipeServer);
         }
 
         /// <summary>

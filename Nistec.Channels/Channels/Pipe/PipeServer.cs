@@ -37,7 +37,7 @@ namespace Nistec.Channels
     /// <summary>
     /// Represent a pipe server listner
     /// </summary>
-    public abstract class PipeServer<TRequest> where TRequest : ITransformMessage
+    public abstract class PipeServer<TRequest> where TRequest : ITransformMessage, IDisposable
     {
         #region membrs
         private int numThreads;
@@ -451,7 +451,7 @@ namespace Nistec.Channels
                     {
                         TransStream res = ExecRequset(message);
 
-                        if (message.IsDuplex)
+                        if (message.DuplexType.IsDuplex())
                             WriteResponse(pipeServer, res);
                     }
 
@@ -519,7 +519,7 @@ namespace Nistec.Channels
                             using (var message = ReadRequest(pipeServer))
                             {
                                 var res = ExecRequset(message);
-                                if (message.IsDuplex)
+                                if (message.DuplexType.IsDuplex())
                                     WriteResponse(pipeServer, res);
                             }
 
@@ -726,7 +726,7 @@ namespace Nistec.Channels
                     message = ReadRequest(pipeServerAsync);
 
                     TransStream res = ExecRequset(message);
-                    if (message.IsDuplex)
+                    if (message.DuplexType.IsDuplex())
                         WriteResponse(pipeServerAsync, res);
 
                     pipeServerAsync.WaitForPipeDrain();

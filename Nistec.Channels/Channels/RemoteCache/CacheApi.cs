@@ -269,7 +269,7 @@ namespace Nistec.Channels.RemoteCache
                 case NetProtocol.Tcp:
                     break;
             }
-            return TcpClient.SendDuplexStream(message as TcpMessage, hostAddress, port, timeout, CacheApi.EnableRemoteException);
+            return TcpStreamClient.SendDuplexStream(message as TcpMessage, hostAddress, port, timeout, CacheApi.EnableRemoteException);
         }
 
         internal void SendOutAsync(IMessageStream message)
@@ -283,7 +283,7 @@ namespace Nistec.Channels.RemoteCache
             {
                 case NetProtocol.Tcp:
                     {
-                        TcpClient.SendOut(message as TcpMessage, hostAddress, port, timeout, false, CacheApi.EnableRemoteException);
+                        TcpStreamClient.SendOut(message as TcpMessage, hostAddress, port, timeout, false, CacheApi.EnableRemoteException);
                         break;
                     }
                 case NetProtocol.Http:
@@ -415,8 +415,8 @@ namespace Nistec.Channels.RemoteCache
             string response = null;
 
             message.TransformType = TransformType.Json;
-            message.IsDuplex = true;
-
+            //message.IsDuplex = true;
+            message.DuplexType = DuplexTypes.Respond;
             response = HttpClient.SendDuplexJson(message, hostAddress, false);
             //response = HttpClientCache.SendDuplexJson(message, RemoteHostName, false);
 
@@ -2059,9 +2059,10 @@ namespace Nistec.Channels.RemoteCache
                                 //CustomId = db,
                                 //Args = NameValueArgs.Create(KnownArgs.Column, field),
                                 Args = NameValueArgs.Create(KnownArgs.Column, field, KnownArgs.DbName, db).Merge(arrayArgs),//.Load(kValueArgs),//NameValueArgs. NameValueArgs.Create(KnownArgs.Column, field, KnownArgs.DbName, db),
-                                CustomId = primaryKey,
-                                BodyStream = BinarySerializer.ConvertToStream(value)
+                                CustomId = primaryKey
+                                //BodyStream = BinarySerializer.ConvertToStream(value)
                             };
+                            message.SetBody(value);
                             SendHttpJsonOut(message);
                             return RemoteCacheState.Ok.ToString();
                         }
@@ -2212,12 +2213,13 @@ namespace Nistec.Channels.RemoteCache
                                 Command = DataCacheCmd.Set,
                                 Label = tableName,
                                 CustomId=primaryKey,
-                                Args = NameValueArgs.Create(KnownArgs.Column, field, KnownArgs.DbName, db).Merge(arrayArgs),
+                                Args = NameValueArgs.Create(KnownArgs.Column, field, KnownArgs.DbName, db).Merge(arrayArgs)
                                 //CustomId = db,
                                 //Identifier = primaryKey,
                                 //Args = NameValueArgs.Create(KnownArgs.Column, field),
-                                BodyStream = BinarySerializer.ConvertToStream(value)// CacheMessageStream.EncodeBody(value)
+                                //BodyStream = BinarySerializer.ConvertToStream(value)// CacheMessageStream.EncodeBody(value)
                             };
+                            message.SetBody(value);
                             SendHttpJsonOut(message);
                             return RemoteCacheState.Ok.ToString();
                         }

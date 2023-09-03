@@ -19,6 +19,7 @@
 //===============================================================================================================
 //licHeader|
 using Nistec.Channels.Http;
+using Nistec.Generic;
 using Nistec.IO;
 using Nistec.Runtime;
 using Nistec.Serialization;
@@ -33,113 +34,68 @@ using System.Text;
 
 namespace Nistec.Channels
 {
+
     /// <summary>
     /// String message stream
     /// </summary>
     [Serializable]
-    public class StringMessage : ITransformMessage, ITransformResponse
+    public class TransString : ITransformMessage, ITransformResponse, IDisposable
     {
 
         #region ctor
 
-        public StringMessage()
+        public TransString()
         {
-            IsDuplex = true;
+            DuplexType = DuplexTypes.Respond;
             TransformType = TransformType.Json;
         }
 
-        public StringMessage(string message, bool isDuplex, int expiration, StringFormatType formatType = StringFormatType.Json)
+        //public TransString(string message, bool isDuplex, int expiration, StringFormatType formatType = StringFormatType.Json)
+        //{
+        //    Body = message;
+        //    DuplexType = isDuplex? DuplexTypes.Respond: DuplexTypes.None;
+        //    Expiration = expiration;
+        //    TransformType = (TransformType)(int)formatType;
+        //}
+        public TransString(string message, bool isDuplex = true, StringFormatType formatType = StringFormatType.Json)
         {
-            Message = message;
-            IsDuplex = isDuplex;
-            Expiration = expiration;
-            TransformType =(TransformType)(int) formatType;
-        }
-        public StringMessage(string message, bool isDuplex=true, StringFormatType formatType = StringFormatType.Json)
-        {
-            Message = message;
-            IsDuplex = isDuplex;
+            Body = message;
+            DuplexType = isDuplex ? DuplexTypes.Respond : DuplexTypes.None;
             TransformType = (TransformType)(int)formatType;
         }
-        public StringMessage(Stream stream, bool isDuplex = true, StringFormatType formatType = StringFormatType.Json)
+        public TransString(Stream stream, bool isDuplex = true, StringFormatType formatType = StringFormatType.Json)
         {
-            Message = ReadString(stream);
-            IsDuplex = isDuplex;
+            Body = ReadString(stream);
+            DuplexType = isDuplex ? DuplexTypes.Respond : DuplexTypes.None;
             TransformType = (TransformType)(int)formatType;
         }
-        public StringMessage(HttpRequestInfo request, bool isDuplex = true, StringFormatType formatType = StringFormatType.Json)
+        public TransString(HttpRequestInfo request, bool isDuplex = true, StringFormatType formatType = StringFormatType.Json)
         {
-            Message= request.Body;
-            IsDuplex = isDuplex;
+            Body = request.Body;
+            DuplexType = isDuplex ? DuplexTypes.Respond : DuplexTypes.None;
             TransformType = (TransformType)(int)formatType;
         }
         #endregion
 
-        public string Message { get; internal set; }
+        public string Body { get; internal set; }
 
         #region ITransformMessage
-
         /// <summary>
-        /// Get indicate wether the message is a duplex type.
+        /// Get or Set DuplexTypes
         /// </summary>
-        bool _IsDuplex;
-        public bool IsDuplex
-        {
-            get { return _IsDuplex; }
-            set
-            {
-                _IsDuplex = value;
-                if (!value)
-                    _DuplexType = DuplexTypes.None;
-                else if (_DuplexType == DuplexTypes.None)
-                    _DuplexType = DuplexTypes.WaitOne;
-            }
-        }
-        //public bool IsDuplex { get { return !(DuplexType == DuplexTypes.None); } }// set { DuplexType = (value) ? DuplexTypes.NoWaite : DuplexTypes.None; } }// { get; set; }
-
+        public DuplexTypes DuplexType { get; set; }
         /// <summary>
-        /// Get or Set DuplexType.
+        /// Get or Set TransformType
         /// </summary>
-        DuplexTypes _DuplexType;
-        public DuplexTypes DuplexType
-        {
-            get { return _DuplexType; }
-            set
-            {
-                _DuplexType = value;
-                _IsDuplex = (_DuplexType != DuplexTypes.None);
-            }
-        }
-        /// <summary>
-        ///  Get or Set The message expiration.
-        /// </summary>
-        public int Expiration { get; set; }
+        public TransformType TransformType { get; set; }
 
-        TransformType _TransformType;
-        /// <summary>
-        /// Get or Set The result type name.
-        /// </summary>
-        public TransformType TransformType
-        {
-            get { return _TransformType; }
-            set
-            {
-                if (!(value == TransformType.Json || value == TransformType.Base64 || value == TransformType.Csv || value == TransformType.Text || value == TransformType.None))
-                    _TransformType = TransformType.None;
-                else
-                    _TransformType = value;
-            }
-        }
-        //public TransformType TransformType { get; set; }
-
-        public StringFormatType FormatType { get { return (StringFormatType)(int)TransformType; } }
         #endregion
 
         #region IDisposable
 
         public void Dispose()
         {
-            Message = null;
+            Body = null;
         }
         #endregion
 
@@ -148,38 +104,26 @@ namespace Nistec.Channels
         public void SetState(int state, string message)
         {
             //State = (MessageState)state;
-            Message = message;
+            Body = message;
             TransformType = TransformType.State;
         }
 
         public byte[] GetBytes()
         {
-            return Encoding.UTF8.GetBytes(Message);
+            return Encoding.UTF8.GetBytes(Body);
         }
         public byte[] GetBytes(Encoding encoding)
         {
-            return encoding.GetBytes(Message);
+            return encoding.GetBytes(Body);
         }
-
-        //[SecuritySafeCritical]
-        //public unsafe static byte[] GetBytes(int value)
-        //{
-        //    byte[] buffer = new byte[4];
-        //    fixed (byte* numRef = buffer)
-        //    {
-        //        *((int*)numRef) = value;
-        //    }
-        //    return buffer;
-
-        //}
 
         #endregion
 
         #region Static Stream Read\Write
 
-        public static StringMessage WriteState(int state,string message)
+        public static TransString WriteState(int state, string message)
         {
-            return new StringMessage() { Message = message, TransformType = TransformType.State, DuplexType = DuplexTypes.None };
+            return new TransString() { Body = message, TransformType = TransformType.State, DuplexType = DuplexTypes.None };
         }
         //return new TransStream(message, TransType.State, state);
 
@@ -208,7 +152,7 @@ namespace Nistec.Channels
 
             if (buffer == null)
                 return null;
-            var response= encoding.GetString(buffer);
+            var response = encoding.GetString(buffer);
 
             return response;
         }
@@ -247,7 +191,7 @@ namespace Nistec.Channels
         {
             byte[] outBuffer = encoding.GetBytes(outString);
             int len = outBuffer.Length;
-            WriteValue(stream,len);
+            WriteValue(stream, len);
             stream.Write(outBuffer, 0, len);
             stream.Flush();
 
@@ -295,4 +239,5 @@ namespace Nistec.Channels
         #endregion
 
     }
+
 }

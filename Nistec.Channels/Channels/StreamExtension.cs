@@ -1,4 +1,5 @@
 ﻿using Nistec.IO;
+using Nistec.Runtime;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,6 +12,11 @@ namespace Nistec.Channels
 {
     public static class ChannelsExtension
     {
+        
+        public static bool IsDuplex(this DuplexTypes dtype)
+        {
+            return dtype != DuplexTypes.None;
+        }
         public static bool IsStateOk(this ChannelState State)
         {
             return (int)State > 0 && (int)State < 300;
@@ -33,7 +39,21 @@ namespace Nistec.Channels
             else
                 return ChannelStateSection.None;
         }
-        
+
+        public static TransType ToTransType(this TransformType type)
+        {
+            return (TransType)(int)type;
+            //switch (type)
+            //{
+            //    case TransformType.Stream:
+            //        return TransType.Stream;
+            //    case TransformType.Json:
+            //        return TransType.Json;
+            //    default:
+            //        return TransType.Object;
+            //}
+        }
+
         //public static bool IsClientError(this ChannelState State)
         //{
         //    return (int)State > 399 && (int)State < 500;

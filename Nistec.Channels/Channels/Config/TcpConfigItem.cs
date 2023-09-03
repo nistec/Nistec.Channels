@@ -143,5 +143,92 @@ namespace Nistec.Channels.Config
                 return Types.ToInt(this["SendBufferSize"], 4096);
             }
         }
+
+        [ConfigurationProperty("MaxServerConnections", DefaultValue = 10, IsRequired = false)]
+        public int MaxServerConnections
+        {
+            get
+            {
+                return Types.ToInt(this["MaxServerConnections"], 10);
+            }
+        }
+    }
+
+    /// <summary>
+    /// TcpConfigItems base on ConfigurationElementCollection
+    /// </summary>
+    public class TcpConfigItems : ConfigurationElementCollection
+    {
+
+        /// <summary>
+        /// Create New Element.
+        /// </summary>
+        /// <returns></returns>
+        protected override System.Configuration.ConfigurationElement CreateNewElement()
+        {
+            return new TcpConfigItem();
+        }
+        /// <summary>
+        /// Get Element Key
+        /// </summary>
+        /// <param name="element"></param>
+        /// <returns></returns>
+        protected override object GetElementKey(System.Configuration.ConfigurationElement element)
+        {
+            return ((TcpConfigItem)element).HostName;
+        }
+        
+        //public string Get(string key)
+        //{
+        //    TcpConfigItem item = this[key];
+        //    if (item == null)
+        //        return null;
+        //    return item.Value;
+        //}
+
+        //public T Get<T>(string key, T defaultValue)
+        //{
+        //    return GenericTypes.Convert<T>(Get(key), defaultValue);
+        //}
+        
+
+        /// <summary>
+        /// Get or Set TcpConfigItem
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        public TcpConfigItem this[int index]
+        {
+            get
+            {
+                return base.BaseGet(index) as TcpConfigItem;
+            }
+            set
+            {
+                if (base.BaseGet(index) != null)
+                {
+                    base.BaseRemoveAt(index);
+                }
+                this.BaseAdd(index, value);
+            }
+        }
+        /// <summary>
+        /// Get or Set TcpConfigItem
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public new TcpConfigItem this[string key]
+        {
+            get { return (TcpConfigItem)BaseGet(key); }
+            set
+            {
+                if (BaseGet(key) != null)
+                {
+                    BaseRemoveAt(BaseIndexOf(BaseGet(key)));
+                }
+                BaseAdd(value);
+            }
+        }
+       
     }
 }

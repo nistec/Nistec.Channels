@@ -36,7 +36,7 @@ namespace Nistec.Channels
     /// Represent a message for named pipe communication.
     /// </summary>
     [Serializable]
-    public class GenericMessage : MessageStream, ITransformMessage//, IDisposable
+    public class GenericMessage : MessageStream, ITransformMessage, IDisposable
     {
         #region ctor
 
@@ -46,7 +46,7 @@ namespace Nistec.Channels
         public GenericMessage() : base() 
         { 
             Formatter = MessageStream.DefaultFormatter;
-            Modified = DateTime.Now;
+            //mqh-Modified = DateTime.Now;
         }
         /// <summary>
         /// Initialize a new instance of message stream.
@@ -105,6 +105,23 @@ namespace Nistec.Channels
             Dispose(false);
         }
         #endregion
+
+        #region Convert
+        /*
+        public StreamBinary ConvertToStreamBinary()
+        {
+            return new StreamBinary(this);
+        }
+        public static GenericMessage ConvertFrom(StreamBinary sb)
+        {
+            NetStream ns = new NetStream(sb.BodyStream);
+            var ser = new BinarySerializer();
+            return ser.Deserialize<GenericMessage>(ns);
+        }
+        */
+        #endregion
+
+        public byte[] Body { get => base._Body; set => base._Body = value; }
 
     }
 }

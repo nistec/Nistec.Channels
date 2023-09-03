@@ -131,6 +131,8 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         public const int InfiniteReadTimeout = -1;
 
+        public const int DefaultPingBufferSize = 1024;
+        public const int DefaultPingReadTimeout = 2500;
 
         /// <summary>
         /// Get NetProtocol

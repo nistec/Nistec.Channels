@@ -51,7 +51,7 @@ namespace Nistec.Channels.Http
         public HttpMessage() : base() 
         { 
             Formatter = MessageStream.DefaultFormatter;
-            Modified = DateTime.Now;
+            //mqh-Modified = DateTime.Now;
         }
         /// <summary>
         /// Initialize a new instance of tcp message.
@@ -65,8 +65,8 @@ namespace Nistec.Channels.Http
         {
             Command = command;
             //Identifier = key;
-            CustomId = key;
-            Expiration = expiration;
+            //mqh-CustomId = key;
+            //mqh-Expiration = expiration;
             SetBody(value);
         }
         /// <summary>
@@ -82,9 +82,9 @@ namespace Nistec.Channels.Http
         {
             Command = command;
             //Identifier = key;
-            CustomId = key;
-            Expiration = expiration;
-            SessionId = sessionId;
+            //mqh-CustomId = key;
+            //mqh-Expiration = expiration;
+            //mqh-SessionId = sessionId;
             SetBody(value);
         }
         #endregion

@@ -543,7 +543,7 @@ namespace Nistec.Channels.Http
                     //var streamResponse = ExecuteRequestStream(brequest);
                     var streamResponse = HttpRequest.DoHttpTransStream(Settings.RawHostAddress, brequest, Settings.ConnectTimeout);
 
-                    if (message.IsDuplex && brequest != null)
+                    if (message.DuplexType.IsDuplex() && brequest != null)
                         return streamResponse;// brequest==null? null: streamResponse.ReadValue();
                     else
                         return null;
@@ -553,7 +553,7 @@ namespace Nistec.Channels.Http
                     string jsonRequest = RequestToJson(message);
                     var strResponse = HttpRequest.DoRequestString(Settings.RawHostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true);
                     //var strResponse = ExecuteJsonRequest(jsonRequest);
-                    if (message.IsDuplex)
+                    if (message.DuplexType.IsDuplex())
                         return ReadJsonResponse(strResponse, type);
                     else
                         return null;
@@ -662,7 +662,7 @@ namespace Nistec.Channels.Http
                     var brequest = RequestToStream(message);
                     //var streamResponse = ExecuteRequestStream(brequest);
                     var streamResponse = HttpRequest.DoHttpTransStream(Settings.RawHostAddress, brequest, Settings.ConnectTimeout);
-                    if (message.IsDuplex && streamResponse!=null)
+                    if (message.DuplexType.IsDuplex() && streamResponse!=null)
                     {
                         return GenericTypes.Cast<TResponse>(streamResponse);
 
@@ -677,7 +677,7 @@ namespace Nistec.Channels.Http
                     string jsonRequest = RequestToJson(message);
                     var strResponse = HttpRequest.DoRequestString(Settings.RawHostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true);
                     //var strResponse = ExecuteJsonRequest(jsonRequest);
-                    if (message.IsDuplex)
+                    if (message.DuplexType.IsDuplex())
                         return ReadJsonResponse<TResponse>(strResponse);
                     else
                         return default(TResponse);
@@ -741,7 +741,7 @@ namespace Nistec.Channels.Http
                     //var streamResponse = ExecuteRequestStream(brequest);
                     HttpRequest.DoHttpTransStreamAsync(Settings.RawHostAddress, brequest, Settings.ConnectTimeout,(TransStream streamResponse) =>
                     {
-                        if (message.IsDuplex && streamResponse != null)
+                        if (message.DuplexType.IsDuplex() && streamResponse != null)
                         {
                             onCompleted(GenericTypes.Cast<TResponse>(streamResponse));
 
@@ -759,7 +759,7 @@ namespace Nistec.Channels.Http
                     string jsonRequest = RequestToJson(message);
                     HttpRequest.DoRequestStringAsync(Settings.RawHostAddress, jsonRequest, Settings.Method, RequestContentType.Json, Settings.ConnectTimeout, true, (string strResponse) => {
                     //var strResponse = ExecuteJsonRequest(jsonRequest);
-                    if (message.IsDuplex)
+                    if (message.DuplexType.IsDuplex())
                         onCompleted(ReadJsonResponse<TResponse>(strResponse));
                     else
                         onCompleted( default(TResponse));
@@ -838,7 +838,7 @@ namespace Nistec.Channels.Http
 
         #region static send methods
 
-        public static bool Ping(string HostAddress,int Port, int ConnectTimeout = 5000)
+        public static bool Ping(string HostAddress,int Port, int ConnectTimeout = 3000)
         {
 
             try
@@ -871,7 +871,7 @@ namespace Nistec.Channels.Http
         /// <returns></returns>
         public static TransStream SendDuplexStream(MessageStream request, string hostName, bool enableException = false)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             request.TransformType = TransformType.Stream;
             using (HttpClient client = new HttpClient(hostName))
             {
@@ -882,7 +882,7 @@ namespace Nistec.Channels.Http
         {
             Type type = request.BodyType;
             request.TransformType = TransformType.Stream;
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             using (HttpClient client = new HttpClient(address, port, method, timeout))
             {
                 return client.Execute<TransStream>(request, enableException);
@@ -892,7 +892,7 @@ namespace Nistec.Channels.Http
         {
             Type type = request.BodyType;
             request.TransformType = TransformType.Stream;
-            request.IsDuplex = true;
+            request.DuplexType =  DuplexTypes.Respond;
             using (HttpClient client = new HttpClient(address, port, method, timeout))
             {
                 client.ExecuteAsync<TransStream>(request, onCompleted,enableException);
@@ -929,7 +929,7 @@ namespace Nistec.Channels.Http
         public static object SendDuplex(MessageStream request, string address, int port, string method, int timeout, bool enableException = false)
         {
             Type type = request.BodyType;
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             using (HttpClient client = new HttpClient(address, port, method, timeout))
             {
                 return client.Execute(request, type, enableException);
@@ -938,7 +938,7 @@ namespace Nistec.Channels.Http
 
         public static T SendDuplex<T>(MessageStream request, string address, int port, string method, int timeout, bool enableException = false)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             using (HttpClient client = new HttpClient(address, port, method, timeout))
             {
                 return client.Execute<T>(request, enableException);
@@ -948,7 +948,7 @@ namespace Nistec.Channels.Http
         public static void SendOut(MessageStream request, string address, int port, string method, int timeout, bool enableException = false)
         {
             Type type = request.BodyType;
-            request.IsDuplex = false;
+            request.DuplexType = DuplexTypes.None;
             using (HttpClient client = new HttpClient(address, port, method, timeout))
             {
                 client.Execute(request, type, enableException);
@@ -958,7 +958,7 @@ namespace Nistec.Channels.Http
         public static object SendDuplex(MessageStream request, string HostName, bool enableException = false)
         {
             Type type = request.BodyType;
-            request.IsDuplex = true;
+            request.DuplexType =  DuplexTypes.Respond;
             using (HttpClient client = new HttpClient(HostName))
             {
                 return client.Execute(request, type, enableException);
@@ -968,7 +968,7 @@ namespace Nistec.Channels.Http
 
         public static T SendDuplex<T>(MessageStream request, string HostName, bool enableException = false)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             using (HttpClient client = new HttpClient(HostName))
             {
                 return client.Execute<T>(request, enableException);
@@ -978,7 +978,7 @@ namespace Nistec.Channels.Http
         public static void SendOut(MessageStream request, string HostName, bool enableException = false)
         {
             Type type = request.BodyType;
-            request.IsDuplex = false;
+            request.DuplexType = DuplexTypes.None;
             using (HttpClient client = new HttpClient(HostName))
             {
                 client.Execute(request, type, enableException);
@@ -988,7 +988,7 @@ namespace Nistec.Channels.Http
         public static void SendOut(MessageStream request, string address, int port, string method, bool enableException = false)
         {
             Type type = request.BodyType;
-            request.IsDuplex = false;
+            request.DuplexType = DuplexTypes.None;
             using (HttpClient client = new HttpClient(address, port, method))
             {
                 client.Execute(request, type, enableException);
@@ -1004,7 +1004,7 @@ namespace Nistec.Channels.Http
         /// <returns></returns>
         public static string SendDuplexJson(MessageStream request, string hostName, bool enableException = false)
         {
-            request.IsDuplex = true;
+            request.DuplexType = DuplexTypes.Respond;
             request.TransformType = TransformType.Json;
 
             using (HttpClient client = new HttpClient(hostName))
@@ -1021,7 +1021,7 @@ namespace Nistec.Channels.Http
         /// <returns></returns>
         public static void SendOutJson(MessageStream request, string hostName, bool enableException = false)
         {
-            request.IsDuplex = false;
+            request.DuplexType = DuplexTypes.None;
             request.TransformType = TransformType.Json;
 
             using (HttpClient client = new HttpClient(hostName))

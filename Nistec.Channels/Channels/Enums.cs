@@ -26,6 +26,15 @@ using System.Text;
 namespace Nistec.Channels
 {
     /// <summary>
+    /// TransType
+    /// </summary>
+    public enum TransType : byte { None = 0, Object = 100, Stream = 101, Json = 102, Base64 = 103, Text = 104, Ack = 105, State = 106, Csv = 107, Xml = 108 }
+    /// <summary>
+    /// StringFormatType
+    /// </summary>
+    public enum StringFormatType : byte { None = 0, Json = 102, Base64 = 103, Text = 104, Csv = 107, Xml = 108 }
+
+    /// <summary>
     /// Channel Service State
     /// </summary>
     public enum ChannelServiceState { None, Started, Stoped, Paused }

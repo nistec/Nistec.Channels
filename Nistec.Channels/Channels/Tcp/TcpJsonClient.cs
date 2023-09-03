@@ -281,11 +281,11 @@ namespace Nistec.Channels.Tcp
                 using (var client = (IsAsync) ? ConnectAsync() : Connect())
                 {
                     var stream = client.GetStream();
-                    StringMessage.WriteString(message, stream);
+                    TransString.WriteString(message, stream);
                     if (IsDuplex)
                     {
                         // Receive a response from server.
-                        response = StringMessage.ReadString(stream);
+                        response = TransString.ReadString(stream);
 
                         if (response[0] == '[' && response[response.Length - 1] != ']')
                         {

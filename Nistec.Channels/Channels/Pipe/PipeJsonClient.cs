@@ -261,13 +261,13 @@ namespace Nistec.Channels
                     // Set the read mode and the blocking mode of the named pipe.
                     pipeClientStream.ReadMode = PipeTransmissionMode.Message;
 
-                    //using (StringMessage.WriteString strStream = new StreamString(pipeClientStream))
+                    //using (TransString.WriteString strStream = new StreamString(pipeClientStream))
                     //{
 
                     if (PipeDirection != System.IO.Pipes.PipeDirection.In)
                     {
                         // Send a request from client to server
-                        StringMessage.WriteString(message, pipeClientStream);
+                        TransString.WriteString(message, pipeClientStream);
                     }
 
                     if (PipeDirection == System.IO.Pipes.PipeDirection.Out)
@@ -277,7 +277,7 @@ namespace Nistec.Channels
                     else
                     {
                         // Receive a response from server.
-                        response = StringMessage.ReadString(pipeClientStream);
+                        response = TransString.ReadString(pipeClientStream);
                     }
                     //}
 
