@@ -32,7 +32,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TCP = System.Net.Sockets;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Tcp
 {
     /// <summary>
@@ -372,15 +372,6 @@ namespace Nistec.Channels.Tcp
             {
                 return;
             }
-            //var ns = bResponse.GetStream();
-            //if (ns == null)
-            //{
-            //    return;
-            //}
-            //int lenth = ns.iLength;
-            ////stream.WriteValue(cbResponse);
-            //stream.Write(ns.ToArray(), 0, lenth);
-
             var bytes = bResponse.GetBytes();
             if (bytes == null || bytes.Length==0)
             {
@@ -439,7 +430,7 @@ namespace Nistec.Channels.Tcp
                     //}
                     //sockeErrors = 0;
 
-                    //ProcessIncomingData(client,readtimeout, ReceiveBufferSize,true);
+                    //ProcessIncomingData(client,true);
 
                     Task task = Task.Factory.StartNew(() => ProcessIncomingData(client, false));
                     {
@@ -479,7 +470,7 @@ namespace Nistec.Channels.Tcp
             }
 
         }
-
+        #pragma warning disable CS0649
         private class ServerCom : IDisposable
         {
             public long Uid;

@@ -29,7 +29,7 @@ using System.Configuration;
 using System.Xml;
 using Nistec.Generic;
 using Nistec.Logging;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
 

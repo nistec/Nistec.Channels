@@ -34,7 +34,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TCP = System.Net.Sockets;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Tcp
 {
 

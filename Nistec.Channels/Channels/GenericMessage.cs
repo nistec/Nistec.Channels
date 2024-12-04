@@ -29,7 +29,7 @@ using Nistec.Serialization;
 using System.Collections;
 using Nistec.IO;
 using System.Threading.Tasks;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
     /// <summary>

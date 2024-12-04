@@ -25,7 +25,7 @@ using System.Text;
 using System.Configuration;
 using System.Collections.Specialized;
 using System.Xml;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Config
 {
     /// <summary>

@@ -32,7 +32,7 @@ using Nistec.Channels.Tcp;
 using System.Net.NetworkInformation;
 using System.Net;
 using System.Net.Sockets;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.RemoteTrace
 {
     /// <summary>
@@ -291,6 +291,7 @@ namespace Nistec.Channels.RemoteTrace
             }
             catch (SocketException ex)
             {
+                Console.WriteLine(ex.Message);
                 Console.WriteLine("Error pinging host:'" + hostUri + ":" + portNumber.ToString() + "'");
                 return false;
             }

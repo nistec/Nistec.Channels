@@ -24,7 +24,7 @@ using System.Collections.Generic;
 using System.IO.Pipes;
 using System.Linq;
 using System.Text;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
     /// <summary>

@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Management;
 using System.Text;
-
+#pragma warning disable CS1591
 namespace Nistec.Diagnostics
 {
     public static class ProcessExtensions

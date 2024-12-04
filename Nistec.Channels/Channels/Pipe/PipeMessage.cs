@@ -30,7 +30,7 @@ using System.Collections;
 using Nistec.IO;
 using System.IO.Pipes;
 using System.Threading.Tasks;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
     /// <summary>
@@ -143,7 +143,7 @@ namespace Nistec.Channels
 
         #region Read/Write
 
-        internal static PipeMessage ReadRequest(NamedPipeServerStream pipeServer, int ReceiveBufferSize = 8192)
+        internal new static PipeMessage ReadRequest(NamedPipeServerStream pipeServer, int ReceiveBufferSize = 8192)
         {
             var message = new PipeMessage();
             message.EntityRead(pipeServer, null);

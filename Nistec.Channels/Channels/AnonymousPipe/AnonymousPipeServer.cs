@@ -31,7 +31,7 @@ using Nistec.Logging;
 using System.Diagnostics;
 using Nistec.Serialization;
 using System.Threading.Tasks;
-
+#pragma warning disable CS1591
 
 namespace Nistec.Channels
 {
@@ -332,7 +332,7 @@ namespace Nistec.Channels
 
                     return task2.Result;
                 };
-                task2.TryDispose();
+                //task2.TryDispose();
             }
             catch (Exception ex)
             {
@@ -391,7 +391,7 @@ namespace Nistec.Channels
 
                     return task2.Result;
                 };
-                task2.TryDispose();
+                //task2.TryDispose();
             }
             catch (Exception ex)
             {

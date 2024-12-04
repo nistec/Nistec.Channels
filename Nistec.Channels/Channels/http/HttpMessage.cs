@@ -33,7 +33,7 @@ using System.Threading.Tasks;
 using System.Net.Sockets;
 using System.Net;
 using System.Collections.Specialized;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Http
 {
     /// <summary>
@@ -158,7 +158,7 @@ namespace Nistec.Channels.Http
 
         #region Read/Write http
 
-        internal static HttpMessage ReadRequest(HttpRequestInfo request)
+        internal new static HttpMessage ReadRequest(HttpRequestInfo request)
         {
             if (request.BodyStream != null)
             {
@@ -179,7 +179,7 @@ namespace Nistec.Channels.Http
             }
         }
 
-        internal static void WriteResponse(HttpListenerContext context, NetStream bResponse)
+        internal new static void WriteResponse(HttpListenerContext context, NetStream bResponse)
         {
             var response = context.Response;
             if (bResponse == null)
@@ -297,7 +297,7 @@ namespace Nistec.Channels.Http
             return address;
         }
 
-        internal static HttpMessage ParseStream(Stream stream)
+        internal new static HttpMessage ParseStream(Stream stream)
         {
             var message = new HttpMessage() ;
             message.EntityRead(stream, null);

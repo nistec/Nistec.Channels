@@ -36,7 +36,7 @@ using Nistec.Channels.Tcp;
 using Nistec.Channels.Http;
 using System.Collections.Specialized;
 using System.Net;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
    

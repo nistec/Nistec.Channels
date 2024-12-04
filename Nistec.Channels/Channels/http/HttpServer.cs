@@ -33,7 +33,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using TCP = System.Net.Sockets;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Http
 {
     /// <summary>

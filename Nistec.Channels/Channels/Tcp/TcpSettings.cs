@@ -32,7 +32,8 @@ using Nistec.Generic;
 using System.Net;
 using System.Net.Sockets;
 using Nistec.Logging;
-
+using Nistec.Channels.Config;
+#pragma warning disable CS1591
 namespace Nistec.Channels.Tcp
 {
 
@@ -84,11 +85,12 @@ namespace Nistec.Channels.Tcp
     ///     ReceiveBufferSize="1024" 
     ///     SendBufferSize="1024" 
     ///     MaxSocketError="50" 
-    ///     MaxServerConnections="0" 
+    ///     MaxServerConnections="0" />
     /// </TcpServerSettings>
     /// </example>
     public class TcpSettings: IChannelSettings
     {
+        #region members
         /// <summary>
         /// DefaultHostName
         /// </summary>
@@ -212,7 +214,9 @@ namespace Nistec.Channels.Tcp
         {
             return (val == 0 || val < -1) ? defaultValue : val;
         }
+        #endregion
 
+        #region ctor
         /// <summary>
         /// Default constractor.
         /// </summary>
@@ -255,7 +259,7 @@ namespace Nistec.Channels.Tcp
             HostName = configHost;
             LoadTcpSttingsInternal(configHost, isServer);
         }
-
+        
         /// <summary>
         /// TcpSettings
         /// </summary>
@@ -265,7 +269,9 @@ namespace Nistec.Channels.Tcp
         {
             LoadTcpSettings(node, isServer);
         }
+        #endregion
 
+        #region loader
         void LoadTcpSettings(XmlNode node, bool isServer)
         {
             if (node == null)
@@ -385,6 +391,7 @@ namespace Nistec.Channels.Tcp
             }
 
         }
+        #endregion
 
         #region host settings
 
@@ -497,5 +504,24 @@ namespace Nistec.Channels.Tcp
             return hostEndPoint;
         }
         #endregion
+
+        public static TcpSettings Get(TcpConfigItem settings)
+        {
+            //TcpConfigItem settings = config.TcpServerSettings[hostName];
+
+            return new TcpSettings()
+            {
+                HostName = settings.HostName,
+                Address = TcpSettings.EnsureHostAddress(settings.Address),
+                Port = settings.Port,
+                IsAsync = settings.IsAsync,
+                ReceiveBufferSize = settings.ReceiveBufferSize,
+                SendBufferSize = settings.SendBufferSize,
+                ConnectTimeout = settings.ConnectTimeout,
+                ReadTimeout = settings.ReadTimeout,
+                MaxSocketError = settings.MaxSocketError,
+                MaxServerConnections = Math.Max(1, settings.MaxServerConnections)
+            };
+        }
     }
 }

@@ -36,7 +36,7 @@ using Nistec.Channels.Tcp;
 using Nistec.Channels.Http;
 using System.Collections.Specialized;
 using System.Net;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
 
@@ -872,7 +872,7 @@ namespace Nistec.Channels
         /// Get message as Stream.
         /// </summary>
         /// <returns></returns>
-        public NetStream ToStream()
+        public new NetStream ToStream()
         {
             NetStream stream = new NetStream();
             EntityWrite(stream, null);
@@ -898,7 +898,7 @@ namespace Nistec.Channels
         /// Get message as Stream.
         /// </summary>
         /// <returns></returns>
-        public string ToJson(bool pretty = false)
+        public new string ToJson(bool pretty = false)
         {
             return EntityWrite(new JsonSerializer(JsonSerializerMode.Write, null), pretty);
         }
@@ -907,7 +907,7 @@ namespace Nistec.Channels
 
         #region IDisposable
 
-        public void Dispose()
+        public new void Dispose()
         {
             Message = null;
         }
@@ -915,14 +915,14 @@ namespace Nistec.Channels
 
         #region ITransformResponse
 
-        public void SetState(int state, string message)
+        public new void SetState(int state, string message)
         {
             State = state;
             Message = message;
             TransformType = TransformType.State;
         }
 
-        public byte[] GetBytes()
+        public new byte[] GetBytes()
         {
             return ToStream().ToArray();
         }
@@ -1217,14 +1217,14 @@ namespace Nistec.Channels
         //    }
         //}
 
-        public static MessageFlex ReadRequest(NamedPipeServerStream pipeServer, int ReceiveBufferSize = 8192)
+        public new static MessageFlex ReadRequest(NamedPipeServerStream pipeServer, int ReceiveBufferSize = 8192)
         {
             MessageFlex message = new MessageFlex();
             message.EntityRead(pipeServer, null);
             return message;
         }
 
-        internal static void WriteResponse(NamedPipeServerStream pipeServer, NetStream bResponse)
+        internal new static void WriteResponse(NamedPipeServerStream pipeServer, NetStream bResponse)
         {
             if (bResponse == null)
             {
@@ -1247,7 +1247,7 @@ namespace Nistec.Channels
         //    return message.Serialize();
         //}
 
-        public static MessageFlex ReadRequest(NetworkStream streamServer, int ReceiveBufferSize = 8192)
+        public new static MessageFlex ReadRequest(NetworkStream streamServer, int ReceiveBufferSize = 8192)
         {
             MessageFlex message = new MessageFlex();
             message.EntityRead(streamServer, null);
@@ -1274,7 +1274,7 @@ namespace Nistec.Channels
 
         #region Read/Write http
 
-        public static MessageFlex ReadRequest(HttpRequestInfo request)
+        public new static MessageFlex ReadRequest(HttpRequestInfo request)
         {
             MessageFlex message = new MessageFlex(request);
             return message;
@@ -1299,7 +1299,7 @@ namespace Nistec.Channels
             //}
         }
 
-        internal static void WriteResponse(HttpListenerContext context, NetStream bResponse)
+        internal new static void WriteResponse(HttpListenerContext context, NetStream bResponse)
         {
             var response = context.Response;
             if (bResponse == null)

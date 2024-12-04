@@ -26,7 +26,7 @@ using Nistec.Serialization;
 using Nistec.IO;
 using System.IO;
 using Nistec.Generic;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
 
@@ -60,9 +60,19 @@ namespace Nistec.Channels
 
         #region ITransformResponse
 
-        public byte[] GetBytes()
+        public byte[] GetMessageBytes()
         {
             return Encoding.UTF8.GetBytes(Message);
+        }
+
+        public byte[] GetBytes()
+        {
+            using (var stream=new NetStream())
+            {
+                EntityWrite(stream, null);
+                return stream.ToArray();
+            }
+            //return Encoding.UTF8.GetBytes(Message);
         }
 
         public void SetState(int state, string message)
@@ -74,8 +84,13 @@ namespace Nistec.Channels
         #endregion
 
         #region ctor
+        public MessageAck()
+        {
+            string identifier = null;
+            Identifier = (string.IsNullOrEmpty(identifier)) ? UUID.Identifier() : identifier;
+        }
 
-        public MessageAck(string identifier = null)
+        public MessageAck(string identifier)
         {
             //Modified = DateTime.Now;
             Identifier = (string.IsNullOrEmpty(identifier)) ? UUID.Identifier() : identifier;
@@ -93,6 +108,7 @@ namespace Nistec.Channels
             Message = message;
             Response = response;
         }
+        
         public MessageAck(NetStream stream)
             : this()
         {
@@ -167,10 +183,20 @@ namespace Nistec.Channels
         {
             return new MessageAck(state, message);
         }
+        public static MessageAck DoAck(ChannelState stateTrue, ChannelState stateFalse,object val, object condition, string message)
+        {
+            ChannelState state= val == condition ? stateTrue : stateFalse;
+            return new MessageAck(state, message);
+        }
         public static MessageAck DoAck(ChannelState state, string message, string identifier)
         {
             return new MessageAck(identifier) { State = state, Message = message };
         }
+        //public static void Write(ChannelState state, string message)
+        //{
+        //    var ack =new MessageAck(state, message);
+        //    ack.EntityWrite(null);
+        //}
         //public static NetStream DoAck<T>(T value)
         //{
         //    NetStream ns = new NetStream();

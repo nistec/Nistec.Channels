@@ -31,7 +31,7 @@ using System.IO.Pipes;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.RemoteCache
 {
     public enum HostType { Cache, Sync, Session, Data };
@@ -456,7 +456,7 @@ namespace Nistec.Channels.RemoteCache
                 Console.WriteLine("CacheApi Fault: " + message);
             }
 
-            public string ToJson(object obj, JsonFormat format= JsonFormat.None)
+            public new string ToJson(object obj, JsonFormat format= JsonFormat.None)
             {
                 if (obj == null)
                     return null;
@@ -1557,6 +1557,7 @@ namespace Nistec.Channels.RemoteCache
             /// </summary>
             /// <typeparam name="T"></typeparam>
             /// <param name="info"></param>
+            /// <param name="field"></param>
             /// <returns></returns>
             public T Get<T>(ComplexKey info, string field)
             {
@@ -1581,6 +1582,7 @@ namespace Nistec.Channels.RemoteCache
             /// <typeparam name="T"></typeparam>
             /// <param name="entityName"></param>
             /// <param name="keys"></param>
+            /// <param name="field"></param>
             /// <returns></returns>
             public T Get<T>(string entityName, string[] keys, string field)
             {
@@ -1884,7 +1886,6 @@ namespace Nistec.Channels.RemoteCache
             /// <summary>
             /// Get if sync cache contains item using arguments.
             /// </summary>
-            /// <typeparam name="T"></typeparam>
             /// <param name="entityName"></param>
             /// <param name="keys"></param>
             /// <returns></returns>

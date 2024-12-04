@@ -28,7 +28,7 @@ using System.Xml;
 using Nistec.Generic;
 using Nistec.Runtime;
 using Nistec.Serialization;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.RemoteCache
 {
  

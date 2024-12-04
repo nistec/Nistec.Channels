@@ -26,7 +26,7 @@ using System.IO;
 using Nistec.Runtime;
 using Nistec.Serialization;
 using Nistec.Channels;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
 

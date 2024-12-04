@@ -31,7 +31,7 @@ using System.Threading.Tasks;
 using System.Net.Sockets;
 using Nistec.Serialization;
 using Nistec.Runtime;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Tcp
 {
     /// <summary>

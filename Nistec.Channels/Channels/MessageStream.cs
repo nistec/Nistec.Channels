@@ -36,7 +36,7 @@ using Nistec.Channels.Tcp;
 using Nistec.Channels.Http;
 using System.Collections.Specialized;
 using System.Net;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
 
@@ -111,11 +111,13 @@ namespace Nistec.Channels
         /// Get or Set The message Id.
         /// </summary>
         public string Identifier { get; protected set; }
+        
         ///// <summary>
-        /// Get or Set The message body stream.
-        /// </summary>
+        ///// Get or Set The message body stream.
+        ///// </summary>
         //NetStream _BodyStream;
         //public NetStream BodyStream { get; set; }
+
         /// <summary>
         ///  Get or Set The type name of body stream.
         /// </summary>
@@ -1166,6 +1168,7 @@ namespace Nistec.Channels
         /// <param name="stream"></param>
         /// <param name="readTimeout"></param>
         /// <param name="ReceiveBufferSize"></param>
+        /// <param name="isTransStream"></param>
         public object ReadResponse(NetworkStream stream, int readTimeout, int ReceiveBufferSize, bool isTransStream)//TransformType transformType,
         {
             if (isTransStream)
@@ -1184,6 +1187,7 @@ namespace Nistec.Channels
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="o"></param>
+        /// <param name="enableException"></param>
         /// <returns></returns>
         public T Cast<T>(object o, bool enableException = false)
         {

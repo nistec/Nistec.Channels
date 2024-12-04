@@ -38,7 +38,7 @@ using System.Web;
 using Nistec.Serialization;
 using System.Collections.Specialized;
 using System.Net.NetworkInformation;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Http
 {
     /// <summary>

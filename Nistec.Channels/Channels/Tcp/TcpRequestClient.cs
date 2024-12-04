@@ -7,7 +7,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using TCP = System.Net.Sockets;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Tcp
 {
     /// <summary>

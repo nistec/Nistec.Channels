@@ -33,7 +33,7 @@ using Nistec.Generic;
 using System.Net;
 using System.Net.Sockets;
 using Nistec.Logging;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Http
 {
 
@@ -70,6 +70,7 @@ namespace Nistec.Channels.Http
     ///     Method="post"
     ///     ConnectTimeout="5000" 
     ///     ProcessTimeout="5000" 
+    ///     />
     /// </HttpClientSettings>
     /// HttpServerSettings
     /// <HttpServerSettings>
@@ -80,7 +81,7 @@ namespace Nistec.Channels.Http
     ///     ConnectTimeout="5000" 
     ///     ProcessTimeout="5000" 
     ///     MaxErrors="50" 
-    ///     MaxServerConnections="0" 
+    ///     MaxServerConnections="0" />
     /// </HttpServerSettings>
     /// </example>
     public class HttpSettings: IChannelSettings

@@ -23,7 +23,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Configuration;
-
+using Nistec.Channels.Tcp;
+#pragma warning disable CS1591
 namespace Nistec.Channels.Config
 {
     /// <summary>
@@ -230,5 +231,96 @@ namespace Nistec.Channels.Config
             }
         }
        
+    }
+
+
+    /// <summary>
+    /// Represent tcp config item.
+    /// </summary>
+    public class TcpServerConfig : ConfigurationSection
+    {
+        /// <summary>
+        /// Get config section.
+        /// </summary>
+        /// <returns></returns>
+        public static TcpServerConfig GetConfig(string section)
+        {
+            return (TcpServerConfig)System.Configuration.ConfigurationManager.GetSection(section) ?? new TcpServerConfig();
+        }
+
+        public static TcpSettings GetSettings(string section, string hostName)
+        {
+            var config = GetConfig(section);
+            TcpConfigItem settings = config.FindTcpConfig(hostName);
+            return TcpSettings.Get(settings);
+        }
+
+        /// <summary>
+        /// Get <see cref="TcpConfigItems"/> collection.
+        /// </summary>
+        [System.Configuration.ConfigurationProperty("TcpServerSettings")]
+        [ConfigurationCollection(typeof(TcpConfigItems), AddItemName = "host")]
+        public TcpConfigItems TcpServerSettings
+        {
+            get
+            {
+                object o = this["TcpServerSettings"];
+                return o as TcpConfigItems;
+            }
+        }
+        /// <summary>
+        /// Find tcp server item.
+        /// </summary>
+        /// <param name="hostName"></param>
+        /// <returns></returns>
+        public TcpConfigItem FindTcpConfig(string hostName)
+        {
+            return TcpServerSettings[hostName];
+        }
+    }
+
+    /// <summary>
+    /// Represent tcp config item.
+    /// </summary>
+    public class TcpClientConfig : ConfigurationSection
+    {
+        /// <summary>
+        /// Get config section.
+        /// </summary>
+        /// <returns></returns>
+        public static TcpClientConfig GetConfig(string section)
+        {
+            return (TcpClientConfig)System.Configuration.ConfigurationManager.GetSection(section) ?? new TcpClientConfig();
+        }
+
+        public static TcpSettings GetSettings(string section, string hostName)
+        {
+            var config = GetConfig(section);
+            TcpConfigItem settings = config.FindTcpConfig(hostName);
+            return TcpSettings.Get(settings);
+        }
+
+        /// <summary>
+        /// Get <see cref="TcpConfigItems"/> collection.
+        /// </summary>
+        [System.Configuration.ConfigurationProperty("TcpClientSettings")]
+        [ConfigurationCollection(typeof(TcpConfigItems), AddItemName = "host")]
+        public TcpConfigItems TcpClientSettings
+        {
+            get
+            {
+                object o = this["TcpClientSettings"];
+                return o as TcpConfigItems;
+            }
+        }
+        /// <summary>
+        /// Find tcp client item.
+        /// </summary>
+        /// <param name="hostName"></param>
+        /// <returns></returns>
+        public TcpConfigItem FindTcpConfig(string hostName)
+        {
+            return TcpClientSettings[hostName];
+        }
     }
 }

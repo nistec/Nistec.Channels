@@ -32,7 +32,7 @@ using System.Runtime.Serialization;
 using Nistec.Logging;
 using System.Diagnostics;
 
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
 

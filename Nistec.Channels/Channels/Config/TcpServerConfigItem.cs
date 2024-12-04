@@ -23,11 +23,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Configuration;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Config
 {
     /// <summary>
-    /// Represent pipe server config item.
+    /// Represent tcp server config item.
     /// </summary>
     public class TcpServerConfigItem : TcpConfigItem
     {
@@ -37,7 +37,7 @@ namespace Nistec.Channels.Config
         /// Get max server connection.
         /// </summary>
         [ConfigurationProperty("MaxServerConnections", DefaultValue = "1", IsRequired = false)]
-        public int MaxServerConnections
+        public new int MaxServerConnections
         {
             get
             {
@@ -47,4 +47,5 @@ namespace Nistec.Channels.Config
      
 
     }
+
 }

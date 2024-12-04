@@ -36,7 +36,7 @@ using Nistec.Logging;
 using System.Collections.Generic;
 using System.Web;
 using Nistec.Serialization;
-
+#pragma warning disable CS1591
 
 
 namespace Nistec.Channels.Http

@@ -24,7 +24,7 @@ using System.Linq;
 using System.Text;
 using System.Security;
 using System.Security.Permissions;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
 

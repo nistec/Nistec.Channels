@@ -25,13 +25,14 @@ using Nistec.Runtime;
 using Nistec.Serialization;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
 using System.Net.Sockets;
 using System.Security;
 using System.Text;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
 
@@ -49,14 +50,6 @@ namespace Nistec.Channels
             DuplexType = DuplexTypes.Respond;
             TransformType = TransformType.Json;
         }
-
-        //public TransString(string message, bool isDuplex, int expiration, StringFormatType formatType = StringFormatType.Json)
-        //{
-        //    Body = message;
-        //    DuplexType = isDuplex? DuplexTypes.Respond: DuplexTypes.None;
-        //    Expiration = expiration;
-        //    TransformType = (TransformType)(int)formatType;
-        //}
         public TransString(string message, bool isDuplex = true, StringFormatType formatType = StringFormatType.Json)
         {
             Body = message;
@@ -121,10 +114,10 @@ namespace Nistec.Channels
 
         #region Static Stream Read\Write
 
-        public static TransString WriteState(int state, string message)
-        {
-            return new TransString() { Body = message, TransformType = TransformType.State, DuplexType = DuplexTypes.None };
-        }
+        //public static TransString WriteState(int state, string message)
+        //{
+        //    return new TransString() { Body = message, TransformType = TransformType.State, DuplexType = DuplexTypes.None };
+        //}
         //return new TransStream(message, TransType.State, state);
 
         public static int WriteString(string outString, Stream stream)

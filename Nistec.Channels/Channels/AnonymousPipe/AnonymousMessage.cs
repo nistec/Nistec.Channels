@@ -30,7 +30,7 @@ using System.Collections;
 using Nistec.IO;
 using System.IO.Pipes;
 using System.Threading.Tasks;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
     /// <summary>
@@ -150,7 +150,7 @@ namespace Nistec.Channels
 
         #region Read/Write
 
-        public NetStream ToStream()
+        public new NetStream ToStream()
         {
             NetStream stream = new NetStream();
             EntityWrite(stream, null);
@@ -158,7 +158,7 @@ namespace Nistec.Channels
             return stream;
         }
 
-        public static AnonymousMessage ParseStream(Stream stream)
+        public new static AnonymousMessage ParseStream(Stream stream)
         {
             var message = new AnonymousMessage();
             message.EntityRead(stream, null);
@@ -218,7 +218,7 @@ namespace Nistec.Channels
         /// </summary>
         /// <param name="dict"></param>
         /// <returns></returns>
-        public static MessageStream ConvertFrom(IDictionary<string ,object> dict)
+        public new static MessageStream ConvertFrom(IDictionary<string ,object> dict)
         {
             return new AnonymousMessage(dict);
 

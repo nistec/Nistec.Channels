@@ -30,7 +30,7 @@ using System.Security.Principal;
 using Nistec.Logging;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
 

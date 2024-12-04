@@ -29,7 +29,7 @@ using Nistec.Generic;
 using Nistec.Runtime;
 using System.Collections.Specialized;
 using System.Net.Sockets;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
 
@@ -57,7 +57,21 @@ namespace Nistec.Channels
             Request = new GenericNameValue();
             TransformType = TransformType.None;
         }
-
+        public MessageRequest(string command, string[] keyValueMessage)
+        {
+            Modified = DateTime.Now;
+            Source = "";
+            Destination = "";
+            Command = command;
+            Request = new GenericNameValue(keyValueMessage);
+            TransformType = TransformType.None;
+        }
+        public MessageRequest(string sender, string dest, string command):this()
+        {
+            Source = sender;
+            Destination = dest;
+            Command = command;
+        }
         public MessageRequest(string sender, string dest,string command,string[] keyValueMessage)
         {
             Modified = DateTime.Now;
@@ -267,6 +281,7 @@ namespace Nistec.Channels
         /// <param name="stream"></param>
         /// <param name="readTimeout"></param>
         /// <param name="ReceiveBufferSize"></param>
+        /// <param name="isTransStream"></param>
         public object ReadResponse(NetworkStream stream, int readTimeout, int ReceiveBufferSize, bool isTransStream)//TransformType transformType,
         {
             if (isTransStream)
@@ -290,6 +305,12 @@ namespace Nistec.Channels
         /// <returns></returns>
         public TResponse ReadResponse<TResponse>(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
         {
+            if(SerializeTools.IsISerialEntity(typeof(TResponse)))
+            {
+                var instance=ActivatorUtil.CreateInstance<TResponse>();
+                ((ISerialEntity)instance).EntityRead(stream, null);
+                return instance;
+            }
             if (TransStream.IsTransStream(typeof(TResponse)))
             {
                 TransStream ts = new TransStream(stream, readTimeout, ReceiveBufferSize, TransformType.Stream);// , TransformType.Stream,true);

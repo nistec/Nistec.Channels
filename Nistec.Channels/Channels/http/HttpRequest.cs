@@ -32,7 +32,7 @@ using System.Security.Permissions;
 using Nistec.IO;
 using System.Web;
 using System.Collections.Specialized;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Http
 {
 
@@ -125,6 +125,7 @@ namespace Nistec.Channels.Http
         /// </summary>
         /// <param name="url"></param>
         /// <param name="contentType"></param>
+        /// <param name="timeout"></param>
         public HttpRequest(string url, RequestContentType contentType, int timeout) : this(url, "POST", contentType, timeout)
         {
         }
@@ -134,6 +135,7 @@ namespace Nistec.Channels.Http
         /// <param name="url"></param>
         /// <param name="method"></param>
         /// <param name="contentType"></param>
+        /// <param name="timeout"></param>
         public HttpRequest(string url, string method, RequestContentType contentType, int timeout)
         {
             request = (HttpWebRequest)WebRequest.Create(url);
@@ -152,6 +154,7 @@ namespace Nistec.Channels.Http
         /// <param name="method"></param>
         /// <param name="charSet"></param>
         /// <param name="contentType"></param>
+        /// <param name="timeout"></param>
         public HttpRequest(string url, string method, string charSet, RequestContentType contentType, int timeout)
         {
             request = (HttpWebRequest)WebRequest.Create(url);
@@ -459,7 +462,9 @@ namespace Nistec.Channels.Http
         /// Async Request
         /// </summary>
         /// <param name="postData"></param>
+        /// <param name="responseAction"></param>
         /// <param name="charSet"></param>
+        /// <param name="enableException"></param>
         /// <returns></returns>
         public void DoAsyncRequest(string postData, Action<string> responseAction, string charSet = "utf-8", bool enableException = false)
         {

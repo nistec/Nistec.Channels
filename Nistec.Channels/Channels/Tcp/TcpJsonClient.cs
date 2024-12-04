@@ -29,7 +29,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
 using TCP = System.Net.Sockets;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Tcp
 {
     /// <summary>
@@ -145,11 +145,12 @@ namespace Nistec.Channels.Tcp
         #endregion
 
         #region settings
+        /*
         /// <summary>
-        ///// Get or Set <see cref="TcpSettings"/> Settings.
-        ///// </summary>
-        //public TcpSettings Settings { get; set; }
-
+        /// Get or Set <see cref="TcpSettings"/> Settings.
+        /// </summary>
+        public TcpSettings Settings { get; set; }
+        */
         /// <summary>
         ///  Get or Set HostName.
         /// </summary>
@@ -219,7 +220,7 @@ namespace Nistec.Channels.Tcp
         }
 
         /// <summary>
-        /// Initialize a new instance of <see cref="TcpClient"/> from configuration.
+        /// Initialize a new instance of <see cref="Nistec.Channels.Tcp.TcpClient{TRequest}"/> from configuration.
         /// </summary>
         /// <param name="configHost"></param>
         protected TcpJsonClient(string configHost)
@@ -235,7 +236,7 @@ namespace Nistec.Channels.Tcp
             SendBufferSize = settings.SendBufferSize;
         }
         /// <summary>
-        /// Initialize a new instance of <see cref="TcpClient"/> with given <see cref="TcpSettings"/> settings.
+        /// Initialize a new instance of <see cref="Nistec.Channels.Tcp.TcpClient{TRequest}"/> with given <see cref="TcpSettings"/> settings.
         /// </summary>
         /// <param name="settings"></param>
         protected TcpJsonClient(TcpSettings settings)
@@ -532,4 +533,560 @@ namespace Nistec.Channels.Tcp
         #endregion
     }
 
+#if (false)
+    /// <summary>
+    /// Represent string tcp client channel
+    /// </summary>
+    public class TcpTextClient : TcpClient<TransString>, IDisposable
+    {
+        #region static send methods
+
+        public static object SendDuplex(string request, string hostAddress, int port, int timeout, bool IsAsync = false, bool enableException = true)
+        {
+            using (TcpTextClient client = new TcpTextClient(hostAddress, port, timeout))
+            {
+                client.IsAsync = IsAsync;
+                client.IsDuplex = true;
+                return client.Execute(request, enableException);
+            }
+        }
+
+        public static TransStream SendDuplexStream(string request, string hostAddress, int port, int timeout, bool IsAsync = false, bool enableException = true)
+        {
+            using (TcpTextClient client = new TcpTextClient(hostAddress, port, timeout))
+            {
+                client.IsAsync = IsAsync;
+                client.IsDuplex = true;
+                return client.Execute<TransStream>(new TransString(request), enableException);
+            }
+        }
+
+        public static object SendDuplex(string request, string hostName, bool enableException = true)
+        {
+            using (TcpTextClient client = new TcpTextClient(hostName))
+            {
+                client.IsDuplex = true;
+                return client.Execute(request, enableException);
+            }
+        }
+        public static void SendOut(string request, string hostName, bool enableException = true)
+        {
+            using (TcpTextClient client = new TcpTextClient(hostName))
+            {
+                client.IsDuplex = false;
+                client.Execute(request, enableException);
+            }
+        }
+ 
+
+        public static T SendDuplex<T>(string request, string hostName, int port, int readTimeout, bool IsAsync, bool enableException = true)
+        {
+            using (TcpTextClient client = new TcpTextClient(hostName, port, readTimeout))
+            {
+                client.IsDuplex = true;
+                return client.Execute<T>(new TransString(request), enableException);
+            }
+        }
+
+        public static void SendOut(string request, string hostName, int port, int readTimeout, bool IsAsync, bool enableException = true)
+        {
+            using (TcpTextClient client = new TcpTextClient(hostName, port, readTimeout))
+            {
+                client.IsDuplex = false;
+                client.Execute(request, enableException);
+            }
+        }
+
+
+        #endregion
+
+        #region Default
+
+                /// <summary>
+                /// DefaultHostName
+                /// </summary>
+                public const string DefaultHostName = "localhost";
+                /// <summary>
+                /// DefaultAddress
+                /// </summary>
+                public const string DefaultAddress = "127.0.0.1";
+                /// <summary>
+                /// DefaultPort
+                /// </summary>
+                public const int DefaultPort = 13000;
+                /// <summary>
+                /// DefaultReceiveBufferSize
+                /// </summary>
+                public const int DefaultReceiveBufferSize = 4096;
+                /// <summary>
+                /// DefaultSendBufferSize
+                /// </summary>
+                public const int DefaultSendBufferSize = 4096;
+                /// <summary>
+                /// DefaultSendTimeout
+                /// </summary>
+                public const int DefaultSendTimeout = 5000;
+                /// <summary>
+                /// DefaultProcessTimeout
+                /// </summary>
+                public const int DefaultProcessTimeout = 5000;
+                /// <summary>
+                /// DefaultReadTimeout
+                /// </summary>
+                public const int DefaultReadTimeout = 1000;
+                /// <summary>
+                /// DefaultMaxSocketError
+                /// </summary>
+                public const int DefaultMaxSocketError = 50;
+
+        #endregion
+
+        #region members
+                public bool IsDuplex { get; set; }
+                const int MaxRetry = 3;
+        #endregion
+
+        #region settings
+                /// <summary>
+                ///// Get or Set <see cref="TcpSettings"/> Settings.
+                ///// </summary>
+                //public TcpSettings Settings { get; set; }
+
+                /// <summary>
+                ///  Get or Set HostName.
+                /// </summary>
+                public string HostName { get; set; }
+                /// <summary>
+                ///  Get or Set Host Address.
+                /// </summary>
+                public string Address { get; set; }
+                /// <summary>
+                ///  Get or Set Port.
+                /// </summary>
+                public int Port { get; set; }
+
+                /// <summary>
+                ///  Get or Set Indicates that the channel can be used for asynchronous reading and writing..
+                /// </summary>
+                public bool IsAsync { get; set; }
+
+                /// <summary>
+                /// Get or Set ConnectTimeout (Default=5000).
+                /// </summary>
+                public int ConnectTimeout { get; set; }
+                /// <summary>
+                /// Get or Set ProcessTimeout (Default=5000).
+                /// </summary>
+                public int ReadTimeout { get; set; }
+                /// <summary>
+                /// Get or Set ReceiveBufferSize (Default=8192).
+                /// </summary>
+                public int ReceiveBufferSize { get; set; }
+                /// <summary>
+                /// Get or Set SendBufferSize (Default=8192).
+                /// </summary>
+                public int SendBufferSize { get; set; }
+
+
+
+                ILogger _Logger = Logger.Instance;
+                /// <summary>
+                /// Get or Set Logger that implements <see cref="ILogger"/> interface.
+                /// </summary>
+                public ILogger Log { get { return _Logger; } set { if (value != null) _Logger = value; } }
+
+        #endregion
+
+        #region ctor
+
+                /// <summary>
+                /// Constractor with arguments
+                /// </summary>
+                /// <param name="hostAddress"></param>
+                /// <param name="port"></param>
+                /// <param name="readTimeout"></param>
+                /// <param name="receiveBufferSize"></param>
+                /// <param name="sendBufferSize"></param>
+                /// <param name="isAsync"></param>
+                protected TcpTextClient(string hostAddress, int port, int readTimeout, int receiveBufferSize = 4096, int sendBufferSize = 4096, bool isAsync = false)
+                {
+                    HostName = hostAddress;
+                    Address = hostAddress;
+                    IsAsync = isAsync;
+                    Port = port <= 0 ? DefaultPort : port;
+                    ReadTimeout = readTimeout <= 0 ? DefaultReadTimeout : readTimeout;
+                    ConnectTimeout = DefaultSendTimeout;
+                    ReceiveBufferSize = receiveBufferSize <= 0 ? DefaultReceiveBufferSize : receiveBufferSize;
+                    SendBufferSize = sendBufferSize <= 0 ? DefaultSendBufferSize : sendBufferSize;
+                }
+
+                /// <summary>
+                /// Initialize a new instance of <see cref="TcpClient"/> from configuration.
+                /// </summary>
+                /// <param name="configHost"></param>
+                protected TcpTextClient(string configHost)
+                {
+                    var settings = TcpClientSettings.GetTcpClientSettings(configHost);
+                    HostName = settings.HostName;
+                    Address = settings.Address;
+                    IsAsync = settings.IsAsync;
+                    Port = settings.Port;
+                    ReadTimeout = settings.ReadTimeout;
+                    ConnectTimeout = settings.ConnectTimeout;
+                    ReceiveBufferSize = settings.ReceiveBufferSize;
+                    SendBufferSize = settings.SendBufferSize;
+                }
+                /// <summary>
+                /// Initialize a new instance of <see cref="TcpClient"/> with given <see cref="TcpSettings"/> settings.
+                /// </summary>
+                /// <param name="settings"></param>
+                protected TcpTextClient(TcpSettings settings)
+                {
+                    HostName = settings.HostName;
+                    Address = settings.Address;
+                    IsAsync = settings.IsAsync;
+                    Port = settings.Port;
+                    ReadTimeout = settings.ReadTimeout;
+                    ConnectTimeout = settings.ConnectTimeout;
+                    ReceiveBufferSize = settings.ReceiveBufferSize;
+                    SendBufferSize = settings.SendBufferSize;
+
+                    Log = settings.Log;
+                }
+        #endregion
+
+        #region IDisposable
+
+                public void Dispose()
+                {
+                    //if (pipeClientStream != null)
+                    //{
+                    //    pipeClientStream.Dispose();
+                    //    pipeClientStream = null;
+                    //}
+                }
+        #endregion
+
+        #region override
+        
+        protected override object ExecuteMessage(TCP.NetworkStream stream, TransString message)
+        {
+            object response = null;
+
+            // Send a request from client to server
+            message.EntityWrite(stream, null);
+
+            if (message.DuplexType.IsDuplex() == false)
+            {
+                return response;
+            }
+
+            // Receive a response from server.
+            response = message.ReadResponse(stream, Settings.ReadTimeout, Settings.ReceiveBufferSize, false);
+
+            return response;
+        }
+
+        protected override TResponse ExecuteMessage<TResponse>(TCP.NetworkStream stream, TransString message)
+        {
+            TResponse response = default(TResponse);
+
+            // Send a request from client to server
+            message.EntityWrite(stream, null);
+
+            if (message.DuplexType.IsDuplex() == false)
+            {
+                return response;
+            }
+
+            // Receive a response from server.
+
+            response = message.ReadResponse<TResponse>(stream, Settings.ReadTimeout, Settings.ReceiveBufferSize);
+
+            return response;
+        }
+        protected override void ExecuteOneWay(TCP.NetworkStream stream, TransString message)
+        {
+            // Send a request from client to server
+            message.EntityWrite(stream, null);
+        }
+
+        
+        /// <summary>
+        /// connect to the host and execute request.
+        /// </summary>
+        public object Execute(string message, bool enableException = true)
+        {
+
+            object response = null;
+
+            try
+            {
+
+                //using (var client = (IsAsync) ? ConnectAsync() : Connect())
+                //{
+                //    var stream = client.GetStream();
+                //    if (IsDuplex)
+                //        response= ExecuteMessage(stream, new TransString(message));
+                //    else
+                //        ExecuteOneWay(stream, new TransString(message));
+
+                //    client.Close();
+                //}
+
+                
+                using (var client = (IsAsync) ? ConnectAsync() : Connect())
+                {
+                    var stream = client.GetStream();
+                    TransString.WriteString(message, stream);
+                    if (IsDuplex)
+                    {
+                        // Receive a response from server.
+                        response = TransString.ReadString(stream);
+
+                        //if (response[0] == '[' && response[response.Length - 1] != ']')
+                        //{
+                        //    Console.WriteLine("Incorrect json response");
+                        //}
+                    }
+                    client.Close();
+                }
+                
+                return response;
+
+            }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The tcp client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                return response;
+            }
+            catch (TCP.SocketException se)
+            {
+                Log.Exception("The tcp client throws SocketException: {0}", se);
+                if (enableException)
+                    throw se;
+                return response;
+            }
+            catch (TimeoutException toex)
+            {
+                Log.Exception("The tcp client throws the TimeoutException : ", toex, true);
+                if (enableException)
+                    throw toex;
+                return response;
+            }
+            catch (SerializationException sex)
+            {
+                Log.Exception("The tcp client throws the SerializationException : ", sex, true);
+                if (enableException)
+                    throw sex;
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Log.Exception("The tcp client throws the error: ", ex, true);
+
+                if (enableException)
+                    throw ex;
+
+                return response;
+            }
+        }
+        
+
+#endregion
+
+        #region Connector
+
+        TCP.TcpClient ConnectAsync()
+        {
+            var tcpClient = SocketConnector.Connect(GetEndpoint(), ConnectTimeout);
+            tcpClient.SendTimeout = ConnectTimeout;
+            tcpClient.SendBufferSize = SendBufferSize;
+            tcpClient.ReceiveBufferSize = ReceiveBufferSize;
+            if (tcpClient.Connected)
+                return tcpClient;
+            else
+                return null;
+        }
+
+        TCP.TcpClient Connect()
+        {
+
+            int retry = 0;
+
+            IPEndPoint ep = new IPEndPoint(HostAddress, Port);
+
+            var tcpClient = new TCP.TcpClient();
+            tcpClient.SendTimeout = ConnectTimeout;
+            tcpClient.SendBufferSize = SendBufferSize;
+            tcpClient.ReceiveBufferSize = ReceiveBufferSize;
+
+            ChannelException connectEx = null;
+
+            do
+            {
+                try
+                {
+                    tcpClient.Connect(ep);
+                }
+                catch (TimeoutException toex)
+                {
+                    if (retry >= MaxRetry)
+                    {
+                        Log.Error("TcpClient connection has timeout exception after retry: {0},timeout:{1}, msg: {2}", retry, ConnectTimeout, toex.Message);
+                        connectEx = new ChannelException(ChannelState.TimeoutError, string.Format("TcpClient connection has timeout exception after retry: {0},timeout:{1}", retry, ConnectTimeout), toex);
+                    }
+                }
+                catch (Exception pex)
+                {
+                    if (retry >= MaxRetry)
+                    {
+                        Log.Error("TcpClient connection error after retry: {0}, msg: {1}", retry, pex.Message);
+                        connectEx = new ChannelException(ChannelState.ConnectionError, string.Format("TcpClient connection has timeout exception after retry: {0}", retry), pex);
+                    }
+                }
+                retry++;
+
+            } while (!tcpClient.Connected && retry <= MaxRetry);
+
+
+            if (!tcpClient.Connected)
+            {
+                if (connectEx != null)
+                    throw connectEx;
+                else
+                    throw new ChannelException(ChannelState.ConnectionError, "Unable to connect to tcp address: " + HostName);
+            }
+
+            return tcpClient;
+
+        }
+
+#endregion
+
+        #region host settings
+
+        /// <summary>
+        /// Ensure Host Address
+        /// </summary>
+        /// <param name="host"></param>
+        /// <returns></returns>
+        public static string EnsureHostAddress(string host)
+        {
+            return host == null || host == "" ? "Any" : host == "localhost" ? "127.0.0.1" : host;
+        }
+
+        /// <summary>
+        /// Get host adress as <see cref="IPAddress"/>.
+        /// </summary>
+        public IPAddress HostAddress
+        {
+            get
+            {
+                string host = EnsureHostAddress(Address);
+
+                return host == "Any" ? IPAddress.Any : IPAddress.Parse(host);
+
+            }
+        }
+        /// <summary>
+        /// Get endpoint using host adress and port.
+        /// </summary>
+        /// <returns></returns>
+        public IPEndPoint GetEndpoint()
+        {
+            return new IPEndPoint(HostAddress, Port);
+        }
+
+        /// <summary>
+        /// Get Server Endpoint Using Machine Name
+        /// </summary>
+        /// <param name="host"></param>
+        /// <param name="portOnHost"></param>
+        /// <returns></returns>
+        public static IPEndPoint GetServerEndpointUsingMachineName(string host, Int32 portOnHost)
+        {
+
+            IPEndPoint hostEndPoint = null;
+            try
+            {
+                IPHostEntry theIpHostEntry = Dns.GetHostEntry(host);
+                // Address of the host.
+                IPAddress[] serverAddressList = theIpHostEntry.AddressList;
+
+                bool gotIpv4Address = false;
+                TCP.AddressFamily addressFamily;
+                Int32 count = -1;
+                for (int i = 0; i < serverAddressList.Length; i++)
+                {
+                    count++;
+                    addressFamily = serverAddressList[i].AddressFamily;
+                    if (addressFamily == TCP.AddressFamily.InterNetwork)
+                    {
+                        gotIpv4Address = true;
+                        i = serverAddressList.Length;
+                    }
+                }
+
+                if (gotIpv4Address == false)
+                {
+                    Console.WriteLine("Could not resolve name to IPv4 address. Need IP address. Failure!");
+                }
+                else
+                {
+                    Console.WriteLine("Server name resolved to IPv4 address.");
+                    // Instantiates the endpoint.
+                    hostEndPoint = new IPEndPoint(serverAddressList[count], portOnHost);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine();
+                Console.WriteLine(ex.Message);
+                Console.WriteLine("Could not resolve server address.");
+                Console.WriteLine("host = " + host);
+            }
+
+            return hostEndPoint;
+        }
+        /// <summary>
+        /// Get Server Endpoint Using Ip Address
+        /// </summary>
+        /// <param name="host"></param>
+        /// <param name="portOnHost"></param>
+        /// <returns></returns>
+        public static IPEndPoint GetServerEndpointUsingIpAddress(string host, Int32 portOnHost)
+        {
+            IPEndPoint hostEndPoint = null;
+            try
+            {
+                IPAddress theIpAddress = IPAddress.Parse(host);
+                // Instantiates the Endpoint.
+                hostEndPoint = new IPEndPoint(theIpAddress, portOnHost);
+            }
+            catch (ArgumentNullException e)
+            {
+                Console.WriteLine("ArgumentNullException caught!!!");
+                Console.WriteLine("Source : " + e.Source);
+                Console.WriteLine("Message : " + e.Message);
+            }
+            catch (FormatException e)
+            {
+                Console.WriteLine("FormatException caught!!!");
+                Console.WriteLine("Source : " + e.Source);
+                Console.WriteLine("Message : " + e.Message);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception caught!!!");
+                Console.WriteLine("Source : " + e.Source);
+                Console.WriteLine("Message : " + e.Message);
+            }
+            return hostEndPoint;
+        }
+#endregion
+    }
+#endif
 }

@@ -37,7 +37,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Nistec.Serialization;
 using System.Net.NetworkInformation;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels.Tcp
 {
     /// <summary>
@@ -998,5 +998,5 @@ namespace Nistec.Channels.Tcp
   
     }
 
-   
+  
 }

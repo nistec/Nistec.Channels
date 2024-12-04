@@ -31,7 +31,7 @@ using System.IO.Pipes;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
-
+#pragma warning disable CS1591
 namespace Nistec.Channels
 {
  
