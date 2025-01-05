@@ -32,6 +32,7 @@ using System.Runtime.Serialization;
 using Nistec.Logging;
 using System.Security.Principal;
 using Nistec.Serialization;
+using System.Threading.Tasks;
 #pragma warning disable CS1591
 namespace Nistec.Channels
 {
@@ -190,11 +191,24 @@ namespace Nistec.Channels
        
         protected abstract void ExecuteOneWay(TRequest message);
 
+        protected virtual async Task ExecuteOneWayAsync(TRequest message)
+        {
+            await Task.Run(() => ExecuteOneWay(message));
+        }
+
         protected abstract object ExecuteMessage(TRequest message);
 
         protected abstract TResponse ExecuteMessage<TResponse>(TRequest message);
+        protected virtual async Task ExecuteMessageAsync<TResponse>(TRequest message, Action<TResponse> onCompleted)
+        {
+            await Task.Run(() => 
+            {
+                onCompleted.Invoke(ExecuteMessage<TResponse>(message));
+            });
+        }
+
         //protected abstract TransStream ExecuteMessageStream(TRequest message);
-        
+
         #endregion
 
         #region Run
@@ -261,6 +275,57 @@ namespace Nistec.Channels
             return pipeClientStream.IsConnected;
         }
 
+        async Task<bool> ConnectAsync()
+        {
+            int retry = 0;
+
+            while (retry < MaxRetry)
+            {
+
+                try
+                {
+                    if (Settings.ConnectTimeout <= 0)
+                        await pipeClientStream.ConnectAsync();
+                    else
+                        await pipeClientStream.ConnectAsync((int)Settings.ConnectTimeout);
+                    if (!pipeClientStream.IsConnected)
+                    {
+                        retry++;
+                        if (retry >= MaxRetry)
+                        {
+                            throw new ChannelException(ChannelState.ConnectionError, "Unable to connect to pipe: " + Settings.PipeName);
+                        }
+                        Thread.Sleep(10);
+
+                        //Netlog.WarnFormat("NativePipeClient retry: {0} ", retry);
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+                catch (TimeoutException toex)
+                {
+                    if (retry >= MaxRetry)
+                    {
+                        Log.Error("PipeClient connection has timeout exception after retry: {0},timeout:{1}, msg: {2}", retry, Settings.ConnectTimeout, toex.Message);
+                        throw new ChannelException(ChannelState.TimeoutError, string.Format("PipeClient connection error after retry: {0}, PipeName: {1}", retry, Settings.PipeName), toex);
+                    }
+                    retry++;
+                }
+                catch (Exception pex)
+                {
+                    if (retry >= MaxRetry)
+                    {
+                        Log.Error("PipeClient connection error after retry: {0}, msg: {1}", retry, pex.Message);
+                        throw new ChannelException(ChannelState.ConnectionError, string.Format("PipeClient connection error after retry: {0}, PipeName: {1}", retry, Settings.PipeName), pex);
+                    }
+                    retry++;
+                }
+            }
+
+            return pipeClientStream.IsConnected;
+        }
         /// <summary>
         /// connect to the named pipe and execute request.
         /// </summary>
@@ -423,7 +488,7 @@ namespace Nistec.Channels
             }
         }
 
-        public void ExecuteAsync<TResponse>(TRequest message, Action<TResponse> onCompleted, bool enableException = false)
+        public void Execute<TResponse>(TRequest message, Action<TResponse> onCompleted, bool enableException = false)
         {
 
             TResponse response = default(TResponse);
@@ -446,34 +511,33 @@ namespace Nistec.Channels
                 pipeClientStream.ReadMode = PipeTransmissionMode.Message;
 
                 if (message.DuplexType.IsDuplex())
-                    onCompleted(ExecuteMessage<TResponse>(message));
+                    onCompleted.Invoke(ExecuteMessage<TResponse>(message));
                 else
                 {
                     ExecuteOneWay(message);
-                    onCompleted(default(TResponse));
+                    onCompleted.Invoke(default(TResponse));
                 }
-
             }
             catch (ChannelException mex)
             {
                 Log.Exception("The client throws the ChannelException : ", mex, true);
                 if (enableException)
                     throw mex;
-                onCompleted(response);
+                onCompleted.Invoke(response);
             }
             catch (TimeoutException toex)
             {
                 Log.Exception("The client throws the TimeoutException : ", toex, true);
                 if (enableException)
                     throw toex;
-                onCompleted(response);
+                onCompleted.Invoke(response);
             }
             catch (SerializationException sex)
             {
                 Log.Exception("The client throws the SerializationException : ", sex, true);
                 if (enableException)
                     throw sex;
-                onCompleted(response);
+                onCompleted.Invoke(response);
             }
             catch (Exception ex)
             {
@@ -482,7 +546,7 @@ namespace Nistec.Channels
                 if (enableException)
                     throw ex;
 
-                onCompleted(response);
+                onCompleted.Invoke(response);
             }
             finally
             {
@@ -495,7 +559,75 @@ namespace Nistec.Channels
             }
         }
 
+        public async Task ExecuteAsync<TResponse>(TRequest message, Action<TResponse> onCompleted, bool enableException = false)
+        {
 
+            TResponse response = default(TResponse);
+
+            try
+            {
+                // Try to open the named pipe identified by the pipe name.
+
+                pipeClientStream = new NamedPipeClientStream(
+                    ServerName,                 // The server name
+                    Settings.PipeName,                   // The unique pipe name
+                    Settings.PipeDirection,              // The pipe is duplex
+                    Settings.PipeOptions                 // No additional parameters
+                    );
+
+                await ConnectAsync();
+
+                // Set the read mode and the blocking mode of the named pipe.
+                pipeClientStream.ReadMode = PipeTransmissionMode.Message;
+
+                if (message.DuplexType.IsDuplex())
+                    await ExecuteMessageAsync(message, onCompleted);
+                else
+                {
+                    await ExecuteOneWayAsync(message);
+                    onCompleted.Invoke(default(TResponse));
+                }
+            }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                onCompleted.Invoke(response);
+            }
+            catch (TimeoutException toex)
+            {
+                Log.Exception("The client throws the TimeoutException : ", toex, true);
+                if (enableException)
+                    throw toex;
+                onCompleted.Invoke(response);
+            }
+            catch (SerializationException sex)
+            {
+                Log.Exception("The client throws the SerializationException : ", sex, true);
+                if (enableException)
+                    throw sex;
+                onCompleted.Invoke(response);
+            }
+            catch (Exception ex)
+            {
+                Log.Exception("The client throws the error: ", ex, true);
+
+                if (enableException)
+                    throw ex;
+
+                onCompleted.Invoke(response);
+            }
+            finally
+            {
+                // Close the pipe.
+                if (pipeClientStream != null)
+                {
+                    pipeClientStream.Close();
+                    pipeClientStream = null;
+                }
+            }
+        }
         #endregion
     }
 
@@ -564,24 +696,43 @@ namespace Nistec.Channels
                 return client.Execute<TransStream>(request, enableException);
             }
         }
-        public static void SendDuplexStreamAsync(MessageStream request, string hostName, Action<TransStream> onCompleted, bool enableException = false, PipeOptions option = PipeOptions.None)
+        public static void SendDuplexStream(MessageStream request, string hostName, Action<TransStream> onCompleted, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
             request.DuplexType = DuplexTypes.Respond;
             request.TransformType = TransformType.Stream;
             using (PipeClient client = new PipeClient(hostName, true, option))
             {
-                client.ExecuteAsync<TransStream>(request, onCompleted,enableException);
+                client.Execute<TransStream>(request, onCompleted,enableException);
             }
         }
-        public static void SendDuplexStreamAsync(MessageStream request, string hostName, int timeout, Action<TransStream> onCompleted, bool enableException = false, PipeOptions option = PipeOptions.None)
+        public static void SendDuplexStream(MessageStream request, string hostName, int timeout, Action<TransStream> onCompleted, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
             request.DuplexType = DuplexTypes.Respond;
             request.TransformType = TransformType.Stream;
             using (PipeClient client = new PipeClient(hostName, timeout, PipeSettings.DefaultReceiveBufferSize, PipeSettings.DefaultSendBufferSize, true, option))
             {
-                client.ExecuteAsync<TransStream>(request, onCompleted, enableException);
+                client.Execute<TransStream>(request, onCompleted, enableException);
             }
         }
+        public static async Task SendDuplexStreamAsync(MessageStream request, string hostName, Action<TransStream> onCompleted, bool enableException = false)
+        {
+            request.DuplexType = DuplexTypes.Respond;
+            request.TransformType = TransformType.Stream;
+            using (PipeClient client = new PipeClient(hostName, true, PipeOptions.Asynchronous))
+            {
+                await client.ExecuteAsync<TransStream>(request, onCompleted, enableException);
+            }
+        }
+        public static async Task SendDuplexStreamAsync(MessageStream request, string hostName, int timeout, Action<TransStream> onCompleted, bool enableException = false)
+        {
+            request.DuplexType = DuplexTypes.Respond;
+            request.TransformType = TransformType.Stream;
+            using (PipeClient client = new PipeClient(hostName, timeout, PipeSettings.DefaultReceiveBufferSize, PipeSettings.DefaultSendBufferSize, true, PipeOptions.Asynchronous))
+            {
+               await client.ExecuteAsync<TransStream>(request, onCompleted, enableException);
+            }
+        }
+
         public static string SendJsonDuplex(string request, string hostName, bool enableException = false, PipeOptions option = PipeOptions.None)
         {
             PipeMessage msg = new PipeMessage();

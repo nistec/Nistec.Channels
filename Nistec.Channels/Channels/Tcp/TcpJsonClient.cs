@@ -28,6 +28,7 @@ using System.Net;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using TCP = System.Net.Sockets;
 #pragma warning disable CS1591
 namespace Nistec.Channels.Tcp
@@ -48,7 +49,15 @@ namespace Nistec.Channels.Tcp
                 return client.Execute(request, enableException);
             }
         }
-
+        public static async Task SendDuplexAsync(string request, string hostAddress, int port, int timeout, Action<TransString> onCompleted, bool enableException = true)
+        {
+            using (TcpJsonClient client = new TcpJsonClient(hostAddress, port, timeout))
+            {
+                client.IsAsync = true;
+                client.IsDuplex = true;
+                await client.ExecuteAsync(request, onCompleted, enableException);
+            }
+        }
         public static string SendDuplex(string request, string hostName, bool enableException = true)
         {
             using (TcpJsonClient client = new TcpJsonClient(hostName))
@@ -338,7 +347,76 @@ namespace Nistec.Channels.Tcp
             }
         }
 
- 
+        /// <summary>
+        /// connect to the host and execute request.
+        /// </summary>
+        public async Task ExecuteAsync(string message, Action<TransString> onCompleted,  bool enableException = true)
+        {
+
+            string response = null;
+
+            try
+            {
+
+                using (var client =await ConnectTaskAsync())
+                {
+                    var stream = client.GetStream();
+                    TransString.WriteString(message, stream);
+                    if (IsDuplex)
+                    {
+                        // Receive a response from server.
+                        response = TransString.ReadString(stream);
+
+                        if (response[0] == '[' && response[response.Length - 1] != ']')
+                        {
+                            Console.WriteLine("Incorrect json response");
+                        }
+                    }
+                    client.Close();
+                }
+
+                onCompleted.Invoke(new TransString(response));
+
+            }
+            catch (ChannelException mex)
+            {
+                Log.Exception("The tcp client throws the ChannelException : ", mex, true);
+                if (enableException)
+                    throw mex;
+                //return response;
+            }
+            catch (TCP.SocketException se)
+            {
+                Log.Exception("The tcp client throws SocketException: {0}", se);
+                if (enableException)
+                    throw se;
+                //return response;
+            }
+            catch (TimeoutException toex)
+            {
+                Log.Exception("The tcp client throws the TimeoutException : ", toex, true);
+                if (enableException)
+                    throw toex;
+                //return response;
+            }
+            catch (SerializationException sex)
+            {
+                Log.Exception("The tcp client throws the SerializationException : ", sex, true);
+                if (enableException)
+                    throw sex;
+                //return response;
+            }
+            catch (Exception ex)
+            {
+                Log.Exception("The tcp client throws the error: ", ex, true);
+
+                if (enableException)
+                    throw ex;
+
+                //return response;
+            }
+        }
+
         #endregion
 
         #region Connector
@@ -354,7 +432,72 @@ namespace Nistec.Channels.Tcp
             else
                 return null;
         }
+         async Task<TCP.TcpClient> ConnectTaskAsync()
+        {
 
+            int retry = 0;
+
+            IPEndPoint ep = new IPEndPoint(HostAddress, Port);
+
+            var tcpClient = new TCP.TcpClient();
+            tcpClient.SendTimeout = ConnectTimeout;
+            tcpClient.SendBufferSize = SendBufferSize;
+            tcpClient.ReceiveBufferSize = ReceiveBufferSize;
+
+            ChannelException connectEx = null;
+
+            do
+            {
+                try
+                {
+                    Task connectTask = tcpClient.ConnectAsync(ep.Address, ep.Port);
+                    Task timeoutTask = Task.Delay(millisecondsDelay: ConnectTimeout);
+                    if (await Task.WhenAny(connectTask, timeoutTask) == timeoutTask)
+                    {
+                        retry++;
+                        if (retry >= MaxRetry)
+                        {
+                            throw new TimeoutException("Unable to connect to tcp address: " + HostName);
+                        }
+                        Thread.Sleep(10);
+                    }
+                    else
+                    {
+                        return tcpClient;
+                    }
+                }
+                catch (TimeoutException toex)
+                {
+                    if (retry >= MaxRetry)
+                    {
+                        Log.Error("TcpClient connection has timeout exception after retry: {0},timeout:{1}, msg: {2}", retry, ConnectTimeout, toex.Message);
+                        connectEx = new ChannelException(ChannelState.TimeoutError, string.Format("TcpClient connection has timeout exception after retry: {0},timeout:{1}", retry, ConnectTimeout), toex);
+                    }
+                }
+                catch (Exception pex)
+                {
+                    if (retry >= MaxRetry)
+                    {
+                        Log.Error("TcpClient connection error after retry: {0}, msg: {1}", retry, pex.Message);
+                        connectEx = new ChannelException(ChannelState.ConnectionError, string.Format("TcpClient connection has timeout exception after retry: {0}", retry), pex);
+                    }
+                }
+                retry++;
+
+            } while (!tcpClient.Connected && retry <= MaxRetry);
+
+
+            if (!tcpClient.Connected)
+            {
+                if (connectEx != null)
+                    throw connectEx;
+                else
+                    throw new ChannelException(ChannelState.ConnectionError, "Unable to connect to tcp address: " + HostName);
+            }
+
+            return tcpClient;
+
+        }
         TCP.TcpClient Connect()
         {
 

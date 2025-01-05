@@ -43,7 +43,7 @@ namespace Nistec.Channels
         {
 
         }
-         public TransBinary(object value, TransType type = TransType.Object)
+         public TransBinary(object value, TransType type = TransType.Object, string command=null)
         {
             TransType = type;
             State = 0;
@@ -65,11 +65,59 @@ namespace Nistec.Channels
                 BodyStream = null;
             }
         }
+        public TransBinary(object value, string command, TransType type = TransType.Object)
+        {
+            TransType = type;
+            Command = command;
+            State = 0;
+            if (value != null)
+            {
+                TypeName = value.GetType().FullName;
 
+                using (NetStream ns = new NetStream())
+                {
+                    var ser = new BinarySerializer();
+                    ser.Serialize(ns, value);
+                    ns.Position = 0;
+                    BodyStream = ns.ToArray();
+                }
+            }
+            else
+            {
+                TypeName = typeof(object).FullName;
+                BodyStream = null;
+            }
+        }
+        //public TransBinary(object value, string command, string[] keyValueMessage, TransType type = TransType.Object)
+        //{
+        //    TransType = type;
+        //    Command = command;
+        //    State = 0;
+        //    Header = new GenericNameValue(keyValueMessage);
+
+        //    if (value != null)
+        //    {
+        //        TypeName = value.GetType().FullName;
+
+        //        using (NetStream ns = new NetStream())
+        //        {
+        //            var ser = new BinarySerializer();
+        //            ser.Serialize(ns, value);
+        //            ns.Position = 0;
+        //            BodyStream = ns.ToArray();
+        //        }
+        //    }
+        //    else
+        //    {
+        //        TypeName = typeof(object).FullName;
+        //        BodyStream = null;
+        //    }
+        //}
         #endregion
 
         #region Stream / properties
-
+        public string Command { get; set; }
+        //public GenericNameValue Header { get; set; }
         public string TypeName { get; set; }
         public TransType TransType { get; set; }
         public int State { get; set; }
@@ -89,6 +137,8 @@ namespace Nistec.Channels
             streamer.WriteValue((byte)TransType);
             streamer.WriteValue((int)State);
             streamer.WriteString(TypeName);
+            streamer.WriteString(Command);
+            //streamer.WriteValue(Header);
             streamer.WriteValue(BodyStream);
             streamer.Flush();
         }
@@ -101,6 +151,8 @@ namespace Nistec.Channels
             TransType = (TransType)streamer.ReadValue<byte>();
             State = streamer.ReadValue<int>();
             TypeName = streamer.ReadString();
+            Command = streamer.ReadString();
+            //Header = streamer.ReadValue<GenericNameValue>();
             BodyStream = (byte[])streamer.ReadValue();
 
         }
@@ -124,7 +176,7 @@ namespace Nistec.Channels
 
         public string ToJson(bool pretty = false)
         {
-            return GenericKeyValue.Create("TransType", TransType, "State", State, "TypeName", TypeName,"Body", ReadBody()).ToJson(pretty);
+            return GenericKeyValue.Create("TransType", TransType, "State", State, "TypeName", TypeName, "Command", Command, "Body", ReadBody()).ToJson(pretty);
         }
 
         public virtual object ReadBody()

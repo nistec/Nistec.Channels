@@ -31,6 +31,7 @@ using System.IO.Pipes;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 #pragma warning disable CS1591
 namespace Nistec.Channels
 {
@@ -278,6 +279,21 @@ namespace Nistec.Channels
 
         #region Static Write
 
+        public static Task<TransStream> WriteAsync(object value, TransType type)
+        {
+            return Task.FromResult(new TransStream(value, type));
+        }
+        public static Task<TransStream> WriteAsync(NetStream stream, TransformType transformType)
+        {
+            if (stream != null)
+                stream.Position = 0;
+            return Task.FromResult(new TransStream(stream, transformType));
+        }
+        public static Task<TransStream> WriteStateAsync(int state, string message)
+        {
+            return Task.FromResult(new TransStream(message, TransType.State, state));
+        }
+
         public static TransStream Write(object value, TransType type)
         {
             return new TransStream(value, type);
@@ -496,6 +512,55 @@ namespace Nistec.Channels
             streamer.WriteValue((int)state);
             streamer.WriteValue(value);
             streamer.Flush();
+        }
+
+        public async Task<object>  ReadTransAsync()
+        {
+            await Task.CompletedTask;
+
+            if (IsEmpty)
+            {
+                _TransType = TransType.None;
+                _State = -1;
+                Console.WriteLine("ReadTrans IsEmpty.");
+                return null;
+            }
+            using (IBinaryStreamer streamer = new BinaryStreamer(Stream))
+            {
+                if (IsTransStream(Stream))
+                {
+                    streamer.ReadValue<int>();//signature
+                    _TransType = (TransType)streamer.ReadValue<byte>();//TransType
+                    _State = streamer.ReadValue<int>();//State
+                }
+                var value = streamer.ReadValue();
+                return value;
+            }
+        }
+
+        public T Read<T>(object Value)
+        {
+            try
+            {
+                if (Value == null)
+                    return default(T);
+                if (typeof(T) == typeof(string) && typeof(T) == Value.GetType())
+                    return GenericTypes.Cast<T>(Value.ToString());
+                if (typeof(T) == typeof(int) && typeof(T) == Value.GetType())
+                    return GenericTypes.Cast<T>(Types.ToInt(Value));
+                if (typeof(T) == typeof(NetStream) && typeof(T) == Value.GetType())
+                    return GenericTypes.Cast<T>(Value);
+                if (typeof(T) == typeof(Stream) && typeof(T) == Value.GetType())
+                    return GenericTypes.Cast<T>(NetStream.CopyStream((Stream)Value));//GenericTypes.Cast<T>(BinarySerializer.SerializeToStream(Value));
+                else
+                    return GenericTypes.Cast<T>(Value);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ReadTo error: " + ex.Message);
+                _State = -1;
+                return default(T);
+            }
         }
 
         object ReadTrans()
@@ -882,7 +947,7 @@ namespace Nistec.Channels
             return default(T);
         }
 
-        public NetStream ReadToSteam()
+        public NetStream ReadToStream()
         {
             try
             {

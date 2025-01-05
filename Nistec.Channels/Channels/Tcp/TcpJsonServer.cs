@@ -123,8 +123,6 @@ namespace Nistec.Channels.Tcp
         protected override TransString ReadRequest(NetworkStream networkStream)
         {
             //TransString.ReadString(pipeServer);
-
-
             TransString message = null;
             using (var ntStream = new NetStream())
             {

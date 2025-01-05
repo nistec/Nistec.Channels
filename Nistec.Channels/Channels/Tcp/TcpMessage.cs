@@ -138,9 +138,15 @@ namespace Nistec.Channels.Tcp
 
         #region Read/Write
 
+        internal static Task<TcpMessage> ServerReadRequestAsync(NetworkStream streamServer)
+        {
+            var message = new TcpMessage();
+            message.EntityRead(streamServer, null);
+            return Task.FromResult(message);
+        }
+
         internal static TcpMessage ServerReadRequest(NetworkStream streamServer)
         {
-
             var message = new TcpMessage();
             message.EntityRead(streamServer, null);
             return message;
@@ -211,55 +217,55 @@ namespace Nistec.Channels.Tcp
         #endregion
 
         #region ReadAck tcp
-       /*
-        /// <summary>
-        /// Read response from server.
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <param name="readTimeout"></param>
-        /// <param name="ReceiveBufferSize"></param>
-        public object ReadAck(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
-        {
-            using (TransStream ack = new TransStream(stream, readTimeout, ReceiveBufferSize))
-            {
-                return ack.ReadValue();
-            }
-        }
+        /*
+         /// <summary>
+         /// Read response from server.
+         /// </summary>
+         /// <param name="stream"></param>
+         /// <param name="readTimeout"></param>
+         /// <param name="ReceiveBufferSize"></param>
+         public object ReadAck(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
+         {
+             using (TransStream ack = new TransStream(stream, readTimeout, ReceiveBufferSize))
+             {
+                 return ack.ReadValue();
+             }
+         }
 
-        /// <summary>
-        /// Read response from server.
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <param name="type"></param>
-        /// <param name="readTimeout"></param>
-        /// <param name="ReceiveBufferSize"></param>
-        /// <returns></returns>
-        public object ReadAck(NetworkStream stream, TransformType type, int readTimeout, int ReceiveBufferSize)
-        {
+         /// <summary>
+         /// Read response from server.
+         /// </summary>
+         /// <param name="stream"></param>
+         /// <param name="type"></param>
+         /// <param name="readTimeout"></param>
+         /// <param name="ReceiveBufferSize"></param>
+         /// <returns></returns>
+         public object ReadAck(NetworkStream stream, TransformType type, int readTimeout, int ReceiveBufferSize)
+         {
 
-            using (TransStream ack = new TransStream(stream, readTimeout, ReceiveBufferSize))
-            {
-                return ack.ReadValue();
-            }
-        }
+             using (TransStream ack = new TransStream(stream, readTimeout, ReceiveBufferSize))
+             {
+                 return ack.ReadValue();
+             }
+         }
 
-        /// <summary>
-        /// Read response from server.
-        /// </summary>
-        /// <typeparam name="TResponse"></typeparam>
-        /// <param name="stream"></param>
-        /// <param name="readTimeout"></param>
-        /// <param name="ReceiveBufferSize"></param>
-        /// <returns></returns>
-        public TResponse ReadAck<TResponse>(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
-        {
+         /// <summary>
+         /// Read response from server.
+         /// </summary>
+         /// <typeparam name="TResponse"></typeparam>
+         /// <param name="stream"></param>
+         /// <param name="readTimeout"></param>
+         /// <param name="ReceiveBufferSize"></param>
+         /// <returns></returns>
+         public TResponse ReadAck<TResponse>(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
+         {
 
-            using (TransStream ack = new TransStream(stream, readTimeout, ReceiveBufferSize))
-            {
-                return ack.ReadValue<TResponse>();
-            }
-        }
-        */
+             using (TransStream ack = new TransStream(stream, readTimeout, ReceiveBufferSize))
+             {
+                 return ack.ReadValue<TResponse>();
+             }
+         }
+         */
         ///// <summary>
         ///// Read response from server.
         ///// </summary>
@@ -337,6 +343,6 @@ namespace Nistec.Channels.Tcp
             return message;
         }
         */
-        #endregion      
+        #endregion
     }
 }

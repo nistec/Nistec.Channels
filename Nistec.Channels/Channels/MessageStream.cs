@@ -73,6 +73,11 @@ namespace Nistec.Channels
         //{
         //    get { return (Body == null) ? null: new NetStream(Body);}
         //}
+        public byte[] BodyStreamArray()
+        {
+            var stream = BodyStream();
+            return (stream==null)? null: stream.ToArray();
+        }
 
         public NetStream BodyStream()
         {
@@ -93,6 +98,20 @@ namespace Nistec.Channels
         /// Get or Set The message body stream.
         /// </summary>
         protected byte[] _Body;
+
+        public object GetBody()
+        {
+            if (_Body == null)
+                return null;
+            //BodyStream.Position = 0;
+            using (var stream = BodyStream())
+            {
+                var ser = new BinarySerializer();
+                return ser.Deserialize(stream, true);
+            }
+        }
+        [NoSerialize]
+        public object BodyVal { get => GetBody(); set => SetBodyInternal(value); }//base._Body = value; }
 
         //protected byte[] BodyBinary();
         //public abstract NetStream BodyStream();
@@ -672,6 +691,7 @@ namespace Nistec.Channels
             TransformType = (TransformType)streamer.ReadValue<byte>();
             //mqh-EncodingName = Types.NZorEmpty(streamer.ReadString(), DefaultEncoding);
         }
+        
         /// <summary>
         /// Write the current object include the body and properties to <see cref="ISerializerContext"/> using <see cref="SerializeInfo"/>.
         /// </summary>
@@ -1069,6 +1089,16 @@ namespace Nistec.Channels
                 //else
                     _Body = ns.ToArray();
             }
+        }
+
+        protected object SetBodyInternal(object value)
+        {
+            if (value != null)
+            {
+                TypeName = value.GetType().FullName;
+                _Body= BinarySerializer.SerializeToBytes(value);
+            }
+            return value;
         }
 
         #endregion

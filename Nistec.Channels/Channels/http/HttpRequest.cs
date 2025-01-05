@@ -32,6 +32,9 @@ using System.Security.Permissions;
 using Nistec.IO;
 using System.Web;
 using System.Collections.Specialized;
+using System.Threading.Tasks;
+using System.Net.Http;
+using System.Net.Http.Headers;
 #pragma warning disable CS1591
 namespace Nistec.Channels.Http
 {
@@ -791,34 +794,61 @@ namespace Nistec.Channels.Http
             }
         }
 
-        public static void DoRequestStringAsync(string url, string data, string method, RequestContentType contentType, int timeout, bool enableException, Action<string> onCompleted)
+        public static void DoRequestString(string url, string data, string method, RequestContentType contentType, int timeout, bool enableException, Action<string> onCompleted)
         {
 
             try
             {
 
-                DoHttpRequestAsync(url, data, method, contentType, timeout, onCompleted);
+                DoHttpRequest(url, data, method, contentType, timeout, onCompleted);
             }
             catch (TimeoutException tex)
             {
                 if (enableException)
                     throw tex;
-                onCompleted(null);
+                onCompleted.Invoke(null);
             }
             catch (System.Net.WebException webExcp)
             {
                 if (enableException)
                     throw webExcp;
-                onCompleted(null);
+                onCompleted.Invoke(null);
             }
             catch (Exception ex)
             {
                 if (enableException)
                     throw ex;
-                onCompleted(null);
+                onCompleted.Invoke(null);
             }
         }
 
+        public static async Task DoRequestStringAsync(string url, string data, string method, RequestContentType contentType, int timeout, bool enableException, Action<TransString> onCompleted)
+        {
+
+            try
+            {
+
+                await DoHttpRequestAsync(url, data, method, contentType, timeout, onCompleted);
+            }
+            catch (TimeoutException tex)
+            {
+                if (enableException)
+                    throw tex;
+                onCompleted.Invoke(null);
+            }
+            catch (System.Net.WebException webExcp)
+            {
+                if (enableException)
+                    throw webExcp;
+                onCompleted.Invoke(null);
+            }
+            catch (Exception ex)
+            {
+                if (enableException)
+                    throw ex;
+                onCompleted.Invoke(null);
+            }
+        }
         public static string DoRequestString(string url, string data, string method, RequestContentType contentType, int timeout, Action<string> OnFault)
         {
 
@@ -959,7 +989,9 @@ namespace Nistec.Channels.Http
 
         }
 
-        public static void DoHttpRequestAsync(string url, string data, string method, RequestContentType contentType, int timeout, Action<string> onCompleted)
+        #region Request String
+
+        public static void DoHttpRequest(string url, string data, string method, RequestContentType contentType, int timeout, Action<string> onCompleted)
         {
 
             if (url == null)
@@ -1027,9 +1059,52 @@ namespace Nistec.Channels.Http
                     }
                 }
             }
-            onCompleted(result);
+            onCompleted.Invoke(result);
 
         }
+
+        public static async Task DoHttpRequestAsync(string address, string data, string method, RequestContentType contentType, int timeout, Action<TransString> onCompleted)
+        {
+            TransString result;
+
+            if (address == null)
+            {
+                throw new ArgumentNullException("url address");
+            }
+            if (data == null)
+            {
+                throw new ArgumentNullException("data");
+            }
+            try
+            {
+                var ct = GetContentType(contentType);
+                var methodType = GetMethodType(method);
+                using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromSeconds(GetTimeout(timeout)) })
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(GetTimeout(timeout))))
+                using (var httprequest = new HttpRequestMessage(methodType, address))
+                {
+                    httprequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(ct));
+                    using (httprequest.Content = new StringContent(data))// new StringContent(data, Encoding.UTF8, GetContentType(RequestContentType.Data)))
+                    {
+                        httprequest.Content.Headers.ContentType = new MediaTypeHeaderValue(ct);
+
+                        using (var response = await httpClient.SendAsync(httprequest, cts.Token))
+                        {
+                            response.EnsureSuccessStatusCode();
+                            var ResponseString = await response.Content.ReadAsStringAsync();
+                            result = new TransString(ResponseString);
+                            onCompleted.Invoke(result);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                onCompleted.Invoke(new TransString("Response error: " + ex.Message));//, TransType.Error));
+            }
+
+        }
+
         public static byte[] DoHttpBinary(string url, string data, string method, RequestContentType contentType, int timeout)
         {
 
@@ -1170,6 +1245,11 @@ namespace Nistec.Channels.Http
             return result;
         }
 
+        #endregion
+
+
+        #region Request Stream
+
         public static byte[] DoHttpData(string url, byte[] data, int timeout)
         {
 
@@ -1307,7 +1387,7 @@ namespace Nistec.Channels.Http
             }
         }
 
-        public static void DoHttpTransStreamAsync(string url, NetStream stream, int timeout, Action<TransStream> onCompleted)
+        public static void DoHttpTransStream(string url, NetStream stream, int timeout, Action<TransStream> onCompleted)
         {
 
             if (url == null)
@@ -1349,13 +1429,54 @@ namespace Nistec.Channels.Http
                         result = TransStream.CopyFromStream(ResponseStream);
                     }
                 }
-                onCompleted(result);
+                onCompleted.Invoke(result);
             }
             catch (Exception ex)
             {
-                onCompleted(TransStream.WriteState(-1, "Response error: " + ex.Message));//, TransType.Error));
+                onCompleted.Invoke(TransStream.WriteState(-1, "Response error: " + ex.Message));//, TransType.Error));
             }
         }
+
+        public static async Task DoHttpTransStreamAsync(string address, NetStream stream, int timeout, Action<TransStream> onCompleted)
+        {
+
+            if (address == null)
+            {
+                throw new ArgumentNullException("url address");
+            }
+            if (stream == null)
+            {
+                throw new ArgumentNullException("stream");
+            }
+            TransStream result = null;
+            try
+            {
+               
+                using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromSeconds(GetTimeout(timeout)) })
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(GetTimeout(timeout))))
+                using (var httprequest = new HttpRequestMessage(HttpMethod.Post, address))
+                {
+                    httprequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                    using (httprequest.Content = new StreamContent(stream))// new StringContent(data, Encoding.UTF8, GetContentType(RequestContentType.Data)))
+                    {
+                        httprequest.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+                        using (var response = await httpClient.SendAsync(httprequest, cts.Token))
+                        {
+                            response.EnsureSuccessStatusCode();
+                            var ResponseStream = await response.Content.ReadAsStreamAsync();
+                            result = TransStream.CopyFromStream(ResponseStream);
+                            onCompleted.Invoke(result);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                onCompleted.Invoke(TransStream.WriteState(-1, "Response error: " + ex.Message));//, TransType.Error));
+            }
+        }
+        #endregion
 
         public static string DoRequestSSL(string url, string postData, string encoding, int timeout, string user, string pass)
         {
@@ -1555,6 +1676,20 @@ namespace Nistec.Channels.Http
             if (method.ToLower() == "get")
                 return "get";
             return "post";
+        }
+
+        public static HttpMethod GetMethodType(string method)
+        {
+            if (method == null)
+                return HttpMethod.Post;
+            if (method.ToLower() == "get")
+                return HttpMethod.Get;
+            if (method.ToLower() == "get")
+                return HttpMethod.Put;
+            if (method.ToLower() == "get")
+                return HttpMethod.Delete;
+
+            return HttpMethod.Post;
         }
 
         public static int GetTimeout(int timeout)

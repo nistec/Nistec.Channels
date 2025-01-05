@@ -358,7 +358,6 @@ namespace Nistec.Channels
             */
         }
 
-
         /// <summary>
         /// Read stream to the current object include the body and properties using <see cref="IBinaryStreamer"/>, This method is a part of <see cref="ISerialEntity"/> implementation.
         /// </summary>
@@ -1246,6 +1245,12 @@ namespace Nistec.Channels
         //    var message = new CacheMessage("Fault", "Fault", faultDescription, 0);
         //    return message.Serialize();
         //}
+        public static Task<MessageFlex> ReadRequestAsync(NetworkStream streamServer, int ReceiveBufferSize = 8192)
+        {
+            MessageFlex message = new MessageFlex();
+            message.EntityRead(streamServer, null);
+            return Task.FromResult(message);
+        }
 
         public new static MessageFlex ReadRequest(NetworkStream streamServer, int ReceiveBufferSize = 8192)
         {
