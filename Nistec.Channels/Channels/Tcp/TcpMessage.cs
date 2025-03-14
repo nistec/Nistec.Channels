@@ -50,18 +50,40 @@ namespace Nistec.Channels.Tcp
             Formatter = MessageStream.DefaultFormatter;
             Creation = DateTime.Now;
         }
+
+        ///// <summary>
+        ///// Initialize a new instance of message stream.
+        ///// </summary>
+        ///// <param name="body"></param>
+        //public TcpMessage(object body)
+        //    : this()
+        //{
+        //    SetBody(body);
+        //}
+
+        /// <summary>
+        /// Initialize a new instance of message stream.
+        /// </summary>
+        /// <param name="stream"></param>
+        public TcpMessage(NetworkStream stream)
+            : this()
+        {
+            EntityRead(stream, null);
+        }
+
         /// <summary>
         /// Initialize a new instance of tcp message.
         /// </summary>
         /// <param name="command"></param>
-        /// <param name="key"></param>
+        /// <param name="id"></param>
         /// <param name="value"></param>
         /// <param name="expiration"></param>
-        public TcpMessage(string command, string key, object value, int expiration)
+        public TcpMessage(string command, string id, object value, int expiration)
             : this()
         {
             Command = command;
-            //Identifier = key;
+            CustomId = id;
+            Expiration = expiration;
             //mqh-CustomId = key;
             //mqh-Expiration = expiration;
             SetBody(value);
@@ -70,15 +92,17 @@ namespace Nistec.Channels.Tcp
         /// Initialize a new instance of tcp message.
         /// </summary>
         /// <param name="command"></param>
-        /// <param name="key"></param>
+        /// <param name="id"></param>
         /// <param name="value"></param>
         /// <param name="expiration"></param>
         /// <param name="sessionId"></param>
-        public TcpMessage(string command, string key, object value, int expiration, string sessionId)
+        public TcpMessage(string command, string id, object value, int expiration, string sessionId)
             : this()
         {
             Command = command;
-            //Identifier = key;
+            CustomId = id;
+            Expiration = expiration;
+            SessionId = sessionId;
             //mqh-CustomId = key;
             //mqh-Expiration = expiration;
             //mqh-SessionId = sessionId;

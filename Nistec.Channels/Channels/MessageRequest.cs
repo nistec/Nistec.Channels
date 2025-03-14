@@ -182,8 +182,6 @@ namespace Nistec.Channels
             streamer.Flush();
         }
 
-        
-
         public void EntityRead(Stream stream, IBinaryStreamer streamer)
         {
             if (streamer == null)

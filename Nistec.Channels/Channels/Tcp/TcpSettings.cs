@@ -127,6 +127,11 @@ namespace Nistec.Channels.Tcp
         /// DefaultMaxSocketError
         /// </summary>
         public const int DefaultMaxSocketError = 50;
+        /// <summary>
+        /// DefaultMaxServerConnections
+        /// </summary>
+        public const int DefaultMaxServerConnections = 10;
+
 
         /// <summary>
         /// Infinite
@@ -135,6 +140,7 @@ namespace Nistec.Channels.Tcp
 
         public const int DefaultPingBufferSize = 1024;
         public const int DefaultPingReadTimeout = 2500;
+        public const bool DefaultIsAsync = true;
 
         /// <summary>
         /// Get NetProtocol
@@ -521,6 +527,53 @@ namespace Nistec.Channels.Tcp
                 ReadTimeout = settings.ReadTimeout,
                 MaxSocketError = settings.MaxSocketError,
                 MaxServerConnections = Math.Max(1, settings.MaxServerConnections)
+            };
+        }
+
+        /// <summary>
+        /// Parse TcpSettings
+        /// </summary>
+        /// <param name="settings">tcp:localhost:1500?host[&timeout&buffer]</param>
+        /// <returns></returns>
+        public static TcpSettings Parse(string settings)
+        {
+            string[] Segments = new string[5];
+            if (settings == null)
+            {
+                throw new ArgumentNullException("settings");
+            }
+
+            string[] args = settings.Replace("//", "").TrimStart('/').Split(':', '/', '?', '&');
+
+            if (args.Length < 3)
+            {
+                throw new ArgumentException("Invalid hostAddress");
+            }
+
+            for (int i = 0; i < args.Length; i++)
+            {
+                Segments[i] = args[i];
+            }
+            string protocol = Segments[0];
+            string address = Segments[1];
+            int port = Types.ToInt(Segments[2]);
+            
+            string hostName= (Segments.Length > 3)? Segments[3]: "";
+            int timeout= (Segments.Length > 4) ?  Types.ToInt(Segments[4]): TcpSettings.DefaultConnectTimeout;
+            int buffer = (Segments.Length > 5) ? Types.ToInt(Segments[5]): TcpSettings.DefaultSendBufferSize;
+
+            return new TcpSettings()
+            {
+                HostName = hostName,
+                Address = TcpSettings.EnsureHostAddress(address),
+                Port = port,
+                IsAsync = false,
+                ReceiveBufferSize = buffer,
+                SendBufferSize = buffer,
+                ConnectTimeout = timeout,
+                ReadTimeout = TcpSettings.DefaultReadTimeout,
+                MaxSocketError = TcpSettings.DefaultMaxSocketError,
+                MaxServerConnections = TcpSettings.DefaultMaxServerConnections
             };
         }
     }

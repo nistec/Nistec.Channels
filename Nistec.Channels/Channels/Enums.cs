@@ -39,7 +39,6 @@ namespace Nistec.Channels
     /// </summary>
     public enum ChannelServiceState { None, Started, Stoped, Paused }
 
-
     /// <summary>
     /// Net Protocol
     /// </summary>
@@ -82,13 +81,24 @@ namespace Nistec.Channels
         //Client error
         BadRequest = 400,
         Unauthorized = 401,
-        Failed = 403,
+        PaymentRequired = 402,//NotEnoughCredit
+        Forbidden = 403,//User or Account is blocked
         ItemNotFound = 404,
         NotAllowed = 405,
+        TokenVerificationExpired=406,//Not Acceptable
         RequestTimeout = 408,
+        PreconditionFailed =412,//Sender is not confirmed
+        PayloadTooLarge=413,//Size too large
         Unsupported = 415,
-        NotEnoughCredit = 416,
-        BadTargets = 417,
+        //NotEnoughCredit = 416,//Ip address not allowed
+        Failed = 417,//Expectation Failed
+        UnprocessableConten =422,//Invalid Content
+        //Qouta exceeds = 419,
+        //Target is blocked=423,
+        //Invalid Price=425,
+        UpgradeRequired =426,//Evaluation expired
+        PreconditionRequired=428,//User Non Confirmed
+        //Invalid Targets=452
 
         //Server error
         InternalServerError = 500,

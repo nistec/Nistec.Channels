@@ -97,7 +97,8 @@
     <Compile Include="Channels\GenericMessage.cs" />
     <Compile Include="Channels\IChannelSettings.cs" />
     <Compile Include="Channels\Tcp\TcpRequestClient.cs" />
-    <Compile Include="Channels\TransformMessage.cs" />
+    <Compile Include="Channels\TransFlex.cs" />
+    <Compile Include="Channels\TransHeader.cs" />
     <Compile Include="Channels\MessageFlex.cs" />
     <Compile Include="Channels\RemoteCache\CacheApi.cs" />
     <Compile Include="Channels\RemoteCache\CacheCmd.cs" />

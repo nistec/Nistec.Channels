@@ -48,189 +48,6 @@ namespace Nistec.Channels
     public abstract class MessageStream : ISerialEntity, ISerialJson, IMessageStream, IBodyStream, ITransformResponse, INotify, IDisposable, ITransformMessage
     {
 
-        //public ITransformHeader Transform { get; protected set; }
-
-        //byte[] _Body;
-        //public byte[] Body
-        //{
-        //    get { return _Body; }
-        //    set
-        //    {
-        //        _Body = value;
-        //        if (Body == null)
-        //            _BodyStream = null;
-        //        _BodyStream = new NetStream(value);
-        //    }
-        //}
-
-        //NetStream _BodyStream;
-        //public NetStream BodyStream
-        //{
-        //    get { return _BodyStream; }
-        //}
-
-        //public NetStream BodyStream
-        //{
-        //    get { return (Body == null) ? null: new NetStream(Body);}
-        //}
-        public byte[] BodyStreamArray()
-        {
-            var stream = BodyStream();
-            return (stream==null)? null: stream.ToArray();
-        }
-
-        public NetStream BodyStream()
-        {
-            if (_Body == null)
-                return null;
-            return new NetStream(_Body);
-        }
-        public void BodyStream(byte[] bytes)
-        {
-            _Body = bytes;
-        }
-        public void BodyStream(NetStream stream)
-        {
-            _Body = stream.ToArray(); ;
-        }
-
-        /// <summary>
-        /// Get or Set The message body stream.
-        /// </summary>
-        protected byte[] _Body;
-
-        public object GetBody()
-        {
-            if (_Body == null)
-                return null;
-            //BodyStream.Position = 0;
-            using (var stream = BodyStream())
-            {
-                var ser = new BinarySerializer();
-                return ser.Deserialize(stream, true);
-            }
-        }
-        [NoSerialize]
-        public object BodyVal { get => GetBody(); set => SetBodyInternal(value); }//base._Body = value; }
-
-        //protected byte[] BodyBinary();
-        //public abstract NetStream BodyStream();
-
-        #region properties
-        /// <summary>
-        /// Get the default formatter.
-        /// </summary>
-        public static Formatters DefaultFormatter { get { return Formatters.BinarySerializer; } }
-        /// <summary>
-        /// DefaultEncoding utf-8
-        /// </summary>
-        public const string DefaultEncoding = "utf-8";
-
-        /// <summary>
-        /// Get or Set The message Id.
-        /// </summary>
-        public string Identifier { get; protected set; }
-        
-        ///// <summary>
-        ///// Get or Set The message body stream.
-        ///// </summary>
-        //NetStream _BodyStream;
-        //public NetStream BodyStream { get; set; }
-
-        /// <summary>
-        ///  Get or Set The type name of body stream.
-        /// </summary>
-        public string TypeName { get; set; }
-        /// <summary>
-        /// Get or Set The serializer formatter.
-        /// </summary>
-        public Formatters Formatter { get; set; }
-        /// <summary>
-        /// Get or Set The message detail.
-        /// </summary>
-        public string Label { get; set; }
-        /// <summary>
-        /// Get or Set The message command.
-        /// </summary>
-        public string Command { get; set; }
-        /// <summary>
-        /// Get or Set who send the message.
-        /// </summary>
-        public string Source { get; set; }
-        /// <summary>
-        /// Get or Set The last time that message was modified.
-        /// </summary>
-        public DateTime Creation { get; set; }
-        /// <summary>
-        /// Get or Set The message CustomId.
-        /// </summary>
-        public string CustomId { get; set; }
-        /// <summary>
-        /// Get or Set The message SessionId.
-        /// </summary>
-        public string SessionId { get; set; }
-        ///// <summary>
-        ///// Get or set The message encoding, Default=utf-8.
-        ///// </summary>
-        //public string EncodingName { get; set; }
-        /// <summary>
-        ///  Get or Set The message expiration int minutes.
-        /// </summary>
-        public int Expiration { get; set; }
-        #endregion
-
-        #region ___ITransformMessage
-        /*
-        /// <summary>
-        /// Get indicate wether the message is a duplex type.
-        /// </summary>
-        bool _IsDuplex;
-        public bool IsDuplex
-        {
-            get { return _IsDuplex; }
-            set
-            {
-                _IsDuplex = value;
-                if (!value)
-                    _DuplexType = DuplexTypes.None;
-                else if (_DuplexType == DuplexTypes.None)
-                    _DuplexType = DuplexTypes.WaitOne;
-            }
-        }
-       
-
-        /// <summary>
-        /// Get or Set DuplexType.
-        /// </summary>
-        DuplexTypes _DuplexType;
-        public DuplexTypes DuplexType
-        {
-            get { return _DuplexType; }
-            set
-            {
-                _DuplexType = value;
-                _IsDuplex = (_DuplexType != DuplexTypes.None);
-            }
-        }
-         */
-        ///// <summary>
-        /////  Get or Set The message expiration int minutes.
-        ///// </summary>
-        //public int Expiration { get; set; }
-        #endregion
-
-        #region ITransformMessage
-        /// <summary>
-        /// Get or Set DuplexTypes
-        /// </summary>
-        public DuplexTypes DuplexType { get; set; }
-        /// <summary>
-        /// Get or Set TransformType
-        /// </summary>
-        public TransformType TransformType { get; set; }
-
-        #endregion
-
         #region ctor
         /// <summary>
         /// Initialize a new instance of MessageStream
@@ -291,7 +108,7 @@ namespace Nistec.Channels
         protected MessageStream(SerializeInfo info) : this()
         {
             Identifier = info.GetValue<string>("Identifier");
-            _Body = (byte[])info.GetValue("Body");
+            var body = (byte[])info.GetValue("Body");
             TypeName = info.GetValue<string>("TypeName");
             Formatter = (Formatters)info.GetValue<int>("Formatter");
             Label = info.GetValue<string>("Label");
@@ -305,12 +122,14 @@ namespace Nistec.Channels
             Args = (NameValueArgs)info.GetValue("Args");
             TransformType = (TransformType)info.GetValue<byte>("TransformType");
             //mqh-EncodingName = Types.NZorEmpty(info.GetValue<string>("EncodingName"), DefaultEncoding);
+
+            SetContent(null, body);
         }
 
         protected MessageStream(IDictionary<string, object> dict) : this()
         {
             Identifier = dict.Get<string>("Identifier");
-            _Body = dict.Get<byte[]>("Body", null);//, ConvertDescriptor.Implicit),
+            var body = dict.Get<byte[]>("Body", null);//, ConvertDescriptor.Implicit),
             TypeName = dict.Get<string>("TypeName");
             Formatter = (Formatters)dict.Get<byte>("Formatter");
             Label = dict.Get<string>("Label");
@@ -324,6 +143,7 @@ namespace Nistec.Channels
             Args = dict.Get<NameValueArgs>("Args");
             TransformType = (TransformType)dict.Get<byte>("TransformType");
             //mqh-EncodingName = Types.NZorEmpty(dict.Get<string>("EncodingName"), DefaultEncoding);
+            SetContent(null, body);
         }
 
         public MessageStream(MessageStream copy) : this()
@@ -334,7 +154,7 @@ namespace Nistec.Channels
         void Copy(MessageStream copy)
         {
             Identifier = copy.Identifier;
-            _Body = copy._Body;
+            var body = copy._Body;
             TypeName = copy.TypeName;
             Formatter = copy.Formatter;
             Label = copy.Label;
@@ -348,6 +168,7 @@ namespace Nistec.Channels
             Args = copy.Args;
             TransformType = copy.TransformType;
             //mqh-EncodingName = copy.EncodingName;
+            SetContent(null, body);
         }
         #endregion
 
@@ -392,6 +213,350 @@ namespace Nistec.Channels
             }
             disposed = true;
         }
+        #endregion
+
+        #region Body stream
+
+        public byte[] BodyStreamArray()
+        {
+            var stream = BodyStream();
+            return (stream==null)? null: stream.ToArray();
+        }
+
+        public NetStream BodyStream()
+        {
+            if (_Body == null)
+                return null;
+            return new NetStream(_Body);
+        }
+
+        /// <summary>
+        /// Get or Set The message body stream.
+        /// </summary>
+        protected byte[] _Body;
+        protected object _Value;
+
+      
+        public object GetBody()
+        {
+            if (_Value != null)
+                return _Value;
+            if (_Body == null)
+                return null;
+            SetContent(null, _Body);
+            return _Value;
+
+            ////BodyStream.Position = 0;
+            //using (var stream = BodyStream())
+            //{
+            //    var ser = new BinarySerializer();
+            //    return ser.Deserialize(stream, true);
+            //}
+        }
+        [NoSerialize]
+        public object Content { get => GetBody(); set => SetBody(value); }
+
+        private void SetContent(object value, byte[] body)
+        {
+            if (value != null)
+            {
+                _Value = value;
+                if (body == null)
+                    _Body = BinarySerializer.SerializeToBytes(_Value);
+                else
+                    _Body = body;
+            }
+            else
+            {
+                _Body = body;
+                _Value = BinarySerializer.Deserialize(_Body, _Body);
+
+            }
+        }
+
+        //protected byte[] BodyBinary();
+        //public abstract NetStream BodyStream();
+
+        //#region IBodyFormatter extend
+
+        /// <summary>
+        /// Set the given byte array to body stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="typeName"></param>
+        public void SetBody(byte[] value, string typeName)
+        {
+            TypeName = (!string.IsNullOrEmpty(typeName)) ? typeName : typeof(object).FullName;
+            if (value != null)
+            {
+                SetContent(null, value);
+            }
+        }
+        /// <summary>
+        /// Set the given stream to body stream.
+        /// </summary>
+        /// <param name="ns"></param>
+        /// <param name="typeName"></param>
+        /// <param name="copy"></param>
+        public void SetBody(NetStream ns, string typeName, bool copy = true)
+        {
+            TypeName = (!string.IsNullOrEmpty(typeName)) ? typeName : typeof(object).FullName;
+            if (ns != null)
+            {
+                //if (copy)
+                //    ns.CopyTo(BodyStream);
+                //else
+                SetContent(null, ns.ToArray());
+            }
+        }
+
+        //protected object SetBodyInternal(object value)
+        //{
+        //    if (value != null)
+        //    {
+        //        TypeName = value.GetType().FullName;
+        //        SetContent(value, null);
+        //    }
+        //    return value;
+        //}
+
+        #endregion
+
+        #region IMessageStream
+        /// <summary>
+        /// Get body stream ready to read from position 0, is a part of <see cref="IBodyStream"/> implementation.
+        /// </summary>
+        /// <returns></returns>
+        public NetStream GetStream()
+        {
+            if (_Body == null)
+                return null;
+            return BodyStream();
+        }
+
+        /// <summary>
+        /// Get copy of body stream, is a part of <see cref="IBodyStream"/> implementation.
+        /// </summary>
+        /// <returns></returns>
+        public NetStream GetCopy()
+        {
+            if (_Body == null)
+                return null;
+            return BodyStream().Copy();
+        }
+
+        public byte[] GetBytes()
+        {
+            if (_Body == null)
+                return null;
+            byte[] bytes = new byte[_Body.Length];
+            Array.Copy(_Body, bytes, _Body.Length);
+            return bytes;
+        }
+
+        public string GetBodyString()
+        {
+            if (_Body == null)
+                return null;
+            return UTF8Encoding.UTF8.GetString(_Body);
+        }
+
+        public void SetState(int state, string message)
+        {
+            //State = (MessageState)state;
+            //Message = message;
+
+            this.SetBody(message);
+        }
+
+        /// <summary>
+        /// Set the given value to body stream using <see cref="BinarySerializer"/>, This method is a part of <see cref="IMessageStream"/> implementation..
+        /// </summary>
+        /// <param name="value"></param>
+        public virtual void SetBody(object value)
+        {
+
+            if (value == null)
+            {
+                TypeName = typeof(object).FullName;
+                _Body = null;
+                _Value = null;
+            }
+            else if (value is byte[])
+            {
+                TypeName = value.GetType().FullName;
+                SetContent(null, (byte[])value);
+            }
+            else if (value is NetStream)
+            {
+                TypeName = value.GetType().FullName;
+                SetContent(null, ((NetStream)value).ToArray());
+            }
+            else
+            {
+                TypeName = value.GetType().FullName;
+                SetContent(value, null);
+                //_Value = value;
+                //using (NetStream ns = new NetStream())
+                //{
+                //    var ser = new BinarySerializer();
+                //    ser.Serialize(ns, value);
+                //    ns.Position = 0;
+                //    _Body = ns.ToArray();
+                //}
+            }
+        }
+
+        public virtual void SetBody(NetStream stream, Type type)
+        {
+            TypeName = (type != null) ? type.FullName : typeof(object).FullName;
+            if (stream != null)
+            {
+                SetContent(null, stream.ToArray());
+            }
+        }
+
+        /// <summary>
+        /// Set the given byte array to body stream using <see cref="NetStream"/>, This method is a part of <see cref="IMessageStream"/> implementation
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="type"></param>
+        public virtual void SetBody(byte[] value, Type type)
+        {
+            TypeName = (type != null) ? type.FullName : typeof(object).FullName;
+            if (value != null)
+            {
+                SetContent(null, value);
+            }
+        }
+        /// <summary>
+        /// Deserialize body stream to object, This method is a part of <see cref="IMessageStream"/> implementation.
+        /// </summary>
+        /// <returns></returns>
+        public virtual object DecodeBody()
+        {
+            if (_Body == null)
+                return null;
+            using (var sream = BodyStream())
+            {
+                var ser = new BinarySerializer();
+                return ser.Deserialize(sream);
+            }
+        }
+        /// <summary>
+        ///  Deserialize body stream to generic object.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public T DecodeBody<T>()
+        {
+            return GenericTypes.Cast<T>(DecodeBody(), true);
+        }
+        /// <summary>
+        /// Read stream to object.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="stream"></param>
+        /// <returns></returns>
+        public static object ReadBodyStream(Type type, Stream stream)
+        {
+            if (stream == null)
+            {
+                throw new ArgumentNullException("ReadBodyStream.stream");
+            }
+            if (type == null)
+            {
+                throw new ArgumentNullException("ReadBodyStream.type");
+            }
+
+            BinarySerializer reader = new BinarySerializer();
+            return reader.Deserialize(stream);
+        }
+        /// <summary>
+        /// Write object to stream
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="stream"></param>
+        public static void WriteBodyStream(object entity, Stream stream)
+        {
+            if (stream == null)
+            {
+                throw new ArgumentNullException("WriteBodyStream.stream");
+            }
+            if (entity == null)
+            {
+                throw new ArgumentNullException("WriteBodyStream.entity");
+            }
+
+            BinarySerializer writer = new BinarySerializer();
+            writer.Serialize(stream, entity);
+            //writer.Flush();
+        }
+
+        #endregion
+
+        #region properties
+        /// <summary>
+        /// Get the default formatter.
+        /// </summary>
+        public static Formatters DefaultFormatter { get { return Formatters.BinarySerializer; } }
+        /// <summary>
+        /// DefaultEncoding utf-8
+        /// </summary>
+        public const string DefaultEncoding = "utf-8";
+
+        /// <summary>
+        /// Get or Set The message Id.
+        /// </summary>
+        public string Identifier { get; protected set; }
+        /// <summary>
+        ///  Get or Set The type name of body stream.
+        /// </summary>
+        public string TypeName { get; set; }
+        /// <summary>
+        /// Get or Set The serializer formatter.
+        /// </summary>
+        public Formatters Formatter { get; set; }
+        /// <summary>
+        /// Get or Set The message detail.
+        /// </summary>
+        public string Label { get; set; }
+        /// <summary>
+        /// Get or Set The message command.
+        /// </summary>
+        public string Command { get; set; }
+        /// <summary>
+        /// Get or Set who send the message.
+        /// </summary>
+        public string Source { get; set; }
+        /// <summary>
+        /// Get or Set The fierst time that message was created.
+        /// </summary>
+        public DateTime Creation { get; set; }
+        /// <summary>
+        /// Get or Set The message CustomId.
+        /// </summary>
+        public string CustomId { get; set; }
+        /// <summary>
+        /// Get or Set The message SessionId.
+        /// </summary>
+        public string SessionId { get; set; }
+        /// <summary>
+        ///  Get or Set The message expiration int minutes.
+        /// </summary>
+        public int Expiration { get; set; }
+        #endregion
+
+        #region ITransformMessage
+        /// <summary>
+        /// Get or Set DuplexTypes
+        /// </summary>
+        public DuplexTypes DuplexType { get; set; }
+        /// <summary>
+        /// Get or Set TransformType
+        /// </summary>
+        public TransformType TransformType { get; set; }
+
         #endregion
 
         #region methods
@@ -462,7 +627,6 @@ namespace Nistec.Channels
                 return !string.IsNullOrEmpty(TypeName) && BodyType != null && !typeof(object).Equals(BodyType);
             }
         }
-
         public bool IsValidInfo()
         {
             return !string.IsNullOrEmpty(Identifier) && !string.IsNullOrEmpty(Label);
@@ -886,223 +1050,7 @@ namespace Nistec.Channels
         }
 
         #endregion
-
-        #region IMessageStream
-        /// <summary>
-        /// Get body stream ready to read from position 0, is a part of <see cref="IBodyStream"/> implementation.
-        /// </summary>
-        /// <returns></returns>
-        public NetStream GetStream()
-        {
-            if (_Body == null)
-                return null;
-            return BodyStream();
-        }
-
-        /// <summary>
-        /// Get copy of body stream, is a part of <see cref="IBodyStream"/> implementation.
-        /// </summary>
-        /// <returns></returns>
-        public NetStream GetCopy()
-        {
-            if (_Body == null)
-                return null;
-            return BodyStream().Copy();
-        }
-
-        public byte[] GetBytes()
-        {
-            if (_Body == null)
-                return null;
-            byte[] bytes=new byte[_Body.Length];
-            Array.Copy(_Body,bytes, _Body.Length);
-            return bytes;
-        }
-
-        public string GetBodyString()
-        {
-            if (_Body == null)
-                return null;
-            return UTF8Encoding.UTF8.GetString(_Body);
-        }
-
-        public void SetState(int state, string message)
-        {
-            //State = (MessageState)state;
-            //Message = message;
-
-            this.SetBody(message);
-        }
-
-        /// <summary>
-        /// Set the given value to body stream using <see cref="BinarySerializer"/>, This method is a part of <see cref="IMessageStream"/> implementation..
-        /// </summary>
-        /// <param name="value"></param>
-        public virtual void SetBody(object value)
-        {
-
-            if (value == null)
-            {
-                TypeName = typeof(object).FullName;
-                _Body = null;
-            }
-            else if (value is byte[])
-            {
-                TypeName = value.GetType().FullName;
-                _Body =(byte[]) value;
-            }
-            else if (value is NetStream)
-            {
-                TypeName = value.GetType().FullName;
-                _Body = ((NetStream)value).ToArray();
-            }
-            else
-            {
-                TypeName = value.GetType().FullName;
-
-                using (NetStream ns = new NetStream())
-                {
-                    var ser = new BinarySerializer();
-                    ser.Serialize(ns, value);
-                    ns.Position = 0;
-                    _Body = ns.ToArray();
-                }
-            }
-        }
-
-        public virtual void SetBody(NetStream stream, Type type)
-        {
-            TypeName = (type != null) ? type.FullName : typeof(object).FullName;
-            if (stream != null)
-            {
-                _Body = stream.ToArray();
-            }
-        }
-
-        /// <summary>
-        /// Set the given byte array to body stream using <see cref="NetStream"/>, This method is a part of <see cref="IMessageStream"/> implementation
-        /// </summary>
-        /// <param name="value"></param>
-        /// <param name="type"></param>
-        public virtual void SetBody(byte[] value, Type type)
-        {
-            TypeName = (type != null) ? type.FullName : typeof(object).FullName;
-            if (value != null)
-            {
-                _Body = value;
-            }
-        }
-        /// <summary>
-        /// Deserialize body stream to object, This method is a part of <see cref="IMessageStream"/> implementation.
-        /// </summary>
-        /// <returns></returns>
-        public virtual object DecodeBody()
-        {
-            if (_Body == null)
-                return null;
-            using (var sream = BodyStream())
-            {
-                var ser = new BinarySerializer();
-                return ser.Deserialize(sream);
-            }
-        }
-        /// <summary>
-        ///  Deserialize body stream to generic object.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public T DecodeBody<T>()
-        {
-            return GenericTypes.Cast<T>(DecodeBody(), true);
-        }
-        /// <summary>
-        /// Read stream to object.
-        /// </summary>
-        /// <param name="type"></param>
-        /// <param name="stream"></param>
-        /// <returns></returns>
-        public static object ReadBodyStream(Type type, Stream stream)
-        {
-            if (stream == null)
-            {
-                throw new ArgumentNullException("ReadBodyStream.stream");
-            }
-            if (type == null)
-            {
-                throw new ArgumentNullException("ReadBodyStream.type");
-            }
-
-            BinarySerializer reader = new BinarySerializer();
-            return reader.Deserialize(stream);
-        }
-        /// <summary>
-        /// Write object to stream
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <param name="stream"></param>
-        public static void WriteBodyStream(object entity, Stream stream)
-        {
-            if (stream == null)
-            {
-                throw new ArgumentNullException("WriteBodyStream.stream");
-            }
-            if (entity == null)
-            {
-                throw new ArgumentNullException("WriteBodyStream.entity");
-            }
-
-            BinarySerializer writer = new BinarySerializer();
-            writer.Serialize(stream, entity);
-            //writer.Flush();
-        }
-
-        #endregion
-
-        #region IBodyFormatter extend
-
-        /// <summary>
-        /// Set the given byte array to body stream.
-        /// </summary>
-        /// <param name="value"></param>
-        /// <param name="typeName"></param>
-        public void SetBody(byte[] value, string typeName)
-        {
-            TypeName = (!string.IsNullOrEmpty(typeName)) ? typeName : typeof(object).FullName;
-            if (value != null)
-            {
-                _Body = value;
-            }
-        }
-        /// <summary>
-        /// Set the given stream to body stream.
-        /// </summary>
-        /// <param name="ns"></param>
-        /// <param name="typeName"></param>
-        /// <param name="copy"></param>
-        public void SetBody(NetStream ns, string typeName, bool copy = true)
-        {
-            TypeName = (!string.IsNullOrEmpty(typeName)) ? typeName : typeof(object).FullName;
-            if (ns != null)
-            {
-                //if (copy)
-                //    ns.CopyTo(BodyStream);
-                //else
-                    _Body = ns.ToArray();
-            }
-        }
-
-        protected object SetBodyInternal(object value)
-        {
-            if (value != null)
-            {
-                TypeName = value.GetType().FullName;
-                _Body= BinarySerializer.SerializeToBytes(value);
-            }
-            return value;
-        }
-
-        #endregion
-
+ 
         #region Async Task
 
         /// <summary>
@@ -1122,7 +1070,7 @@ namespace Nistec.Channels
                     return TransStream.Write(task.Result, transform);
                 }
             }
-            task.TryDispose();
+            //task.TryDispose();
             return TransStream.WriteState(-1, messageOnError);//, TransType.Error);
         }
 
@@ -1144,7 +1092,7 @@ namespace Nistec.Channels
                         return TransStream.Write(task.Result, TransStream.ToTransType(TransformType));
                 }
             }
-            task.TryDispose();
+            //task.TryDispose();
             return TransStream.WriteState(-1, messageOnError);//, TransType.Error);
         }
 
@@ -1158,7 +1106,7 @@ namespace Nistec.Channels
                 {
                 }
             }
-            task.TryDispose();
+            //task.TryDispose();
         }
 
         /// <summary>
@@ -1179,7 +1127,7 @@ namespace Nistec.Channels
                         return new TransStream(task.Result, 0, task.Result.Length, TransType.Stream);// TransWriter.Write(task.Result, TransType.Object);
                 }
             }
-            task.TryDispose();
+            //task.TryDispose();
             return TransStream.WriteState((int)nullState, nullState.ToString());// TransType.State);  //TransStream.GetAckStream(nullState, actionName);//null;
         }
         #endregion
@@ -1464,7 +1412,7 @@ namespace Nistec.Channels
             MessageStream message = Factory(protocol);
 
             message.Identifier = dict.Get<string>("Identifier");
-            message._Body = dict.Get<byte[]>("Body", null);//, ConvertDescriptor.Implicit),
+            var body = dict.Get<byte[]>("Body", null);//, ConvertDescriptor.Implicit),
             message.TypeName = dict.Get<string>("TypeName");
             message.Formatter = (Formatters)dict.Get<byte>("Formatter");
             message.Label = dict.Get<string>("Label");
@@ -1480,6 +1428,7 @@ namespace Nistec.Channels
             message.TransformType = (TransformType)dict.Get<byte>("TransformType");
             //mqh-message.EncodingName = Types.NZorEmpty(dict.Get<string>("EncodingName"), DefaultEncoding);
 
+            message.SetContent(null, body);
             return message;
         }
 
@@ -1493,7 +1442,7 @@ namespace Nistec.Channels
             MessageStream message = new GenericMessage();
 
             message.Identifier = dict.Get<string>("Identifier");
-            message._Body = dict.Get<byte[]>("Body", null);//, ConvertDescriptor.Implicit),
+            var body = dict.Get<byte[]>("Body", null);//, ConvertDescriptor.Implicit),
             message.TypeName = dict.Get<string>("TypeName");
             message.Formatter = (Formatters)dict.Get<byte>("Formatter");
             message.Label = dict.Get<string>("Label");
@@ -1507,7 +1456,7 @@ namespace Nistec.Channels
             message.Args = dict.Get<NameValueArgs>("Args");
             message.TransformType = (TransformType)dict.Get<byte>("TransformType");
             //mqh-message.EncodingName = Types.NZorEmpty(dict.Get<string>("EncodingName"), DefaultEncoding);
-
+            message.SetContent(null, body);
             return message;
         }
 

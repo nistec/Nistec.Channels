@@ -51,41 +51,41 @@ namespace Nistec.Channels.Tcp
                 return client.Execute<TransStream>(request, enableException);
             }
         }
-        public static TransStream SendDuplexStream(MessageFlex request, string HostAddress, int port, int connectTimeout, bool IsAsync, bool enableException = false)
+        public static TransStream SendDuplexStream(MessageFlex request, string HostAddress, int port, int connectTimeout, bool enableException = false)
         {
             request.TransformType = TransformType.Stream;
             request.DuplexType = DuplexTypes.Respond;
-            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, IsAsync))
+            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout))//, IsAsync))
             {
 
                 return client.Execute<TransStream>(request, enableException);
             }
         }
-        public static TransStream SendDuplexStream(MessageFlex request, string HostAddress, int port, int connectTimeout, int readTimeout, bool IsAsync, bool enableException = false)
+        public static TransStream SendDuplexStream(MessageFlex request, string HostAddress, int port, int connectTimeout, int readTimeout, bool enableException = false)
         {
             request.TransformType = TransformType.Stream;
             request.DuplexType = DuplexTypes.Respond;
-            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, readTimeout, IsAsync))
+        using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, readTimeout))//, IsAsync))
             {
 
                 return client.Execute<TransStream>(request, enableException);
             }
         }
-        public static void SendDuplexStream(MessageFlex request, string HostAddress, int port, int connectTimeout, Action<TransStream> onCompleted, bool IsAsync, bool enableException = false)
+        public static void SendDuplexStream(MessageFlex request, string HostAddress, int port, int connectTimeout, Action<TransStream> onCompleted, bool enableException = false)
         {
             request.TransformType = TransformType.Stream;
             request.DuplexType = DuplexTypes.Respond;
-            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, IsAsync))
+            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout))//, IsAsync))
             {
                 client.Execute<TransStream>(request, onCompleted, enableException);
             }
         }
 
-        public static void SendDuplexStream(MessageFlex request, string HostAddress, int port, int connectTimeout, int readTimeout, Action<TransStream> onCompleted, bool IsAsync, bool enableException = false)
+        public static void SendDuplexStream(MessageFlex request, string HostAddress, int port, int connectTimeout, int readTimeout, Action<TransStream> onCompleted, bool enableException = false)
         {
             request.TransformType = TransformType.Stream;
             request.DuplexType = DuplexTypes.Respond;
-            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, readTimeout, IsAsync))
+            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, readTimeout))//, IsAsync))
             {
                 client.Execute<TransStream>(request, onCompleted, enableException);
             }
@@ -95,7 +95,7 @@ namespace Nistec.Channels.Tcp
         {
             request.TransformType = TransformType.Stream;
             request.DuplexType = DuplexTypes.Respond;
-            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, true))
+            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout))//, true))
             {
                await client.ExecuteAsync<TransStream>(request, onCompleted, enableException);
             }
@@ -105,17 +105,17 @@ namespace Nistec.Channels.Tcp
         {
             request.TransformType = TransformType.Stream;
             request.DuplexType = DuplexTypes.Respond;
-            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, readTimeout, true))
+            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, readTimeout))//, true))
             {
                 await client.ExecuteAsync<TransStream>(request, onCompleted, enableException);
             }
         }
 
-        public static string SendJsonDuplex(string json, string HostAddress, int port, int connectTimeout, int readTimeout, bool IsAsync, bool enableException = false)
+        public static string SendJsonDuplex(string json, string HostAddress, int port, int connectTimeout, int readTimeout, bool enableException = false)
         {
             TcpMessage message = new TcpMessage();
             message.EntityRead(json, null);
-            using (TcpStreamClient client = new TcpStreamClient(HostAddress, port, connectTimeout, readTimeout, IsAsync))
+            using (TcpStreamClient client = new TcpStreamClient(HostAddress, port, connectTimeout, readTimeout))//, IsAsync))
             {
                 var response = client.Execute(message, enableException);
                 return JsonSerializer.Serialize(response);
@@ -132,30 +132,30 @@ namespace Nistec.Channels.Tcp
             }
         }
 
-        public static object SendDuplex(MessageFlex request, string HostAddress, int port, int connectTimeout, bool IsAsync, bool enableException = false)
+        public static object SendDuplex(MessageFlex request, string HostAddress, int port, int connectTimeout, bool enableException = false)
         {
             //Type type = request.BodyType;
             request.DuplexType = DuplexTypes.Respond;
-            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, IsAsync))
+            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout))//, IsAsync))
             {
                 return client.Execute(request, enableException);
             }
         }
 
-        public static T SendDuplex<T>(MessageFlex request, string HostAddress, int port, int connectTimeout, bool IsAsync, bool enableException = false)
+        public static T SendDuplex<T>(MessageFlex request, string HostAddress, int port, int connectTimeout, bool enableException = false)
         {
             request.DuplexType = DuplexTypes.Respond;
-            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, IsAsync))
+            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout))//, IsAsync))
             {
                 return client.Execute<T>(request, enableException);
             }
         }
 
-        public static void SendOut(MessageFlex request, string HostAddress, int port, int connectTimeout, bool IsAsync, bool enableException = false)
+        public static void SendOut(MessageFlex request, string HostAddress, int port, int connectTimeout, bool enableException = false)
         {
             //Type type = request.BodyType;
             request.DuplexType = DuplexTypes.None;
-            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout, IsAsync))
+            using (TcpFlexClient client = new TcpFlexClient(HostAddress, port, connectTimeout))//, IsAsync))
             {
                 client.ExecuteOut(request, enableException);
             }
@@ -210,7 +210,7 @@ namespace Nistec.Channels.Tcp
         /// <param name="hostAddress"></param>
         /// <param name="port"></param>
         public TcpFlexClient(string hostAddress, int port)
-            : base(hostAddress, port, TcpSettings.DefaultConnectTimeout, TcpSettings.DefaultReadTimeout, false)
+            : base(hostAddress, port, TcpSettings.DefaultConnectTimeout, TcpSettings.DefaultReadTimeout)//, false)
         {
 
         }
@@ -220,9 +220,8 @@ namespace Nistec.Channels.Tcp
         /// <param name="hostAddress"></param>
         /// <param name="port"></param>
         /// <param name="connectTimeout"></param>
-        /// <param name="isAsync"></param>
-        public TcpFlexClient(string hostAddress, int port, int connectTimeout, bool isAsync)
-            : base(hostAddress, port, connectTimeout, isAsync)
+        public TcpFlexClient(string hostAddress, int port, int connectTimeout)//, bool isAsync)
+            : base(hostAddress, port, connectTimeout)//, isAsync)
         {
 
         }
@@ -234,9 +233,8 @@ namespace Nistec.Channels.Tcp
         /// <param name="port"></param>
         /// <param name="connectTimeout"></param>
         /// <param name="readTimeout"></param>
-        /// <param name="isAsync"></param>
-        public TcpFlexClient(string hostAddress, int port, int connectTimeout, int readTimeout, bool isAsync)
-            : base(hostAddress, port, connectTimeout, readTimeout, isAsync)
+        public TcpFlexClient(string hostAddress, int port, int connectTimeout, int readTimeout)//, bool isAsync)
+            : base(hostAddress, port, connectTimeout, readTimeout)//, isAsync)
         {
 
         }
@@ -250,9 +248,8 @@ namespace Nistec.Channels.Tcp
         /// <param name="readTimeout"></param>
         /// <param name="inBufferSize"></param>
         /// <param name="outBufferSize"></param>
-        /// <param name="isAsync"></param>
-        public TcpFlexClient(string hostAddress, int port, int connectTimeout, int readTimeout, int inBufferSize, int outBufferSize, bool isAsync)
-            : base(hostAddress, port, connectTimeout, readTimeout, inBufferSize, outBufferSize, isAsync)
+        public TcpFlexClient(string hostAddress, int port, int connectTimeout, int readTimeout, int inBufferSize, int outBufferSize)//, bool isAsync)
+            : base(hostAddress, port, connectTimeout, readTimeout, inBufferSize, outBufferSize)//, isAsync)
         {
 
         }

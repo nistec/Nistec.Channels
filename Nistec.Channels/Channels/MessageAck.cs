@@ -101,6 +101,14 @@ namespace Nistec.Channels
             State = state;
             Message = message;
         }
+        public MessageAck(bool IsAcknowledged, string operation)
+            : this()
+        {
+            State = IsAcknowledged ? ChannelState.Ok : ChannelState.Failed;
+            Message = operation + ": " + State.ToString();
+        }
+        
+
         public MessageAck(ChannelState state, string message, object response)
             : this()
         {
@@ -108,7 +116,15 @@ namespace Nistec.Channels
             Message = message;
             Response = response;
         }
-        
+
+        public MessageAck(Exception ex)
+            : this()
+        {
+            State =  ChannelState.Exception;
+            Message = ex.Message;
+            //Response = response;
+        }
+
         public MessageAck(NetStream stream)
             : this()
         {

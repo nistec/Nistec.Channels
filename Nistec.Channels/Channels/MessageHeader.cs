@@ -39,21 +39,38 @@ using System.Net;
 #pragma warning disable CS1591
 namespace Nistec.Channels
 {
-   
+
     /// <summary>
     /// Represent a message stream for network communication like namedPipe or Tcp.
     /// This message can serialize/desrialize fast and easly using the <see cref="BinaryStreamer"/>
     /// </summary>
     [Serializable]
-    public abstract class TransformMessage : ISerialEntity,  ISerialJson,  INotify, IDisposable, ITransformMessage//ITransformResponse
+    public class MessageHeader : ISerialEntity, ISerialJson, INotify, IDisposable, ITransformMessage
     {
 
         #region properties
-        
+        /// <summary>
+        /// Get the default formatter.
+        /// </summary>
+        public static Formatters DefaultFormatter { get { return Formatters.BinarySerializer; } }
+        /// <summary>
+        /// DefaultEncoding utf-8
+        /// </summary>
+        public const string DefaultEncoding = "utf-8";
+
         /// <summary>
         /// Get or Set The message Id.
         /// </summary>
         public string Identifier { get; protected set; }
+ 
+        /// <summary>
+        ///  Get or Set The type name of body stream.
+        /// </summary>
+        public string TypeName { get; set; }
+        /// <summary>
+        /// Get or Set The serializer formatter.
+        /// </summary>
+        public Formatters Formatter { get; set; }
         /// <summary>
         /// Get or Set The message detail.
         /// </summary>
@@ -69,7 +86,7 @@ namespace Nistec.Channels
         /// <summary>
         /// Get or Set The last time that message was modified.
         /// </summary>
-        public DateTime Creation { get; protected set; }
+        public DateTime Creation { get; set; }
         /// <summary>
         /// Get or Set The message CustomId.
         /// </summary>
@@ -78,12 +95,16 @@ namespace Nistec.Channels
         /// Get or Set The message SessionId.
         /// </summary>
         public string SessionId { get; set; }
+        ///// <summary>
+        ///// Get or set The message encoding, Default=utf-8.
+        ///// </summary>
+        //public string EncodingName { get; set; }
         /// <summary>
         ///  Get or Set The message expiration int minutes.
         /// </summary>
         public int Expiration { get; set; }
         #endregion
-
+              
         #region ITransformMessage
         /// <summary>
         /// Get or Set DuplexTypes
@@ -98,23 +119,23 @@ namespace Nistec.Channels
 
         #region ctor
         /// <summary>
-        /// Initialize a new instance of TransformMessage
+        /// Initialize a new instance of MessageHeader
         /// </summary>
-        protected TransformMessage()
+        public MessageHeader()
         {
             Identifier = UUID.Identifier();
             Creation = DateTime.Now;
             //mqh-EncodingName = "utf-8";
             _Args = new NameValueArgs();
-            //Formatter = Formatters.BinarySerializer;
+            Formatter = Formatters.BinarySerializer;
         }
-        protected TransformMessage(Guid itemId):this(itemId.ToString())
+        protected MessageHeader(Guid itemId) : this(itemId.ToString())
         {
             //Identifier = itemId.ToString();
             //Modified = DateTime.Now;
             //EncodingName = "utf-8";
         }
-        protected TransformMessage(string identifier)
+        protected MessageHeader(string identifier)
         {
             Identifier = ValidIdentifier(identifier);
             Creation = DateTime.Now;
@@ -123,21 +144,87 @@ namespace Nistec.Channels
 
         }
 
-        public TransformMessage(TransformMessage copy) : this()
+        protected MessageHeader(HttpRequestInfo request) : this()
+        {
+            if (request.BodyStream != null)
+            {
+                EntityRead(request.BodyStream, null);
+            }
+            else
+            {
+                if (request.QueryString != null)//request.BodyType == HttpBodyType.QueryString)
+                    EntityRead(request.QueryString, null);
+                else if (request.Body != null)
+                    EntityRead(request.Body, null);
+                //else if (request.Url.LocalPath != null && request.Url.LocalPath.Length > 1)
+                //    message.EntityRead(request.Url.LocalPath.TrimStart('/').TrimEnd('/'), null);
+            }
+        }
+
+        /// <summary>
+        /// Initialize a new instance of MessageHeader from stream using for <see cref="ISerialEntity"/>.
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="streamer"></param>
+        protected MessageHeader(Stream stream, IBinaryStreamer streamer) : this()
+        {
+            EntityRead(stream, streamer);
+        }
+        /// <summary>
+        /// Initialize a new instance of MessageHeader from <see cref="SerializeInfo"/>.
+        /// </summary>
+        /// <param name="info"></param>
+        protected MessageHeader(SerializeInfo info) : this()
+        {
+            Identifier = info.GetValue<string>("Identifier");
+            TypeName = info.GetValue<string>("TypeName");
+            Formatter = (Formatters)info.GetValue<int>("Formatter");
+            Label = info.GetValue<string>("Label");
+            CustomId = info.GetValue<string>("CustomId");
+            SessionId = info.GetValue<string>("SessionId");
+            Command = info.GetValue<string>("Command");
+            Source = info.GetValue<string>("Source ");
+            DuplexType = (DuplexTypes)info.GetValue<byte>("DuplexType");
+            Expiration = info.GetValue<int>("Expiration");
+            Creation = info.GetValue<DateTime>("Creation");
+            Args = (NameValueArgs)info.GetValue("Args");
+            TransformType = (TransformType)info.GetValue<byte>("TransformType");
+            //mqh-EncodingName = Types.NZorEmpty(info.GetValue<string>("EncodingName"), DefaultEncoding);
+        }
+
+        protected MessageHeader(IDictionary<string, object> dict) : this()
+        {
+            Identifier = dict.Get<string>("Identifier");
+            TypeName = dict.Get<string>("TypeName");
+            Formatter = (Formatters)dict.Get<byte>("Formatter");
+            Label = dict.Get<string>("Label");
+            CustomId = dict.Get<string>("CustomId");
+            SessionId = dict.Get<string>("SessionId");
+            Command = dict.Get<string>("Command");
+            Source = dict.Get<string>("Source");
+            DuplexType = (DuplexTypes)dict.Get<byte>("DuplexType", 0);
+            Expiration = dict.Get<int>("Expiration", 0);
+            Creation = dict.Get<DateTime>("Creation", DateTime.Now);
+            Args = dict.Get<NameValueArgs>("Args");
+            TransformType = (TransformType)dict.Get<byte>("TransformType");
+            //mqh-EncodingName = Types.NZorEmpty(dict.Get<string>("EncodingName"), DefaultEncoding);
+        }
+
+        public MessageHeader(MessageHeader copy) : this()
         {
             Copy(copy);
         }
 
-        void Copy(TransformMessage copy)
+        void Copy(MessageHeader copy)
         {
-            //ItemId = copy.ItemId;
             Identifier = copy.Identifier;
+            TypeName = copy.TypeName;
+            Formatter = copy.Formatter;
             Label = copy.Label;
             CustomId = copy.CustomId;
             SessionId = copy.SessionId;
             Command = copy.Command;
             Source = copy.Source;
-            //IsDuplex = copy.IsDuplex;
             DuplexType = copy.DuplexType;
             Expiration = copy.Expiration;
             Creation = copy.Creation;
@@ -145,7 +232,6 @@ namespace Nistec.Channels
             TransformType = copy.TransformType;
             //mqh-EncodingName = copy.EncodingName;
         }
-
         #endregion
 
         #region Dispose
@@ -179,6 +265,7 @@ namespace Nistec.Channels
                 Identifier = null;
                 CustomId = null;
                 SessionId = null;
+                TypeName = null;
                 Label = null;
              }
             disposed = true;
@@ -194,6 +281,37 @@ namespace Nistec.Channels
             if (identifier.Length < 5 || identifier == Guid.Empty.ToString())
                 return UUID.Identifier();
             return identifier;
+        }
+
+        public static string GetTypeName(object o, bool fullyQualifiedTypeName = true)
+        {
+            if (o == null)
+                return null;
+            if (o is Type)
+                return SerializeTools.GetTypeName((Type)o, fullyQualifiedTypeName);
+
+            return SerializeTools.GetTypeName(o.GetType(), fullyQualifiedTypeName);
+        }
+
+        /// <summary>
+        /// Get Type of body
+        /// </summary>
+        public Type BodyType
+        {
+            get
+            {
+                return SerializeTools.GetQualifiedType(TypeName);
+            }
+        }
+        /// <summary>
+        /// Get indicate wether the current body type is a known object type.
+        /// </summary>
+        public bool IsKnownType
+        {
+            get
+            {
+                return !string.IsNullOrEmpty(TypeName) && BodyType != null && !typeof(object).Equals(BodyType);
+            }
         }
 
         public bool IsValidInfo()
@@ -226,7 +344,8 @@ namespace Nistec.Channels
             {
                 if (value == null)
                     _Args.Clear();
-                else {
+                else
+                {
                     _Args = value;
                 }
             }
@@ -240,6 +359,71 @@ namespace Nistec.Channels
         {
             return Args.Get(key);
         }
+
+        /*
+
+                /// <summary>
+                /// Create arguments helper.
+                /// </summary>
+                /// <param name="keyValues"></param>
+                /// <returns></returns>
+                public static NameValueArgs CreateArgs(params string[] keyValues)
+                {
+                    if (keyValues == null)
+                        return null;
+                    NameValueArgs args = new NameValueArgs(keyValues);
+                    return args;
+                }
+                public NameValueArgs ArgsAdd(params string[] keyValues)
+                {
+                    if (keyValues == null)
+                        return null;
+                    int count = keyValues.Length;
+                    if (count % 2 != 0)
+                    {
+                        throw new ArgumentException("values parameter not correct, Not match key value arguments");
+                    }
+
+                    if (Args == null)
+                        Args= new NameValueArgs();
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        string key = keyValues[i].ToString();
+                        string value = keyValues[++i];
+
+                        if (Args.ContainsKey(key))
+                            Args[key] = value;
+                        else
+                            Args.Add(key, value);
+                    }
+                    return Args;
+                }
+                /// <summary>
+                /// Get or create a collection of arguments.
+                /// </summary>
+                /// <returns></returns>
+                public NameValueArgs ArgsGet()
+                {
+                    if (Args == null)
+                        return new NameValueArgs();
+                    return Args;
+                }
+                public string ArgsGet(string name)
+                {
+                    if (Args == null)
+                        return null;
+                    return Args.Get(name);
+                }
+                public T ArgsGet<T>(string name)
+                {
+                    return ArgsGet().Get<T>(name);
+                }
+                public void ArgsSet(string name, string value)
+                {
+                    ArgsGet().Add(name, value);
+                }
+          */
         public void Notify(params string[] args)
         {
             Args.AddArgs(args);// ArgsAdd(args);
@@ -260,17 +444,14 @@ namespace Nistec.Channels
             if (streamer == null)
                 streamer = new BinaryStreamer(stream);
 
-            //streamer.WriteValue(ItemId);
             streamer.WriteString(Identifier);
-            //streamer.WriteValue(BodyStream);
-            //streamer.WriteString(TypeName);
-            //streamer.WriteValue((int)Formatter);
+            streamer.WriteString(TypeName);
+            streamer.WriteValue((int)Formatter);
             streamer.WriteString(Label);
             streamer.WriteString(CustomId);
             streamer.WriteString(SessionId);
             streamer.WriteString(Command);
             streamer.WriteString(Source);
-            //streamer.WriteValue(IsDuplex);
             streamer.WriteValue((byte)DuplexType);
 
             streamer.WriteValue(Expiration);
@@ -278,15 +459,10 @@ namespace Nistec.Channels
             streamer.WriteValue(Args);
             streamer.WriteValue((byte)TransformType);
             //mqh-streamer.WriteString(EncodingName);
-
-            //streamer.WriteString(Message);
-            //streamer.WriteString(Query);
-            //streamer.WriteValue((int)State);
-
             streamer.Flush();
         }
 
-        
+
         /// <summary>
         /// Read stream to the current object include the body and properties using <see cref="IBinaryStreamer"/>, This method is a part of <see cref="ISerialEntity"/> implementation.
         /// </summary>
@@ -297,29 +473,22 @@ namespace Nistec.Channels
             if (streamer == null)
                 streamer = new BinaryStreamer(stream);
 
-            //ItemId = streamer.ReadValue<Guid>();
             Identifier = streamer.ReadString();
-            //BodyStream = (NetStream)streamer.ReadValue();
-            //TypeName = streamer.ReadString();
-            //Formatter = (Formatters)streamer.ReadValue<int>();
+            TypeName = streamer.ReadString();
+            Formatter = (Formatters)streamer.ReadValue<int>();
             Label = streamer.ReadString();
             CustomId = streamer.ReadString();
             SessionId = streamer.ReadString();
             Command = streamer.ReadString();
             Source = streamer.ReadString();
-            //IsDuplex = streamer.ReadValue<bool>();
-            DuplexType =(DuplexTypes) streamer.ReadValue<byte>();
+            DuplexType = (DuplexTypes)streamer.ReadValue<byte>();
             Expiration = streamer.ReadValue<int>();
             Creation = streamer.ReadValue<DateTime>();
             Args = (NameValueArgs)streamer.ReadValue();
-            TransformType =(TransformType) streamer.ReadValue<byte>();
+            TransformType = (TransformType)streamer.ReadValue<byte>();
             //mqh-EncodingName = Types.NZorEmpty(streamer.ReadString(), DefaultEncoding);
-
-            //Message = streamer.ReadString();
-            //Query = streamer.ReadString();
-            //State = streamer.ReadValue<int>();
-
         }
+        
         /// <summary>
         /// Write the current object include the body and properties to <see cref="ISerializerContext"/> using <see cref="SerializeInfo"/>.
         /// </summary>
@@ -329,27 +498,20 @@ namespace Nistec.Channels
         {
             if (info == null)
                 info = new SerializeInfo();
-            //info.Add("ItemId", ItemId);
             info.Add("Identifier", Identifier);
-            //info.Add("BodyStream", BodyStream);
-            //info.Add("TypeName", TypeName);
-            //info.Add("Formatter", (int)Formatter);
+            info.Add("TypeName", TypeName);
+            info.Add("Formatter", (int)Formatter);
             info.Add("Label", Label);
             info.Add("CustomId", CustomId);
             info.Add("SessionId", SessionId);
             info.Add("Command", Command);
             info.Add("Source", Source);
-            //info.Add("IsDuplex", IsDuplex);
             info.Add("DuplexType", (byte)DuplexType);
             info.Add("Expiration", Expiration);
             info.Add("Creation", Creation);
             info.Add("Args", Args);
             info.Add("TransformType", (byte)TransformType);
             //mqh-info.Add("EncodingName", EncodingName);
-
-            //info.Add("Message", Message);
-            //info.Add("Query", Query);
-            //info.Add("State", (int)State);
             context.WriteSerializeInfo(info);
         }
 
@@ -364,27 +526,20 @@ namespace Nistec.Channels
             if (info == null)
                 info = context.ReadSerializeInfo();
 
-            //ItemId = info.GetValue<Guid>("ItemId");
             Identifier = info.GetValue<string>("Identifier");
-            //BodyStream = (NetStream)info.GetValue("BodyStream");
-            //TypeName = info.GetValue<string>("TypeName");
-            //Formatter = (Formatters)info.GetValue<int>("Formatter");
+            TypeName = info.GetValue<string>("TypeName");
+            Formatter = (Formatters)info.GetValue<int>("Formatter");
             Label = info.GetValue<string>("Label");
             CustomId = info.GetValue<string>("CustomId");
             SessionId = info.GetValue<string>("SessionId");
             Command = info.GetValue<string>("Command");
             Source = info.GetValue<string>("Source");
-            //IsDuplex = info.GetValue<bool>("IsDuplex");
             DuplexType = (DuplexTypes)info.GetValue<byte>("DuplexType");
             Expiration = info.GetValue<int>("Expiration");
             Creation = info.GetValue<DateTime>("Creation");
             Args = (NameValueArgs)info.GetValue("Args");
             TransformType = (TransformType)info.GetValue<byte>("TransformType");
             //mqh-EncodingName = Types.NZorEmpty(info.GetValue<string>("EncodingName"), DefaultEncoding);
-
-            //Message = info.GetValue<string>("Message");
-            //Query = info.GetValue<string>("Query");
-            //State = info.GetValue<int>("State");
         }
 
 
@@ -404,11 +559,9 @@ namespace Nistec.Channels
             //}
 
 
-            //serializer.WriteToken("ItemId", ItemId);
             serializer.WriteToken("Identifier", Identifier);
-            //serializer.WriteToken("BodyStream", BodyStream == null ? null : BodyStream.ToBase64String());
-            //serializer.WriteToken("TypeName", TypeName);
-            //serializer.WriteToken("Formatter", Formatter);
+            serializer.WriteToken("TypeName", TypeName);
+            serializer.WriteToken("Formatter", Formatter);
             serializer.WriteToken("Label", Label, null);
             serializer.WriteToken("CustomId", CustomId, null);
             serializer.WriteToken("SessionId", SessionId, null);
@@ -418,12 +571,9 @@ namespace Nistec.Channels
             serializer.WriteToken("DuplexType", (byte)DuplexType);
             serializer.WriteToken("Expiration", Expiration);
             serializer.WriteToken("Creation", Creation);
-
-            //serializer.WriteToken("IsDuplex", IsDuplex);
             serializer.WriteToken("Args", Args);
             serializer.WriteToken("TransformType", TransformType);
             //mqh-serializer.WriteToken("EncodingName", EncodingName);
-
             return serializer.WriteOutput(pretty);
 
         }
@@ -433,11 +583,9 @@ namespace Nistec.Channels
 
             if (JsonReader != null)
             {
-                //ItemId = JsonReader.Get<Guid>("ItemId");
                 Identifier = JsonReader.Get<string>("Identifier");
-                //var body = JsonReader.Get<string>("BodyStream");
-                //TypeName = JsonReader.Get<string>("TypeName");
-                //Formatter = JsonReader.GetEnum<Formatters>("Formatter", Formatters.BinarySerializer);
+                TypeName = JsonReader.Get<string>("TypeName");
+                Formatter = JsonReader.GetEnum<Formatters>("Formatter", Formatters.BinarySerializer);
                 Label = JsonReader.Get<string>("Label");
                 CustomId = JsonReader.Get<string>("CustomId");
                 SessionId = JsonReader.Get<string>("SessionId");
@@ -447,17 +595,9 @@ namespace Nistec.Channels
                 DuplexType = (DuplexTypes)JsonReader.Get<byte>("DuplexType");
                 Expiration = JsonReader.Get<int>("Expiration");
                 Creation = JsonReader.Get<DateTime>("Creation");
-                //IsDuplex = dic.Get<bool>("IsDuplex");
                 Args = NameValueArgs.Convert((IDictionary<string, object>)JsonReader.Get("Args"));// dic.Get<NameValueArgs>("Args");
                 TransformType = (TransformType)JsonReader.GetEnum<TransformType>("TransformType", TransformType.Object);
                 //mqh-EncodingName = Types.NZorEmpty(JsonReader.Get<string>("EncodingName"), DefaultEncoding);
-
-                //Message = dic.Get<string>("Message");
-                //Query = dic.Get<string>("Query");
-                //State = dic.Get<int>("State");
-
-                //if (body != null && body.Length > 0)
-                //    BodyStream = NetStream.FromBase64String(body);
 
             }
             return this;
@@ -468,16 +608,14 @@ namespace Nistec.Channels
                 serializer = new JsonSerializer(JsonSerializerMode.Read, new JsonSettings() { IgnoreCaseOnDeserialize = true });
 
             //var queryParams = new Dictionary<string, string>(HtmlPage.Document.QueryString, StringComparer.InvariantCultureIgnoreCase);
-          
-           var     JsonReader = serializer.Read<Dictionary<string, object>>(json);
+
+            var JsonReader = serializer.Read<Dictionary<string, object>>(json);
 
             if (JsonReader != null)
             {
-                //ItemId = JsonReader.Get<Guid>("ItemId");
                 Identifier = JsonReader.Get<string>("Identifier");
-                //var body = JsonReader.Get<string>("BodyStream");
-                //TypeName = JsonReader.Get<string>("TypeName");
-                //Formatter = JsonReader.GetEnum<Formatters>("Formatter", Formatters.BinarySerializer);
+                TypeName = JsonReader.Get<string>("TypeName");
+                Formatter = JsonReader.GetEnum<Formatters>("Formatter", Formatters.BinarySerializer);
                 Label = JsonReader.Get<string>("Label");
                 CustomId = JsonReader.Get<string>("CustomId");
                 SessionId = JsonReader.Get<string>("SessionId");
@@ -487,17 +625,9 @@ namespace Nistec.Channels
                 DuplexType = (DuplexTypes)JsonReader.Get<byte>("DuplexType");
                 Expiration = JsonReader.Get<int>("Expiration");
                 Creation = JsonReader.Get<DateTime>("Creation");
-                //IsDuplex = dic.Get<bool>("IsDuplex");
                 Args = NameValueArgs.Convert((IDictionary<string, object>)JsonReader.Get("Args"));// dic.Get<NameValueArgs>("Args");
                 TransformType = (TransformType)JsonReader.GetEnum<TransformType>("TransformType", TransformType.Object);
                 //mqh-EncodingName = Types.NZorEmpty(JsonReader.Get<string>("EncodingName"), DefaultEncoding);
-
-                //Message = dic.Get<string>("Message");
-                //Query = dic.Get<string>("Query");
-                //State = dic.Get<int>("State");
-
-                //if (body != null && body.Length > 0)
-                //    BodyStream = NetStream.FromBase64String(body);
             }
             //JsonReader = null;
             return this;
@@ -511,11 +641,9 @@ namespace Nistec.Channels
             if (queryString != null)
             {
 
-                //ItemId = queryString.Get<Guid>("ItemId");
                 Identifier = queryString.Get<string>("Identifier");
-                //var body = queryString.Get<string>("BodyStream");
-                //TypeName = queryString.Get<string>("TypeName");
-                //Formatter = queryString.GetEnum<Formatters>("Formatter", Formatters.Json);
+                TypeName = queryString.Get<string>("TypeName");
+                Formatter = queryString.GetEnum<Formatters>("Formatter", Formatters.Json);
                 Label = queryString.Get<string>("Label");
                 CustomId = queryString.Get<string>("CustomId");
                 SessionId = queryString.Get<string>("SessionId");
@@ -525,7 +653,6 @@ namespace Nistec.Channels
                 DuplexType = (DuplexTypes)queryString.Get<byte>("DuplexType");
                 Expiration = queryString.Get<int>("Expiration");
                 Creation = queryString.Get<DateTime>("Creation", DateTime.Now);
-                //IsDuplex = queryString.Get<bool>("IsDuplex");
                 var args = queryString.Get("Args");
                 if (args != null)
                 {
@@ -535,13 +662,6 @@ namespace Nistec.Channels
                 //Args = NameValueArgs.Convert((IDictionary<string, object>)queryString.Get("Args"));//queryString.Get<NameValueArgs>("Args");
                 TransformType = (TransformType)queryString.GetEnum<TransformType>("TransformType", TransformType.Object);
                 //mqh-EncodingName = Types.NZorEmpty(queryString.Get<string>("EncodingName"), DefaultEncoding);
-
-                //Message = queryString.Get<string>("Message");
-                //Query = queryString.Get<string>("Query");
-                //State = queryString.Get<int>("State");
-
-                //if (body != null && body.Length > 0)
-                //    BodyStream = NetStream.FromBase64String(body);
             }
 
             return this;
@@ -549,10 +669,8 @@ namespace Nistec.Channels
 
         #endregion
 
-        /*
-  
         #region Async Task
-  
+
         /// <summary>
         /// Execute async task request and return the response as<see cref="NetStream"/>.
         /// </summary>
@@ -570,7 +688,7 @@ namespace Nistec.Channels
                     return TransStream.Write(task.Result, transform);
                 }
             }
-            task.TryDispose();
+            //task.TryDispose();
             return TransStream.WriteState(-1, messageOnError);//, TransType.Error);
         }
 
@@ -581,7 +699,7 @@ namespace Nistec.Channels
         /// <param name="messageOnError"></param>
         /// <param name="transform"></param>
         /// <returns></returns>
-        public TransStream AsyncTransObject(Func<object> action, string messageOnError, TransformType transform= TransformType.Object)
+        public TransStream AsyncTransObject(Func<object> action, string messageOnError, TransformType transform = TransformType.Object)
         {
             Task<object> task = Task.Factory.StartNew<object>(action);
             {
@@ -592,11 +710,11 @@ namespace Nistec.Channels
                         return TransStream.Write(task.Result, TransStream.ToTransType(TransformType));
                 }
             }
-            task.TryDispose();
+            //task.TryDispose();
             return TransStream.WriteState(-1, messageOnError);//, TransType.Error);
         }
 
-   
+
         public void AsyncTask(Action action)
         {
             Task task = Task.Factory.StartNew(action);
@@ -606,7 +724,7 @@ namespace Nistec.Channels
                 {
                 }
             }
-            task.TryDispose();
+            //task.TryDispose();
         }
 
         /// <summary>
@@ -624,21 +742,15 @@ namespace Nistec.Channels
                 if (task.IsCompleted)
                 {
                     if (task.Result != null)
-                        return new TransStream(task.Result,0, task.Result.Length, TransType.Stream);// TransWriter.Write(task.Result, TransType.Object);
+                        return new TransStream(task.Result, 0, task.Result.Length, TransType.Stream);// TransWriter.Write(task.Result, TransType.Object);
                 }
             }
-            task.TryDispose();
+            //task.TryDispose();
             return TransStream.WriteState((int)nullState, nullState.ToString());// TransType.State);  //TransStream.GetAckStream(nullState, actionName);//null;
         }
         #endregion
 
         #region ReadTransStream
-        
-         
-        //public object ReadTransStream(NetworkStream stream, int readTimeout, int ReceiveBufferSize)
-        //{
-        //    return new TransStream(stream, readTimeout, ReceiveBufferSize);
-        //}
 
         /// <summary>
         /// Read response from server.
@@ -646,7 +758,8 @@ namespace Nistec.Channels
         /// <param name="stream"></param>
         /// <param name="readTimeout"></param>
         /// <param name="ReceiveBufferSize"></param>
-        public object ReadResponse(NetworkStream stream, int readTimeout, int ReceiveBufferSize,  bool isTransStream)//TransformType transformType,
+        /// <param name="isTransStream"></param>
+        public object ReadResponse(NetworkStream stream, int readTimeout, int ReceiveBufferSize, bool isTransStream)//TransformType transformType,
         {
             if (isTransStream)
             {
@@ -664,6 +777,7 @@ namespace Nistec.Channels
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="o"></param>
+        /// <param name="enableException"></param>
         /// <returns></returns>
         public T Cast<T>(object o, bool enableException = false)
         {
@@ -700,10 +814,10 @@ namespace Nistec.Channels
             if (TransStream.IsTransStream(typeof(TResponse)))
             {
                 TransStream ts = new TransStream(stream, readTimeout, ReceiveBufferSize, TransformType.Stream);// , TransformType.Stream,true);
-                
-                    //TransStream ts = TransStream.CopyFrom(stream, readTimeout, ReceiveBufferSize);
-                    return Cast<TResponse>(ts, true);
-                
+
+                //TransStream ts = TransStream.CopyFrom(stream, readTimeout, ReceiveBufferSize);
+                return Cast<TResponse>(ts, true);
+
             }
             using (TransStream ts = new TransStream(stream, readTimeout, ReceiveBufferSize, TransformType.Stream)) //, TransReader.ToTransformType(typeof(TResponse)), false))
             {
@@ -741,7 +855,7 @@ namespace Nistec.Channels
             }
         }
 
-        
+
         #endregion
 
         #region extension
@@ -771,14 +885,18 @@ namespace Nistec.Channels
         }
 
         /// <summary>
-        /// Convert <see cref="TransformMessage"/> to <see cref="IDictionary"/>.
+        /// Convert <see cref="MessageHeader"/> to <see cref="IDictionary"/>.
         /// </summary>
         /// <param name="message"></param>
         /// <returns></returns>
-        public static IDictionary ConvertTo(TransformMessage message)
+        public static IDictionary ConvertTo(MessageHeader message)
         {
             IDictionary dict = new Dictionary<string, object>();
             dict.Add("Identifier", message.Identifier);
+            //if (message._Body != null)
+            //    dict.Add("Body", message.Body);
+            dict.Add("TypeName", message.TypeName);
+            dict.Add("Formatter", (byte)message.Formatter);
             dict.Add("Label", message.Label);
             dict.Add("CustomId", message.CustomId);
             dict.Add("SessionId", message.SessionId);
@@ -791,32 +909,20 @@ namespace Nistec.Channels
                 dict.Add("Args", message.Args);
             dict.Add("TransformType", (byte)message.TransformType);
             //mqh-dict.Add("EncodingName", message.EncodingName);
-
-            //if (message.IsDuplex)
-            //    dict.Add("IsDuplex", message.IsDuplex);
-
-            //if (message.ReturnTypeName != null)
-            //    dict.Add("ReturnTypeName", message.ReturnTypeName);
             return dict;
-        }
-
-        public IDictionary<string,object> ToDictionary()
-        {
-            var dic = DictionaryUtil.ToDictionary(this, "");
-            return dic;
         }
 
         public DynamicEntity ToEntity()
         {
             dynamic entity = new DynamicEntity();
             entity.Identifier = this.Identifier;
-           
+            entity.TypeName = this.TypeName;
+            entity.Formatter = this.Formatter;
             entity.Label = this.Label;
             entity.CustomId = this.CustomId;
             entity.SessionId = this.SessionId;
             entity.Command = this.Command;
             entity.Source = this.Source;
-            //entity.IsDuplex = this.IsDuplex;
             DuplexType = this.DuplexType;
             entity.Expiration = this.Expiration;
             entity.Creation = this.Creation;
@@ -846,30 +952,8 @@ namespace Nistec.Channels
             EntityWrite(stream, null);
             return stream;
         }
-        /// <summary>
-        /// Convert stream to <see cref="TcpMessage"/> message.
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <param name="protocol"></param>
-        /// <returns></returns>
-        public static TransformMessage ParseStream(Stream stream, NetProtocol protocol)
-        {
-            var message = Factory(protocol);
-            message.EntityRead(stream, null);
-            return message;
-        }
-        /// <summary>
-        /// Convert stream to <see cref="TcpMessage"/> message.
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <returns></returns>
-        public static TransformMessage ParseStream(Stream stream)
-        {
-            var message = new GenericMessage();
-            message.EntityRead(stream, null);
-            return message;
-        }
-        //internal static TransformMessage ServerReadRequest(NetProtocol protocol,Stream streamServer, int ReceiveBufferSize = 8192)
+      
+        //internal static MessageHeader ServerReadRequest(NetProtocol protocol,Stream streamServer, int ReceiveBufferSize = 8192)
         //{
         //    var message = Factory(protocol);
         //    message.EntityRead(streamServer, null);
@@ -891,16 +975,18 @@ namespace Nistec.Channels
         }
 
         /// <summary>
-        /// Convert <see cref="IDictionary"/> to <see cref="TransformMessage"/>.
+        /// Convert <see cref="IDictionary"/> to <see cref="MessageHeader"/>.
         /// </summary>
         /// <param name="dict"></param>
         /// <param name="protocol"></param>
         /// <returns></returns>
-        public static TransformMessage ConvertFrom(IDictionary<string,object> dict, NetProtocol protocol)
+        public static MessageHeader ConvertFrom(IDictionary<string, object> dict, NetProtocol protocol)
         {
-            TransformMessage message = Factory(protocol);
+            MessageHeader message = new MessageHeader();
 
             message.Identifier = dict.Get<string>("Identifier");
+            message.TypeName = dict.Get<string>("TypeName");
+            message.Formatter = (Formatters)dict.Get<byte>("Formatter");
             message.Label = dict.Get<string>("Label");
             message.CustomId = dict.Get<string>("CustomId");
             message.SessionId = dict.Get<string>("SessionId");
@@ -909,8 +995,6 @@ namespace Nistec.Channels
 
             message.DuplexType = (DuplexTypes)dict.Get<byte>("DuplexType", 0);
             message.Expiration = dict.Get<int>("Expiration", 0);
-            //message.IsDuplex = dict.Get<bool>("IsDuplex", true);
-
             message.Creation = dict.Get<DateTime>("Creation", DateTime.Now);
             message.Args = dict.Get<NameValueArgs>("Args");
             message.TransformType = (TransformType)dict.Get<byte>("TransformType");
@@ -920,25 +1004,24 @@ namespace Nistec.Channels
         }
 
         /// <summary>
-        /// Convert <see cref="IDictionary"/> to <see cref="TransformMessage"/>.
+        /// Convert <see cref="IDictionary"/> to <see cref="MessageHeader"/>.
         /// </summary>
         /// <param name="dict"></param>
         /// <returns></returns>
-        public static TransformMessage ConvertFrom(IDictionary<string, object> dict)
+        public static MessageHeader ConvertFrom(IDictionary<string, object> dict)
         {
-            TransformMessage message = new GenericMessage();
+            MessageHeader message = new MessageHeader();
 
             message.Identifier = dict.Get<string>("Identifier");
+            message.TypeName = dict.Get<string>("TypeName");
+            message.Formatter = (Formatters)dict.Get<byte>("Formatter");
             message.Label = dict.Get<string>("Label");
             message.CustomId = dict.Get<string>("CustomId");
             message.SessionId = dict.Get<string>("SessionId");
             message.Command = dict.Get<string>("Command");
             message.Source = dict.Get<string>("Source");
-
             message.DuplexType = (DuplexTypes)dict.Get<byte>("DuplexType", 0);
             message.Expiration = dict.Get<int>("Expiration", 0);
-            //message.IsDuplex = dict.Get<bool>("IsDuplex", true);
-
             message.Creation = dict.Get<DateTime>("Creation", DateTime.Now);
             message.Args = dict.Get<NameValueArgs>("Args");
             message.TransformType = (TransformType)dict.Get<byte>("TransformType");
@@ -950,190 +1033,36 @@ namespace Nistec.Channels
         #endregion
 
         #region static
-
         /// <summary>
-        /// Create instant of TransformMessage
+        /// Create instant of MessageHeader
         /// </summary>
         /// <param name="command"></param>
         /// <param name="id"></param>
         /// <param name="label"></param>
-        /// <param name="value"></param>
         /// <param name="expiration"></param>
         /// <param name="sessionId"></param>
         /// <returns></returns>
-        public static TransformMessage Create(string command, string id, string label, object value, int expiration = 0, string sessionId = null)
+        public static MessageHeader Create(string command, string id, string label, int expiration = 0, string sessionId = null)
         {
             if (string.IsNullOrEmpty(command))
                 throw new ArgumentNullException("CreateMessage.command");
 
             if (expiration < 0)
                 expiration = 0;
-            TransformMessage message = new GenericMessage(command, id, label, value, expiration, sessionId);
-            message.DuplexType = DuplexTypes.Respond;
-            message.TransformType = TransformType.Object;// transformType;
+            MessageHeader message = new MessageHeader()
+            {
+                Command = command,
+                CustomId = id,
+                Label = label,
+                Expiration = expiration,
+                SessionId = sessionId,
+                DuplexType = DuplexTypes.Respond,
+                TransformType = TransformType.Object
+            };
             return message;
         }
 
-
-        /// <summary>
-        /// Create a new message stream.
-        /// </summary>
-        /// <param name="protocol"></param>
-        /// <param name="stream"></param>
-        /// <param name="streamer"></param>
-        /// <returns></returns>
-        public static TransformMessage Create(NetProtocol protocol, Stream stream, IBinaryStreamer streamer)
-        {
-            TransformMessage message = Factory(protocol);
-            message.EntityRead(stream, streamer);
-            return message;
-        }
-
-        public static TransformType GetTransformType(Type type)
-        {
-            if (type==typeof(TransStream))
-                return TransformType.Stream;
-            //if (SerializeTools.IsStream(type))
-            //    return TransformType.Stream;
-            return TransformType.Object;
-        }
         #endregion
-               
-        #region Read/Write pipe
-
-        public string ReadResponseAsJson(NamedPipeClientStream stream, int ReceiveBufferSize, TransformType transformType, bool isTransStream)
-        {// = 8192
-
-            if (isTransStream)
-            {
-                using (TransStream ts = TransStream.CopyFrom(stream, ReceiveBufferSize))
-                {
-                    return ts.ReadToJson();
-                }
-            }
-
-            using (TransStream ack = new TransStream(stream, ReceiveBufferSize, transformType)) //, transformType, isTransStream))
-            {
-                return ack.ReadToJson();
-            }
-        }
-
-        public static TransformMessage ReadRequest(NamedPipeServerStream pipeServer, int ReceiveBufferSize = 8192)
-        {
-            PipeMessage message = new PipeMessage();
-            message.EntityRead(pipeServer, null);
-            return message;
-        }
-
-        internal static void WriteResponse(NamedPipeServerStream pipeServer, NetStream bResponse)
-        {
-            if (bResponse == null)
-            {
-                return;
-            }
-
-            pipeServer.Write(bResponse.ToArray(), 0, bResponse.iLength);
-
-            pipeServer.Flush();
-
-        }
-
-        #endregion
-
-        #region Read/Write tcp
-
-        //internal static NetStream FaultStream(string faultDescription)
-        //{
-        //    var message = new CacheMessage("Fault", "Fault", faultDescription, 0);
-        //    return message.Serialize();
-        //}
-
-        public static TransformMessage ReadRequest(NetworkStream streamServer, int ReceiveBufferSize = 8192)
-        {
-            //var message = new TcpMessage();
-            //using (var ntStream = new NetStream())
-            //{
-            //    ntStream.CopyFrom(streamServer, 0, ReceiveBufferSize);
-
-            //    message.EntityRead(ntStream, null);
-            //}
-            //return message;
-
-            var message = new TcpMessage();
-            message.EntityRead(streamServer, null);
-            return message;
-        }
-
-        internal static void WriteResponse(NetworkStream streamServer, NetStream bResponse)
-        {
-            if (bResponse == null)
-            {
-                return;
-            }
-
-            int cbResponse = bResponse.iLength;
-
-            streamServer.Write(bResponse.ToArray(), 0, cbResponse);
-
-            streamServer.Flush();
-
-        }
-
-
-        #endregion
-
-        #region Read/Write http
-
-        public static TransformMessage ReadRequest(HttpRequestInfo request)
-        {
-            if (request.BodyStream != null)
-            {
-                return TransformMessage.ParseStream(request.BodyStream, NetProtocol.Http);
-            }
-            else
-            {
-
-                var message = new HttpMessage();
-
-                if (request.QueryString!=null)//request.BodyType == HttpBodyType.QueryString)
-                    message.EntityRead(request.QueryString, null);
-                else if (request.Body != null)
-                    message.EntityRead(request.Body, null);
-                //else if (request.Url.LocalPath != null && request.Url.LocalPath.Length > 1)
-                //    message.EntityRead(request.Url.LocalPath.TrimStart('/').TrimEnd('/'), null);
-
-                return message;
-            }
-        }
-
-        internal static void WriteResponse(HttpListenerContext context, NetStream bResponse)
-        {
-            var response = context.Response;
-            if (bResponse == null)
-            {
-                response.StatusCode = (int)HttpStatusCode.NoContent;
-                response.StatusDescription = "No response";
-                return;
-            }
-
-            int cbResponse = bResponse.iLength;
-            byte[] buffer = bResponse.ToArray();
-
-
-
-            response.StatusCode = (int)HttpStatusCode.OK;
-            response.StatusDescription = HttpStatusCode.OK.ToString();
-            response.ContentLength64 = buffer.Length;
-            response.OutputStream.Write(buffer, 0, buffer.Length);
-            response.OutputStream.Close();
-
-        }
-
-
-        #endregion
-
-        */
 
     }
-
 }

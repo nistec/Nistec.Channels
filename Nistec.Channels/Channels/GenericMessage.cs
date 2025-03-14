@@ -121,7 +121,7 @@ namespace Nistec.Channels
         */
         #endregion
 
-        public byte[] Body { get => base._Body; set => base._Body = value; }
+        //public byte[] Body { get => base._Body; set => base._Body = value; }
 
     }
 }

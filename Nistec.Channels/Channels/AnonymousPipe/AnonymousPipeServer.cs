@@ -324,7 +324,7 @@ namespace Nistec.Channels
                 {
                     task.Wait();
                 };
-                task.TryDispose();
+                //task.TryDispose();
 
                 Task<TResponse> task2 = new Task<TResponse>(() => GetResponse<TResponse>());
                 {
@@ -383,7 +383,7 @@ namespace Nistec.Channels
                 {
                     task.Wait();
                 };
-                task.TryDispose();
+                //task.TryDispose();
 
                 Task<AnonymousMessage> task2 = new Task<AnonymousMessage>(() => GetResponseMessage());
                 {
@@ -459,7 +459,7 @@ namespace Nistec.Channels
                 {
                     task.Wait();
                 };
-                task.TryDispose();
+                //task.TryDispose();
 
                 _ClientProcess.WaitForExit();
 

@@ -54,13 +54,15 @@ namespace Nistec.Channels
         /// Initialize a new instance of pipe message.
         /// </summary>
         /// <param name="command"></param>
-        /// <param name="key"></param>
+        /// <param name="id"></param>
         /// <param name="value"></param>
         /// <param name="expiration"></param>
-        public PipeMessage(string command, string key, object value, int expiration)
+        public PipeMessage(string command, string id, object value, int expiration)
             : this()
         {
             Command = command;
+            CustomId = id;
+            Expiration = expiration;
             //Identifier = key;
             //mqh-CustomId = key;
             //mqh-Expiration = expiration;
@@ -70,14 +72,17 @@ namespace Nistec.Channels
         /// Initialize a new instance of pipe message.
         /// </summary>
         /// <param name="command"></param>
-        /// <param name="key"></param>
+        /// <param name="id"></param>
         /// <param name="value"></param>
         /// <param name="expiration"></param>
         /// <param name="sessionId"></param>
-        public PipeMessage(string command, string key, object value, int expiration, string sessionId)
+        public PipeMessage(string command, string id, object value, int expiration, string sessionId)
             : this()
         {
             Command = command;
+            CustomId = id;
+            Expiration = expiration;
+            SessionId = sessionId;
             //Identifier = key;
             //mqh-CustomId = key;
             //mqh-Expiration = expiration;

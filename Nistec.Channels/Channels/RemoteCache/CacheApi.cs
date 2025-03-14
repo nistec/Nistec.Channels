@@ -283,7 +283,7 @@ namespace Nistec.Channels.RemoteCache
             {
                 case NetProtocol.Tcp:
                     {
-                        TcpStreamClient.SendOut(message as TcpMessage, hostAddress, port, timeout, false, CacheApi.EnableRemoteException);
+                        TcpStreamClient.SendOut(message as TcpMessage, hostAddress, port, timeout, CacheApi.EnableRemoteException);
                         break;
                     }
                 case NetProtocol.Http:

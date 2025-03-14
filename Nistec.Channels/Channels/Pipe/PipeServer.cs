@@ -541,7 +541,7 @@ namespace Nistec.Channels
                     {
                         task.Wait(timeout);
                     }
-                    task.TryDispose();
+                    //task.TryDispose();
 
                 }
                 catch (Exception ex)
