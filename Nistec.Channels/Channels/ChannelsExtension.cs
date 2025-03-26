@@ -1,4 +1,5 @@
-﻿using Nistec.IO;
+﻿using Nistec.Channels.Http;
+using Nistec.IO;
 using Nistec.Runtime;
 using System;
 using System.Collections.Generic;
@@ -12,7 +13,7 @@ namespace Nistec.Channels
 {
     public static class ChannelsExtension
     {
-        
+
         public static bool IsDuplex(this DuplexTypes dtype)
         {
             return dtype != DuplexTypes.None;

@@ -91,6 +91,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Channels\http\HttpEnums.cs" />
     <Compile Include="Channels\http\Requester.cs" />
     <Compile Include="Channels\http\HttpRequestInfo.cs" />
     <Compile Include="Channels\http\HttpRequest.cs" />
@@ -114,7 +115,7 @@
     </Compile>
     <Compile Include="Channels\AnonymousPipe\AnonymousMessage.cs" />
     <Compile Include="Channels\ITransformMessage.cs" />
-    <Compile Include="Channels\StreamExtension.cs" />
+    <Compile Include="Channels\ChannelsExtension.cs" />
     <Compile Include="Channels\Config\HttpConfigItem.cs" />
     <Compile Include="Channels\Config\HttpServerConfigItem.cs" />
     <Compile Include="Channels\Config\HttpServerConfigItems.cs" />

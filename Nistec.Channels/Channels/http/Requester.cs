@@ -29,30 +29,7 @@ using System.Xml;
 namespace Nistec.Channels.Http
 {
 
-    public enum RequestType
-    {
-        Json,
-        Xml,
-        Soap,
-        Form,
-        Multipart
-    }
-    public enum MethodType
-    {
-        GET,
-        POST,
-    }
-    public enum AuthScheme
-    {
-        None,
-        Basic,
-        Bearer,
-    }
-    public enum AuthMetods
-    {
-        Authorization,
-        Authentication
-    }
+    
     /// <summary>
     /// Http Requester
     /// </summary>
@@ -62,22 +39,22 @@ namespace Nistec.Channels.Http
         public static async Task<T> RequesterDemo<T>()
         {
             var client = new Requester();
-            client.AddHeaderAuth("name", "pass");
-            var response= await client.Invoke(RequestType.Json,"https://myt.co.il","{\"data\":\"hello\"}");
+            client.AddHeaderAuth("name", "pass", AuthScheme.Basic);
+            var response= await client.InvokePost(RequestType.Json,"https://myt.co.il","{\"data\":\"hello\"}");
             Console.WriteLine(response);
-            return await JsonSerializer.DeserializeAsync<T>(response);
+            return await JsonSerializer.DeserializeAsync<T>(await response.Content.ReadAsStringAsync());
         }
-        public static async Task<T> RequesterJsonDemo<T>()
-        {
-            var response = await Requester.PostJson("https://myt.co.il", "{\"data\":\"hello\"}", Requester.GenericAuthHeader("name", "pass"), CancellationToken.None);
-            return await JsonSerializer.DeserializeAsync<T>(response);
-        }
-        public static async Task<T> RequesterHeadersDemo<T>()
-        {
-            var headers= GenericNameValue.Create(AuthMetods.Authorization.ToString(), Requester.CreateAuthToken("name", "pass"), "id", "123");
-            var response = await Requester.PostJson("https://myt.co.il", "{\"data\":\"hello\"}",headers , CancellationToken.None);
-            return await JsonSerializer.DeserializeAsync<T>(response);
-        }
+        //public static async Task<T> RequesterJsonDemo<T>()
+        //{
+        //    var response = await Requester.PostJson("https://myt.co.il", "{\"data\":\"hello\"}", Requester.GenericAuthHeader("name", "pass"), CancellationToken.None);
+        //    return await JsonSerializer.DeserializeAsync<T>(response);
+        //}
+        //public static async Task<T> RequesterHeadersDemo<T>()
+        //{
+        //    var headers= GenericNameValue.Create(AuthMetods.Authorization.ToString(), Requester.CreateAuthToken("name", "pass"), "id", "123");
+        //    var response = await Requester.PostJson("https://myt.co.il", "{\"data\":\"hello\"}",headers , CancellationToken.None);
+        //    return await JsonSerializer.DeserializeAsync<T>(response);
+        //}
         #endregion
 
         #region properties
@@ -90,52 +67,65 @@ namespace Nistec.Channels.Http
 
         
         public string SoapAction { get; set;}
-        public MethodType Method { get; set; }
-        public MethodType MethodGet(string method)
+        //public MethodType Method { get; set; }
+        //public static MethodType MethodGet(string method)
+        //{
+        //    switch (method.ToUpper())
+        //    {
+        //        case "GET":
+        //            return MethodType.GET;
+        //        case "POST":
+        //        default:
+        //            return MethodType.POST;
+        //    }
+        //}
+        //public static RequestType RequestTypeGet(string requestType)
+        //{
+        //    switch (requestType.ToLower())
+        //    {
+        //        case "json":
+        //        case "application/json":
+        //            return RequestType.Json;
+        //        case "xml":
+        //        case "text/xml":
+        //            return RequestType.Xml;
+        //        case "soap":
+        //            return RequestType.Soap;
+        //        case "form":
+        //        case "application/x-www-form-urlencoded":
+        //            return RequestType.Form;
+        //        default:
+        //            return RequestType.Json;
+        //    }
+        //}
+
+        //public AuthScheme AuthScheme { get; set; }
+        //public static AuthScheme AuthSchemeGet(string scheme)
+        //{
+        //    switch (scheme.ToLower())
+        //    {
+        //        case "basic":
+        //            return AuthScheme.Basic;
+        //        case "bBearer":
+        //            return AuthScheme.Bearer;
+        //        default:
+        //            return AuthScheme.None;
+        //    }
+        //}
+
+        GenericNameValue _Headers;
+        public GenericNameValue Headers
         {
-            switch (method.ToUpper())
+
+            get
             {
-                case "GET":
-                    return MethodType.GET;
-                case "POST":
-                default:
-                    return MethodType.POST;
+                if (_Headers == null)
+                {
+                    _Headers = new GenericNameValue();
+                }
+                return _Headers;
             }
         }
-        public RequestType RequestTypeGet(string requestType)
-        {
-            switch (requestType.ToLower())
-            {
-                case "json":
-                case "application/json":
-                    return RequestType.Json;
-                case "xml":
-                case "text/xml":
-                    return RequestType.Xml;
-                case "soap":
-                    return RequestType.Soap;
-                case "form":
-                case "application/x-www-form-urlencoded":
-                    return RequestType.Form;
-                default:
-                    return RequestType.Json;
-            }
-        }
- 
-        public AuthScheme AuthScheme { get; set; }
-        public AuthScheme AuthSchemeGet(string scheme)
-        {
-            switch (scheme.ToLower())
-            {
-                case "basic":
-                    return AuthScheme.Basic;
-                case "bBearer":
-                    return AuthScheme.Bearer;
-                default:
-                    return AuthScheme.None;
-            }
-        }
-        public GenericNameValue Headers { get; protected set; }
 
         #endregion
 
@@ -143,27 +133,38 @@ namespace Nistec.Channels.Http
 
         public Requester()
         {
-            Method = MethodType.POST;
-            AuthScheme = AuthScheme.None;
-            Headers = new GenericNameValue();
+            //Method = MethodType.POST;
+            //AuthScheme = AuthScheme.None;
+            //Headers = new GenericNameValue();
         }
-        public Requester(int timeout, MethodType methodType = MethodType.POST)
+        public Requester(int timeout)//, MethodType methodType = MethodType.POST)
         {
             ConnectTimeout = timeout;
-            Method = methodType;
+            //Method = methodType;
+            //Headers = new GenericNameValue();
         }
         public Requester(int timeout, string soapAction):this()
         {
             ConnectTimeout = timeout;
             SoapAction = soapAction;
+            //Headers = new GenericNameValue();
         }
 
-        public Requester(int timeout, MethodType methodType, AuthScheme scheme, string[] keyValueHeaders)
+        public Requester(int timeout, string[] keyValueHeaders)
         {
             ConnectTimeout = timeout;
-            Method = methodType;
-            AuthScheme = scheme;
+            //Method = methodType;
+            //AuthScheme = scheme;
+            //Headers = new GenericNameValue();
             AddHeader(keyValueHeaders);
+        }
+        public Requester(int timeout, string authToken, AuthScheme scheme)
+        {
+            ConnectTimeout = timeout;
+            //Method = methodType;
+            //AuthScheme = scheme;
+            //Headers = new GenericNameValue();
+            AddHeaderAuth(authToken, scheme);
         }
         #endregion
 
@@ -174,25 +175,44 @@ namespace Nistec.Channels.Http
             if (Trace != null)
                 Trace.Invoke(level, action);
         }
-        public void AddHeaderAuth(string key, string value)
+        //public void AddHeaderAuth(string key, string value)
+        //{
+        //    if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
+        //        Headers.Add("Authorization", CreateAuthToken(key,value));
+        //}
+        public void AddHeaderAuth(string key, string value, AuthScheme scheme)
         {
+            //AuthScheme = scheme;
             if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
-                Headers.Add("Authorization", CreateAuthToken(key,value));
+                Headers.Add("Authorization", CreateAuthToken(key, value, scheme));
         }
-        public void AddHeaderAuth(string token)
+        //public void AddHeaderAuth(string token)
+        //{
+        //    if (!string.IsNullOrEmpty(token))
+        //        Headers.Add("Authorization", token);
+        //}
+        public void AddHeaderAuth(string token, AuthScheme scheme)
         {
+            //AuthScheme = scheme;
             if (!string.IsNullOrEmpty(token))
-                Headers.Add("Authorization", token);
+                Headers.Add("Authorization", CreateAuthToken(token, scheme));
         }
+        //public void AddHeaderAuthByScema(string token, string scheme)
+        //{
+        //    AuthScheme = AuthSchemeGet(scheme);
+        //    if (!string.IsNullOrEmpty(token))
+        //        Headers.Add("Authorization", token);
+        //}
+
         public void AddHeader(string key, string value)
         {
             if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
                 Headers.Add(key, value);
         }
-        public void AddHeader(string[] keyValue)
+        public void AddHeader(string[] keyValueArgs)
         {
-            if (keyValue != null && keyValue.Length % 2 == 0)
-                Headers.Add(keyValue);
+            if (keyValueArgs != null && keyValueArgs.Length % 2 == 0)
+                Headers.Add(keyValueArgs);
         }
         public void AddHeader(string keyValue, char spliter = ',')
         {
@@ -219,12 +239,16 @@ namespace Nistec.Channels.Http
                 OnTrace( LogLevel.Error, ocex.Message);
             }
         }
-        #endregion
 
-        public async Task<string> Invoke(RequestType requestType, string address, string request)
+        #endregion
+        public async Task<HttpResponseMessage> InvokePost(RequestType requestType, string address, string request, string[] keyValueHeaders=null)
         {
             try
             {
+                if (keyValueHeaders != null && keyValueHeaders.Length > 0)
+                {
+                    Headers.Add(keyValueHeaders);
+                }
                 //string contentType = "application/json";
                 switch (requestType)
                 {
@@ -241,7 +265,11 @@ namespace Nistec.Channels.Http
                     case RequestType.Multipart:
                         {
                             var dict = QueryStringToDictionary(request, true);
-                            return MultipartRequest.MultipartFormDataPost(address, dict);
+                            var response = MultipartRequest.MultipartFormDataPost(address, dict);
+                            return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                            {
+                                Content = new StringContent(response, Encoding.UTF8)//, "application/json")
+                            };
                             //contentType = "multipart/form-data; boundary=--xxx";//"text/xml; charset=utf-8";
                             //txtResponse.Text = DoRequest(txtUrl.Text, txtAction.Text, cbMethod.Text, contentType, txtRequest.Text);
                         }
@@ -260,10 +288,7 @@ namespace Nistec.Channels.Http
                             {
                                 cancellationTokenSource.CancelAfter(ConnectTimeout);
                                 //CancelEnabled = true;
-                                if (Method == MethodType.GET)
-                                    return await DoGetRequest(address, "text/xml", cancellationTokenSource.Token);
-                                else
-                                    return await DoPostRequest(address, "text/xml", request, cancellationTokenSource.Token);
+                                return await DoPostRequest(address, "text/xml", request, cancellationTokenSource.Token);
                             }
                         }
                     default:
@@ -272,28 +297,354 @@ namespace Nistec.Channels.Http
                             {
                                 cancellationTokenSource.CancelAfter(ConnectTimeout);
                                 //CancelEnabled = true;
-                                if (Method == MethodType.GET)
-                                    return await DoJsonGetRequest(address, cancellationTokenSource.Token);
-                                else
-                                    return await DoJsonPostRequest(address, request, cancellationTokenSource.Token);
+                                return await DoJsonPostRequest(address, request, cancellationTokenSource.Token);
                             }
                         }
                 }
             }
+            catch (TimeoutException to)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage timeout: " + to.Message);
+                return new HttpResponseMessage(HttpStatusCode.RequestTimeout)
+                {
+                    Content = new StringContent("RequestTimeout", Encoding.UTF8)//, "application/json")
+                };
+                //return (HttpStatusCode.RequestTimeout, "messsage timeout");
+            }
+            catch (UnauthorizedAccessException ux)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage Unauthorized: " + ux.Message);
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Content = new StringContent("messsage Unauthorized", Encoding.UTF8)//, "application/json")
+                };
+                //result(HttpStatusCode.Unauthorized, "messsage Unauthorized");
+            }
             catch (OperationCanceledException ocex)
             {
-                OnTrace(LogLevel.Warn, "Send messsage canceled: " + ocex.Message.ToString());
-                return null;
+                OnTrace(LogLevel.Warn, "Send messsage canceled: " + ocex.Message);
+                return new HttpResponseMessage(HttpStatusCode.Conflict)
+                {
+                    Content = new StringContent("messsage canceled", Encoding.UTF8)//, "application/json")
+                };
+                //result(HttpStatusCode.Conflict, "messsage canceled");
             }
-            catch (AggregateException ex)
+            //catch (AggregateException ex)
+            //{
+            //    OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
+            //    result(HttpStatusCode.ExpectationFailed, "messsage error: " + ex.Message);
+            //}
+            catch (HttpException hx)
             {
-                OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
-                return null;
+                OnTrace(LogLevel.Warn, "Send messsage canceled: " + hx.Message);
+                return new HttpResponseMessage((HttpStatusCode)hx.GetHttpCode())
+                {
+                    Content = new StringContent("messsage canceled", Encoding.UTF8)//, "application/json")
+                };
+
+                //result((HttpStatusCode)hx.GetHttpCode(), "messsage canceled" + hx.Message);
             }
             catch (Exception ex)
             {
                 OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
-                return null;
+                return new HttpResponseMessage(HttpStatusCode.ExpectationFailed)
+                {
+                    Content = new StringContent("messsage error: " + ex.Message, Encoding.UTF8)//, "application /json")
+                };
+                //result(HttpStatusCode.ExpectationFailed, "messsage error: " + ex.Message);
+            }
+
+
+            //catch (OperationCanceledException ocex)
+            //{
+            //    OnTrace(LogLevel.Warn, "Send messsage canceled: " + ocex.Message.ToString());
+            //    return null;
+            //}
+            //catch (AggregateException ex)
+            //{
+            //    OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
+            //    return null;
+            //}
+            //catch (Exception ex)
+            //{
+            //    OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
+            //    return null;
+            //}
+            //finally
+            //{
+            //    CancelEnabled = false;
+            //}
+        }
+
+        public async Task<HttpResponseMessage> InvokeGet(RequestType requestType, string address, string[] keyValueHeaders = null)
+        {
+            try
+            {
+                if (keyValueHeaders != null && keyValueHeaders.Length > 0)
+                {
+                    Headers.Add(keyValueHeaders);
+                }
+                //string contentType = "application/json";
+                switch (requestType)
+                {
+                    case RequestType.Xml:
+                        {
+                            using (cancellationTokenSource = new CancellationTokenSource())
+                            {
+                                cancellationTokenSource.CancelAfter(ConnectTimeout);
+                                //CancelEnabled = true;
+                                return await DoGetRequest(address, "text/xml", cancellationTokenSource.Token);
+                            }
+                        }
+                    default:
+                        {
+                            using (cancellationTokenSource = new CancellationTokenSource())
+                            {
+                                cancellationTokenSource.CancelAfter(ConnectTimeout);
+                                //CancelEnabled = true;
+                                return await DoJsonGetRequest(address, cancellationTokenSource.Token);
+                            }
+                        }
+                }
+            }
+            catch (TimeoutException to)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage timeout: " + to.Message);
+                return new HttpResponseMessage(HttpStatusCode.RequestTimeout)
+                {
+                    Content = new StringContent("RequestTimeout", Encoding.UTF8)//, "application/json")
+                };
+                //return (HttpStatusCode.RequestTimeout, "messsage timeout");
+            }
+            catch (UnauthorizedAccessException ux)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage Unauthorized: " + ux.Message);
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Content = new StringContent("messsage Unauthorized", Encoding.UTF8)//, "application/json")
+                };
+                //result(HttpStatusCode.Unauthorized, "messsage Unauthorized");
+            }
+            catch (OperationCanceledException ocex)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage canceled: " + ocex.Message);
+                return new HttpResponseMessage(HttpStatusCode.Conflict)
+                {
+                    Content = new StringContent("messsage canceled", Encoding.UTF8)//, "application/json")
+                };
+                //result(HttpStatusCode.Conflict, "messsage canceled");
+            }
+            //catch (AggregateException ex)
+            //{
+            //    OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
+            //    result(HttpStatusCode.ExpectationFailed, "messsage error: " + ex.Message);
+            //}
+            catch (HttpException hx)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage canceled: " + hx.Message);
+                return new HttpResponseMessage((HttpStatusCode)hx.GetHttpCode())
+                {
+                    Content = new StringContent("messsage canceled", Encoding.UTF8)//, "application/json")
+                };
+
+                //result((HttpStatusCode)hx.GetHttpCode(), "messsage canceled" + hx.Message);
+            }
+            catch (Exception ex)
+            {
+                OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
+                return new HttpResponseMessage(HttpStatusCode.ExpectationFailed)
+                {
+                    Content = new StringContent("messsage error: " + ex.Message, Encoding.UTF8)//, "application /json")
+                };
+                //result(HttpStatusCode.ExpectationFailed, "messsage error: " + ex.Message);
+            }
+
+
+            //catch (OperationCanceledException ocex)
+            //{
+            //    OnTrace(LogLevel.Warn, "Send messsage canceled: " + ocex.Message.ToString());
+            //    return null;
+            //}
+            //catch (AggregateException ex)
+            //{
+            //    OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
+            //    return null;
+            //}
+            //catch (Exception ex)
+            //{
+            //    OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
+            //    return null;
+            //}
+            //finally
+            //{
+            //    CancelEnabled = false;
+            //}
+        }
+
+        public async Task PostAsync(RequestType requestType, string address, string request, Action<HttpStatusCode, string> result)
+        {
+            await PostAsync(requestType, address, request, null,result);
+        }
+
+        public async Task PostAsync(RequestType requestType, string address, string request, string[] keyValueHeaders, Action<HttpStatusCode, string> result)
+        {
+            try
+            {
+                if (keyValueHeaders != null && keyValueHeaders.Length > 0)
+                {
+                    Headers.Add(keyValueHeaders);
+                }
+                //string contentType = "application/json";
+                switch (requestType)
+                {
+                    case RequestType.Form:
+                        {
+                            //var formContent = ParseForm(request);
+                            using (cancellationTokenSource = new CancellationTokenSource())
+                            {
+                                //CancelEnabled = true;
+                                cancellationTokenSource.CancelAfter(ConnectTimeout);
+                                await DoFormRequest(address, request, cancellationTokenSource.Token, result);
+                            }
+                        }
+                        break;
+                    case RequestType.Multipart:
+                        {
+                            var dict = QueryStringToDictionary(request, true);
+                            await MultipartRequest.MultipartFormDataPost(address, dict, result);
+                            //contentType = "multipart/form-data; boundary=--xxx";//"text/xml; charset=utf-8";
+                            //txtResponse.Text = DoRequest(txtUrl.Text, txtAction.Text, cbMethod.Text, contentType, txtRequest.Text);
+                        }
+                        break;
+                    case RequestType.Soap:
+                        {
+                            using (cancellationTokenSource = new CancellationTokenSource())
+                            {
+                                //CancelEnabled = true;
+                                cancellationTokenSource.CancelAfter(ConnectTimeout);
+                                await DoSoapRequest(address, SoapAction, request, cancellationTokenSource.Token, result);
+                            }
+                        }
+                        break;
+                    case RequestType.Xml:
+                        {
+                            using (cancellationTokenSource = new CancellationTokenSource())
+                            {
+                                cancellationTokenSource.CancelAfter(ConnectTimeout);
+                                await DoPostRequest(address, "text/xml", request, cancellationTokenSource.Token, result);
+                            }
+                        }
+                        break;
+                    default:
+                        {
+                            using (cancellationTokenSource = new CancellationTokenSource())
+                            {
+                                cancellationTokenSource.CancelAfter(ConnectTimeout);
+                                //CancelEnabled = true;
+                                await DoJsonPostRequest(address, request, cancellationTokenSource.Token, result);
+                            }
+                            break;
+                        }
+                }
+            }
+            catch (TimeoutException to)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage timeout: " + to.Message);
+                result(HttpStatusCode.RequestTimeout, "messsage timeout");
+            }
+            catch (UnauthorizedAccessException ux)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage Unauthorized: " + ux.Message);
+                result(HttpStatusCode.Unauthorized, "messsage Unauthorized");
+            }
+            catch (OperationCanceledException ocex)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage canceled: " + ocex.Message);
+                result(HttpStatusCode.Conflict, "messsage canceled");
+            }
+            //catch (AggregateException ex)
+            //{
+            //    OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
+            //    result(HttpStatusCode.ExpectationFailed, "messsage error: " + ex.Message);
+            //}
+            catch (HttpException hx)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage canceled: " + hx.Message);
+                result((HttpStatusCode)hx.GetHttpCode(), "messsage canceled"+ hx.Message);
+            }
+            catch (Exception ex)
+            {
+                OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
+                result(HttpStatusCode.ExpectationFailed, "messsage error: " + ex.Message);
+            }
+            //finally
+            //{
+            //    CancelEnabled = false;
+            //}
+        }
+
+        public async Task GetAsync(RequestType requestType, string address, string[] keyValueHeaders, Action<HttpStatusCode, string> result)
+        {
+            try
+            {
+                if (keyValueHeaders != null && keyValueHeaders.Length > 0)
+                {
+                    Headers.Add(keyValueHeaders);
+                }
+                //string contentType = "application/json";
+                switch (requestType)
+                {
+                    case RequestType.Xml:
+                        {
+                            using (cancellationTokenSource = new CancellationTokenSource())
+                            {
+                                cancellationTokenSource.CancelAfter(ConnectTimeout);
+                                //CancelEnabled = true;
+                                await DoGetRequest(address, "text/xml", cancellationTokenSource.Token, result);
+                            }
+                        }
+                        break;
+                    default:
+                        {
+                            using (cancellationTokenSource = new CancellationTokenSource())
+                            {
+                                cancellationTokenSource.CancelAfter(ConnectTimeout);
+                                //CancelEnabled = true;
+                                await DoJsonGetRequest(address, cancellationTokenSource.Token, result);
+                            }
+                            break;
+                        }
+                }
+            }
+            catch (TimeoutException to)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage timeout: " + to.Message);
+                result(HttpStatusCode.RequestTimeout, "messsage timeout");
+            }
+            catch (UnauthorizedAccessException ux)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage Unauthorized: " + ux.Message);
+                result(HttpStatusCode.Unauthorized, "messsage Unauthorized");
+            }
+            catch (OperationCanceledException ocex)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage canceled: " + ocex.Message);
+                result(HttpStatusCode.Conflict, "messsage canceled");
+            }
+            //catch (AggregateException ex)
+            //{
+            //    OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
+            //    result(HttpStatusCode.ExpectationFailed, "messsage error: " + ex.Message);
+            //}
+            catch (HttpException hx)
+            {
+                OnTrace(LogLevel.Warn, "Send messsage canceled: " + hx.Message);
+                result((HttpStatusCode)hx.GetHttpCode(), "messsage canceled" + hx.Message);
+            }
+            catch (Exception ex)
+            {
+                OnTrace(LogLevel.Error, "Send messsage error: " + ex.ToString());
+                result(HttpStatusCode.ExpectationFailed, "messsage error: " + ex.Message);
             }
             //finally
             //{
@@ -303,72 +654,60 @@ namespace Nistec.Channels.Http
 
         #region Helpers
 
-        public static GenericNameValue GenericHeader(params string[] keyValue)
+        //public static GenericNameValue GenericHeader(params string[] keyValue)
+        //{
+        //    if (keyValue != null && keyValue.Length > 0)
+        //    {
+        //        return new GenericNameValue(keyValue);
+        //    }
+        //    return null;
+        //}
+        public static string[] CreateAuthHeader(string userName, string password, AuthScheme scheme)
         {
-            if (keyValue != null && keyValue.Length > 0)
-            {
-                return new GenericNameValue(keyValue);
-            }
-            return null;
-        }
-        public static string[] CreateAuthHeader(string userName, string password)
-        {
-            var token = userName + ":" + password;
-            var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
+            var credetial = CreateAuthToken(userName, password, scheme);
             return new string[] { "Authorization", credetial };
         }
-        static GenericNameValue GenericAuthHeader(string userName, string password)
+        public static string[] CreateAuthHeader(string token, AuthScheme scheme)
         {
-            var token = userName + ":" + password;
-            var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
-            return new GenericNameValue(new string[] { "Authorization", credetial });
+            var credetial = scheme.ToString() + " " + token;
+            return new string[] { "Authorization", credetial };
         }
+        //public static string[] CreateAuthHeader(string token, string scheme)
+        //{
+        //    var credetial = scheme + " " + token;
+        //    return new string[] { "Authorization", credetial };
+        //}
+
+        //static GenericNameValue GenericAuthHeader(string userName, string password)
+        //{
+        //    var token = userName + ":" + password;
+        //    var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
+        //    return new GenericNameValue(new string[] { "Authorization", credetial });
+        //}
         public static string CreateAuthToken(string userName, string password)
         {
-            var token = userName + ":" + password;
-            return Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(userName + ":" + password));
         }
         public static string CreateAuthToken(string userName, string password, AuthScheme scheme)
         {
-            var token = scheme.ToString() + " " + userName + ":" + password;
-            return Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
+            return scheme.ToString() + " " + CreateAuthToken(userName , password);
+        }
+        public static string CreateAuthToken(string token, AuthScheme scheme)
+        {
+            return scheme.ToString() + " " + token;
         }
 
-        void CreateHeader(GenericNameValue kv, System.Net.Http.HttpClient httpClient)
+        void CreateHeader(System.Net.Http.HttpClient httpClient)
         {
-            CreateHeader(kv, httpClient, AuthScheme);
-
-            //if (kv != null && kv.Count > 0)
-            //{
-
-            //    foreach (var entry in kv)
-            //    {
-            //        if (entry.Key == "Authorization")
-            //        {
-            //            var scheme = AuthScheme != AuthScheme.None ? AuthScheme.ToString(): entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
-            //            var token = entry.Value.Substring(scheme.Length).Trim().Replace("|", ":");
-            //            var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
-            //            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(scheme, credetial);
-            //        }
-            //        else
-            //            httpClient.DefaultRequestHeaders.Add(entry.Key, entry.Value);
-            //    }
-            //}
-        }
-
-        static void CreateHeader(GenericNameValue kv, System.Net.Http.HttpClient httpClient, AuthScheme authScheme= AuthScheme.None)
-        {
-            if (kv != null && kv.Count > 0)
+            if (Headers != null && Headers.Count > 0)
             {
-
-                foreach (var entry in kv)
+                foreach (var entry in Headers)
                 {
                     if (entry.Key == "Authorization")
                     {
-                        var scheme = authScheme != AuthScheme.None ? authScheme.ToString() : entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
-                        var token = entry.Value.Substring(scheme.Length).Trim().Replace("|", ":");
-                        var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
-                        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(scheme, credetial);
+                        var scheme = entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
+                        var token = entry.Value.Substring(scheme.Length).Trim();
+                        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(scheme.Trim(), token);
                     }
                     else
                         httpClient.DefaultRequestHeaders.Add(entry.Key, entry.Value);
@@ -376,64 +715,115 @@ namespace Nistec.Channels.Http
             }
         }
 
-        static void CreateHeader(string[] keyValueHheaders, System.Net.Http.HttpClient httpClient)
-        {
-            CreateHeader(GenericNameValue.Create(keyValueHheaders), httpClient);
+        //void CreateHeader(GenericNameValue kv, System.Net.Http.HttpClient httpClient)
+        //{
+        //    CreateHeader(kv, httpClient, AuthScheme);
 
-            //var kv = GenericHeader(keyValueHheaders);
-            //if (kv != null && kv.Count > 0)
-            //{
+        //    //if (kv != null && kv.Count > 0)
+        //    //{
 
-            //    foreach (var entry in kv)
-            //    {
-            //        if (entry.Key == "Authorization")
-            //        {
-            //            var schema = entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
-            //            var token = entry.Value.Substring(schema.Length).Trim().Replace("|", ":");
-            //            var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
-            //            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(schema.Trim(), credetial);
-            //        }
-            //        else
-            //            httpClient.DefaultRequestHeaders.Add(entry.Key, entry.Value);
-            //    }
-            //}
-        }
+        //    //    foreach (var entry in kv)
+        //    //    {
+        //    //        if (entry.Key == "Authorization")
+        //    //        {
+        //    //            var scheme = AuthScheme != AuthScheme.None ? AuthScheme.ToString(): entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
+        //    //            var token = entry.Value.Substring(scheme.Length).Trim().Replace("|", ":");
+        //    //            var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
+        //    //            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(scheme, credetial);
+        //    //        }
+        //    //        else
+        //    //            httpClient.DefaultRequestHeaders.Add(entry.Key, entry.Value);
+        //    //    }
+        //    //}
+        //}
 
-        static void CreateHeader(Dictionary<string, string> hd, System.Net.Http.HttpClient httpClient)
-        {
-            if (hd != null && hd.Count > 0)
-            {
-                foreach (var entry in hd)
-                {
-                    if (entry.Key == "Authorization")
-                    {
-                        var schema = entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
-                        var token = entry.Value.Substring(schema.Length).Trim().Replace("|", ":");
-                        var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
-                        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(schema.Trim(), credetial);
-                    }
-                    else
-                        httpClient.DefaultRequestHeaders.Add(entry.Key, entry.Value);
-                }
-            }
-        }
-        static Dictionary<string, string> CreateHeaderDictionary(string headers, char spliter = ':')
-        {
-            Dictionary<string, string> hd = null;
-            if (!string.IsNullOrEmpty(headers))
-            {
-                hd = new Dictionary<string, string>();
-                var args = headers.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (var arg in args)
-                {
-                    var kv = arg.Split(spliter);
-                    if (kv.Length == 2)
-                        hd[kv[0].Trim()] = kv[1].Trim();
-                }
-            }
-            return hd;
-        }
+        //static void CreateHeader(GenericNameValue kv, System.Net.Http.HttpClient httpClient)//, AuthScheme authScheme= AuthScheme.None)
+        //{
+        //    if (kv != null && kv.Count > 0)
+        //    {
 
+        //        foreach (var entry in kv)
+        //        {
+        //            if (entry.Key == "Authorization")
+        //            {
+        //                var scheme = authScheme != AuthScheme.None ? authScheme.ToString() : entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
+        //                var token = entry.Value.Substring(scheme.Length).Trim().Replace("|", ":");
+        //                var credetial = token.Contains(':') ? Convert.ToBase64String(Encoding.UTF8.GetBytes(token)) : token;
+        //                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(scheme, credetial);
+        //            }
+        //            else
+        //                httpClient.DefaultRequestHeaders.Add(entry.Key, entry.Value);
+        //        }
+        //    }
+        //}
+
+        //static void CreateHeader(string[] keyValueHheaders, System.Net.Http.HttpClient httpClient)
+        //{
+        //    CreateHeader(GenericNameValue.Create(keyValueHheaders), httpClient);
+
+        //    //var kv = GenericHeader(keyValueHheaders);
+        //    //if (kv != null && kv.Count > 0)
+        //    //{
+
+        //    //    foreach (var entry in kv)
+        //    //    {
+        //    //        if (entry.Key == "Authorization")
+        //    //        {
+        //    //            var scheme = entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
+        //    //            var token = entry.Value.Substring(scheme.Length).Trim().Replace("|", ":");
+        //    //            var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
+        //    //            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(scheme.Trim(), credetial);
+        //    //        }
+        //    //        else
+        //    //            httpClient.DefaultRequestHeaders.Add(entry.Key, entry.Value);
+        //    //    }
+        //    //}
+        //}
+        /*
+       static void CreateHeader(string headers, System.Net.Http.HttpClient httpClient)
+       {
+           if (string.IsNullOrEmpty(headers))
+               return;
+           Dictionary<string, string> hd = CreateHeaderDictionary(headers);
+           CreateHeader(hd, httpClient);
+       }
+
+       static void CreateHeader(Dictionary<string, string> hd, System.Net.Http.HttpClient httpClient)
+       {
+           if (hd != null && hd.Count > 0)
+           {
+               foreach (var entry in hd)
+               {
+                   if (entry.Key == "Authorization")
+                   {
+                       var scheme = entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
+                       var token = entry.Value.Substring(scheme.Length).Trim().Replace("|", ":");
+                       var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
+                       httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(scheme.Trim(), credetial);
+                   }
+                   else
+                       httpClient.DefaultRequestHeaders.Add(entry.Key, entry.Value);
+               }
+           }
+       }
+         */
+      static Dictionary<string, string> CreateHeaderDictionary(string headers, char spliter = ':')
+       {
+           Dictionary<string, string> hd = null;
+           if (!string.IsNullOrEmpty(headers))
+           {
+               hd = new Dictionary<string, string>();
+               var args = headers.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+               foreach (var arg in args)
+               {
+                   var kv = arg.Split(spliter);
+                   if (kv.Length == 2)
+                       hd[kv[0].Trim()] = kv[1].Trim();
+               }
+           }
+           return hd;
+       }
+      
         static FormUrlEncodedContent ParseForm(string request)
         {
             if (string.IsNullOrEmpty(request))
@@ -444,82 +834,226 @@ namespace Nistec.Channels.Http
             var formContent = new FormUrlEncodedContent(dic.ToList());
             return formContent;
         }
+
+        static string FormatAggrigateException(AggregateException ex, CancellationToken cancelToken)
+        {
+
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Send messsage error: " + ex.Message);
+            foreach (var inner in ex.InnerExceptions)
+            {
+
+                if (inner is TaskCanceledException)
+                {
+                    if (cancelToken.IsCancellationRequested && ((TaskCanceledException)inner).CancellationToken == cancelToken)
+                    {
+                        // a real cancellation, triggered by the caller
+                        sb.AppendLine("Send messsage canceled by user");
+                    }
+                    sb.AppendLine(inner.Source + ":" + inner.Message + " (possibly request timeout)");
+                    continue;
+                }
+                // a web request timeout (possibly other things!?)
+                sb.AppendLine(inner.Source + ":" + inner.Message);
+            }
+            return sb.ToString();
+        }
         #endregion
 
         #region methods
 
-        public async Task<string> DoPostRequest(string address, string contentType, string data, CancellationToken ctsTocken)
+        public async Task<HttpResponseMessage> DoPostRequest(string address, string contentType, string data, CancellationToken ctsTocken)
         {
             using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
             {
-                CreateHeader(Headers, httpClient);
+                CreateHeader(httpClient);
                 using (var request = new HttpRequestMessage(HttpMethod.Post, address))
                 using (request.Content = new StringContent(data, Encoding.UTF8, contentType))
                 using (var response = await httpClient.SendAsync(request, ctsTocken))
                 {
-                    return await response.Content.ReadAsStringAsync();
+                    //if (!response.IsSuccessStatusCode)
+                    //    throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
+                    return response.EnsureSuccessStatusCode();//Content.ReadAsStringAsync();
                 }
             }
         }
-        public async Task<string> DoGetRequest(string address, string contentType, CancellationToken ctsTocken)
+        public async Task<HttpResponseMessage> DoGetRequest(string address, string contentType, CancellationToken ctsTocken)
         {
             using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
             {
-                CreateHeader(Headers, httpClient);
+                CreateHeader(httpClient);
                 httpClient.DefaultRequestHeaders.Add("ContentType", contentType);
                 using (HttpResponseMessage response = await httpClient.GetAsync(address, ctsTocken))
                 using (HttpContent content = response.Content)
                 {
-                    return await content.ReadAsStringAsync();
+                    //if (!response.IsSuccessStatusCode)
+                    //    throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
+                    return response.EnsureSuccessStatusCode();//content.ReadAsStringAsync();
                 }
             }
         }
 
-        public async Task<string> DoJsonPostRequest(string address, string data, CancellationToken ctsTocken)
+        public async Task DoPostRequest(string address, string contentType, string data, CancellationToken ctsTocken, Action<HttpStatusCode, string> result)
         {
             using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
             {
-                CreateHeader(Headers, httpClient);
+                CreateHeader(httpClient);
+                using (var request = new HttpRequestMessage(HttpMethod.Post, address))
+                using (request.Content = new StringContent(data, Encoding.UTF8, contentType))
+                using (var response = await httpClient.SendAsync(request, ctsTocken))
+                {
+                    if (!response.IsSuccessStatusCode)
+                        result(response.StatusCode, response.ReasonPhrase);
+                    else
+                        result(response.StatusCode, await response.Content.ReadAsStringAsync());
+                }
+            }
+        }
+        public async Task DoGetRequest(string address, string contentType, CancellationToken ctsTocken, Action<HttpStatusCode, string> result)
+        {
+            using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
+            {
+                CreateHeader(httpClient);
+                httpClient.DefaultRequestHeaders.Add("ContentType", contentType);
+                using (HttpResponseMessage response = await httpClient.GetAsync(address, ctsTocken))
+                using (HttpContent content = response.Content)
+                {
+                    if (!response.IsSuccessStatusCode)
+                        result(response.StatusCode, response.ReasonPhrase);
+                    else
+                        result(response.StatusCode, await response.Content.ReadAsStringAsync());
+                }
+            }
+        }
+
+        public async Task<HttpResponseMessage> DoJsonPostRequest(string address, string data, CancellationToken ctsTocken)
+        {
+            using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
+            {
+                CreateHeader(httpClient);
                 using (var request = new HttpRequestMessage(HttpMethod.Post, address))
                 using (request.Content = new StringContent(data, Encoding.UTF8, "application/json"))
                 using (var response = await httpClient.SendAsync(request, ctsTocken))
                 {
-                    return await response.Content.ReadAsStringAsync();
+                    //if (!response.IsSuccessStatusCode)
+                    //    throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
+                    return response.EnsureSuccessStatusCode();//response.Content.ReadAsStringAsync();
                 }
             }
         }
-        public async Task<string> DoJsonGetRequest(string address, CancellationToken ctsTocken)
+        public async Task DoJsonPostRequest(string address, string data, CancellationToken ctsTocken, Action<HttpStatusCode,string> result)
         {
             using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
             {
-                CreateHeader(Headers, httpClient);
+                CreateHeader(httpClient);
+                using (var request = new HttpRequestMessage(HttpMethod.Post, address))
+                using (request.Content = new StringContent(data, Encoding.UTF8, "application/json"))
+                using (var response = await httpClient.SendAsync(request, ctsTocken))
+                {
+                    if (!response.IsSuccessStatusCode)
+                        result(response.StatusCode, response.ReasonPhrase);
+                    else
+                        result(response.StatusCode, await response.Content.ReadAsStringAsync());
+                }
+            }
+        }
+        public async Task<HttpResponseMessage> DoJsonGetRequest(string address, CancellationToken ctsTocken)
+        {
+            using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
+            {
+                CreateHeader(httpClient);
                 httpClient.DefaultRequestHeaders.Add("ContentType", "application/json");
                 using (HttpResponseMessage response = await httpClient.GetAsync(address, ctsTocken))
                 using (HttpContent content = response.Content)
                 {
-                    return await content.ReadAsStringAsync();
+                    //if (!response.IsSuccessStatusCode)
+                    //    throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
+                    return response.EnsureSuccessStatusCode();//await content.ReadAsStringAsync();
+                }
+            }
+        }
+        public async Task DoJsonGetRequest(string address, CancellationToken ctsTocken, Action<HttpStatusCode, string> result)
+        {
+            using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
+            {
+                CreateHeader(httpClient);
+                httpClient.DefaultRequestHeaders.Add("ContentType", "application/json");
+                using (HttpResponseMessage response = await httpClient.GetAsync(address, ctsTocken))
+                using (HttpContent content = response.Content)
+                {
+                    if (!response.IsSuccessStatusCode)
+                        result(response.StatusCode, response.ReasonPhrase);
+                    else
+                        result(response.StatusCode, await content.ReadAsStringAsync());
                 }
             }
         }
 
-        public async Task<string> DoFormRequest(string address, string data, CancellationToken ctsTocken)
+        //from test app
+
+        //public async Task<string> DoJsonGetRequest2(string address, string headers, CancellationToken ctsTocken)
+        //{
+        //    using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
+        //    {
+        //        CreateHeader(httpClient);
+        //        httpClient.DefaultRequestHeaders.Add("ContentType", "application/json");
+        //        using (HttpResponseMessage response = await httpClient.GetAsync(address, ctsTocken))
+        //        using (HttpContent content = response.Content)
+        //        {
+        //            return await content.ReadAsStringAsync();
+        //        }
+        //    }
+        //}
+        //public async Task<string> DoJsonGetRequest2(string address, string[] keyValueHeaders, CancellationToken ctsTocken)
+        //{
+        //    using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
+        //    {
+        //        CreateHeader(keyValueHeaders, httpClient);
+        //        httpClient.DefaultRequestHeaders.Add("ContentType", "application/json");
+        //        using (HttpResponseMessage response = await httpClient.GetAsync(address, ctsTocken))
+        //        using (HttpContent content = response.Content)
+        //        {
+        //            return await content.ReadAsStringAsync();
+        //        }
+        //    }
+        //}
+        public async Task<HttpResponseMessage> DoFormRequest(string address, string data, CancellationToken ctsTocken)
         {
             var formContent = ParseForm(data);
             using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
             {
-                CreateHeader(Headers, httpClient);
+                CreateHeader(httpClient);
                 httpClient.DefaultRequestHeaders.Add("ContentType", "application/x-www-form-urlencoded");
                 using (var response = await httpClient.PostAsync(address, formContent, ctsTocken))
                 {
-                    return await response.Content.ReadAsStringAsync();
+                    //if (!response.IsSuccessStatusCode)
+                    //    throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
+                    return response.EnsureSuccessStatusCode();//.Content.ReadAsStringAsync();
                 }
             }
         }
-        public async Task<string> DoSoapRequest(string address, string soapAction, string data, CancellationToken ctsTocken)
+        public async Task DoFormRequest(string address, string data, CancellationToken ctsTocken, Action<HttpStatusCode, string> result)
+        {
+            var formContent = ParseForm(data);
+            using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
+            {
+                CreateHeader(httpClient);
+                httpClient.DefaultRequestHeaders.Add("ContentType", "application/x-www-form-urlencoded");
+                using (var response = await httpClient.PostAsync(address, formContent, ctsTocken))
+                {
+                    if (!response.IsSuccessStatusCode)
+                        result(response.StatusCode, response.ReasonPhrase);
+                    else
+                        result(response.StatusCode, await response.Content.ReadAsStringAsync());
+                }
+            }
+        }
+
+        public async Task<HttpResponseMessage> DoSoapRequest(string address, string soapAction, string data, CancellationToken ctsTocken)
         {
             using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
             {
-                CreateHeader(Headers, httpClient);
+                CreateHeader(httpClient);
                 httpClient.DefaultRequestHeaders.Add("SOAPAction", soapAction);
                 using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, address))
                 {
@@ -528,7 +1062,31 @@ namespace Nistec.Channels.Http
                     using (HttpResponseMessage response = await httpClient.SendAsync(request, ctsTocken))
                     {
                         //response.EnsureSuccessStatusCode(); // throws an Exception if 404, 500, etc.
-                        return await response.Content.ReadAsStringAsync();
+                        //if (!response.IsSuccessStatusCode)
+                        //    throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
+                        return response.EnsureSuccessStatusCode();//await response.Content.ReadAsStringAsync();
+                    }
+                }
+            }
+        }
+
+        public async Task DoSoapRequest(string address, string soapAction, string data, CancellationToken ctsTocken, Action<HttpStatusCode, string> result)
+        {
+            using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
+            {
+                CreateHeader(httpClient);
+                httpClient.DefaultRequestHeaders.Add("SOAPAction", soapAction);
+                using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, address))
+                {
+                    //request.Headers.Add("SOAPAction", soapAction);
+                    using (HttpContent content = new StringContent(data, Encoding.UTF8, "text/xml"))
+                    using (HttpResponseMessage response = await httpClient.SendAsync(request, ctsTocken))
+                    {
+                        //response.EnsureSuccessStatusCode(); // throws an Exception if 404, 500, etc.
+                        if (!response.IsSuccessStatusCode)
+                            result(response.StatusCode, response.ReasonPhrase);
+                        else
+                            result(response.StatusCode, await content.ReadAsStringAsync());
                     }
                 }
             }
@@ -538,7 +1096,7 @@ namespace Nistec.Channels.Http
         {
             using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
             {
-                CreateHeader(Headers, httpClient);
+                CreateHeader(httpClient);
                 httpClient.DefaultRequestHeaders.Add("SOAPAction", soapAction);
                 using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, address))
                 {
@@ -547,14 +1105,32 @@ namespace Nistec.Channels.Http
                     using (HttpResponseMessage response = await httpClient.SendAsync(request, ctsTocken))
                     {
                         //response.EnsureSuccessStatusCode(); // throws an Exception if 404, 500, etc.
+                        if (!response.IsSuccessStatusCode)
+                            throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
                         return await response.Content.ReadAsStreamAsync();
                     }
                 }
             }
         }
+
+
         #endregion
 
         #region multipart
+
+        public async Task<Stream> PostMultipart(string address, string boundary, CancellationToken ctsTocken, int ConnectTimeout = 5000)
+        {
+            using (var httpClient = new System.Net.Http.HttpClient() { Timeout = TimeSpan.FromMilliseconds(ConnectTimeout) })
+            {
+                CreateHeader(httpClient);
+                using (var request = new HttpRequestMessage(HttpMethod.Post, address))
+                using (request.Content = new MultipartFormDataContent(boundary))
+                using (var response = await httpClient.SendAsync(request, ctsTocken))
+                {
+                    return await response.Content.ReadAsStreamAsync();
+                }
+            }
+        }
 
         public static string CLeanQueryString(string qs)
         {
@@ -699,6 +1275,50 @@ namespace Nistec.Channels.Http
                 }
 
             }
+
+            public static async Task MultipartFormDataPost(string postUrl, Dictionary<string, object> postParameters, Action<HttpStatusCode, string> result)
+            {
+                Stream receiveStream = null;
+                StreamReader readStream = null;
+
+                try
+                {
+                    string formDataBoundary = String.Format("----------{0:N}", Guid.NewGuid());
+                    string contentType = "multipart/form-data; boundary=" + formDataBoundary;
+
+                    byte[] formData = GetMultipartFormData(postParameters, formDataBoundary);
+
+                    var wresponse = PostForm(postUrl, contentType, formData);
+
+                    Encoding enc = Encoding.GetEncoding("utf-8");
+
+                    receiveStream = wresponse.GetResponseStream();
+                    readStream = new StreamReader(receiveStream, enc);
+                    var response = await readStream.ReadToEndAsync();
+
+                    result(HttpStatusCode.OK, response);
+                }
+                catch (System.Net.WebException webExcp)
+                {
+                    throw webExcp;
+                }
+                catch (System.IO.IOException ioe)
+                {
+                    throw ioe;
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+                finally
+                {
+                    if (receiveStream != null)
+                        receiveStream.Close();
+                    if (readStream != null)
+                        readStream.Close();
+                }
+
+            }
             private static HttpWebResponse PostForm(string postUrl, string contentType, byte[] formData)
             {
                 HttpWebRequest request = WebRequest.Create(postUrl) as HttpWebRequest;
@@ -801,7 +1421,7 @@ namespace Nistec.Channels.Http
         #endregion
 
         #region static fast
-
+        /*
         public static string GetRequest(string uri)
         {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
@@ -970,7 +1590,7 @@ namespace Nistec.Channels.Http
                 }
             }
         }
-
+        */
         #endregion
 
         #region static
@@ -1005,8 +1625,8 @@ namespace Nistec.Channels.Http
                     {
                         if (entry.Key == "Authorization")
                         {
-                            //var schema = entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
-                            //var token = entry.Value.Substring(schema.Length).Trim().Replace("|", ":");
+                            //var scheme = entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
+                            //var token = entry.Value.Substring(scheme.Length).Trim().Replace("|", ":");
                             //var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
                             httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(scheme.ToString(), entry.Value);
                         }
@@ -1374,7 +1994,7 @@ namespace Nistec.Channels.Http
             return new GenericNameValue(new string[] { "Authorization", credetial });
         }
 
-        static Task<string> DoHttpRequest(string address, HttpMethod method, string contentType, string data, string schema, GenericNameValue headers)
+        static Task<string> DoHttpRequest(string address, HttpMethod method, string contentType, string data, string scheme, GenericNameValue headers)
         {
             //Dictionary<string, string> hd = null;
             //if (!string.IsNullOrEmpty(headers))
@@ -1398,10 +2018,10 @@ namespace Nistec.Channels.Http
                     {
                         if (entry.Key == "Authorization")
                         {
-                            //var schema = entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
-                            //var token = entry.Value.Substring(schema.Length).Trim().Replace("|", ":");
+                            //var scheme = entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
+                            //var token = entry.Value.Substring(scheme.Length).Trim().Replace("|", ":");
                             //var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
-                            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(schema.Trim(), entry.Value);
+                            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(scheme.Trim(), entry.Value);
                         }
                         else
                             httpClient.DefaultRequestHeaders.Add(entry.Key, entry.Value);
@@ -1451,10 +2071,10 @@ namespace Nistec.Channels.Http
                     {
                         if (entry.Key == "Authorization")
                         {
-                            var schema = entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
-                            var token = entry.Value.Substring(schema.Length).Trim().Replace("|", ":");
+                            var scheme = entry.Value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? "Bearer " : "Basic ";
+                            var token = entry.Value.Substring(scheme.Length).Trim().Replace("|", ":");
                             var credetial = Convert.ToBase64String(Encoding.UTF8.GetBytes(token));
-                            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(schema.Trim(), credetial);
+                            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(scheme.Trim(), credetial);
                         }
                         else
                             httpClient.DefaultRequestHeaders.Add(entry.Key, entry.Value);
