@@ -122,8 +122,8 @@ namespace Nistec.Channels
             Args = (NameValueArgs)info.GetValue("Args");
             TransformType = (TransformType)info.GetValue<byte>("TransformType");
             //mqh-EncodingName = Types.NZorEmpty(info.GetValue<string>("EncodingName"), DefaultEncoding);
-
-            SetContent(null, body);
+            SetBody(body, TypeName);
+            //SetContent(null, body);
         }
 
         protected MessageStream(IDictionary<string, object> dict) : this()
@@ -143,7 +143,9 @@ namespace Nistec.Channels
             Args = dict.Get<NameValueArgs>("Args");
             TransformType = (TransformType)dict.Get<byte>("TransformType");
             //mqh-EncodingName = Types.NZorEmpty(dict.Get<string>("EncodingName"), DefaultEncoding);
-            SetContent(null, body);
+
+            SetBody(body, TypeName);
+            //SetContent(null, body);
         }
 
         public MessageStream(MessageStream copy) : this()
@@ -168,7 +170,9 @@ namespace Nistec.Channels
             Args = copy.Args;
             TransformType = copy.TransformType;
             //mqh-EncodingName = copy.EncodingName;
-            SetContent(null, body);
+
+            SetBody(body, TypeName);
+            //SetContent(null, body);
         }
         #endregion
 
@@ -234,9 +238,71 @@ namespace Nistec.Channels
         /// Get or Set The message body stream.
         /// </summary>
         protected byte[] _Body;
-        protected object _Value;
+        //protected object _Value;
 
-      
+
+        public int BodyLength()
+        {
+            if (_Body == null)
+                return 0;
+            return _Body.Length;
+        }
+
+        public T GetBody<T>()
+        {
+            if (_Body == null || _Body.Length == 0)
+                return default(T);
+            //BodyStream.Position = 0;
+            using (var stream = BodyStream())
+            {
+                var ser = new BinarySerializer();
+                return ser.Deserialize<T>(stream);
+            }
+        }
+        public object GetBody()
+        {
+            if (_Body == null || _Body.Length == 0)
+                return null;
+            //BodyStream.Position = 0;
+            using (var stream = BodyStream())
+            {
+                var ser = new BinarySerializer();
+                return ser.Deserialize(stream);
+            }
+        }
+        [NoSerialize]
+        public object Content { get => GetBody(); set => SetBody(value); }
+        
+        //private void SetContent(object value)
+        //{
+        //    if (value != null)
+        //    {
+        //        TypeName = value.GetType().FullName;
+        //        _Body = BinarySerializer.SerializeToBytes(value);
+        //    }
+        //    else
+        //    {
+        //        TypeName = null;
+        //        _Body = null;
+
+        //    }
+        //}
+        //private void SetContent(byte[] body)
+        //{
+        //    if (body != null)
+        //    {
+        //        TypeName = body.GetType().FullName;
+        //        _Body = body;
+        //    }
+        //    else
+        //    {
+        //        TypeName = null;
+        //        _Body = null;
+
+        //    }
+        //}
+
+        /*
         public object GetBody()
         {
             if (_Value != null)
@@ -246,12 +312,7 @@ namespace Nistec.Channels
             SetContent(null, _Body);
             return _Value;
 
-            ////BodyStream.Position = 0;
-            //using (var stream = BodyStream())
-            //{
-            //    var ser = new BinarySerializer();
-            //    return ser.Deserialize(stream, true);
-            //}
+            
         }
         [NoSerialize]
         public object Content { get => GetBody(); set => SetBody(value); }
@@ -273,12 +334,7 @@ namespace Nistec.Channels
 
             }
         }
-
-        //protected byte[] BodyBinary();
-        //public abstract NetStream BodyStream();
-
-        //#region IBodyFormatter extend
-
+        */
         /// <summary>
         /// Set the given byte array to body stream.
         /// </summary>
@@ -289,7 +345,8 @@ namespace Nistec.Channels
             TypeName = (!string.IsNullOrEmpty(typeName)) ? typeName : typeof(object).FullName;
             if (value != null)
             {
-                SetContent(null, value);
+                _Body = value;
+                //SetContent(null, value);
             }
         }
         /// <summary>
@@ -303,10 +360,11 @@ namespace Nistec.Channels
             TypeName = (!string.IsNullOrEmpty(typeName)) ? typeName : typeof(object).FullName;
             if (ns != null)
             {
-                //if (copy)
-                //    ns.CopyTo(BodyStream);
-                //else
-                SetContent(null, ns.ToArray());
+                if (copy)
+                    _Body= ns.Copy().ToArray();
+                else
+                    _Body = ns.ToArray();
+                //SetContent(null, ns.ToArray());
             }
         }
 
@@ -380,22 +438,27 @@ namespace Nistec.Channels
             {
                 TypeName = typeof(object).FullName;
                 _Body = null;
-                _Value = null;
+                //_Value = null;
             }
             else if (value is byte[])
             {
                 TypeName = value.GetType().FullName;
-                SetContent(null, (byte[])value);
+                _Body = (byte[])value;
+                //SetContent(null, (byte[])value);
             }
             else if (value is NetStream)
             {
                 TypeName = value.GetType().FullName;
-                SetContent(null, ((NetStream)value).ToArray());
+                _Body = ((NetStream)value).ToArray();
+                //SetContent(null, ((NetStream)value).ToArray());
             }
             else
             {
                 TypeName = value.GetType().FullName;
-                SetContent(value, null);
+                _Body = BinarySerializer.SerializeToBytes(value);
+                //SetContent(value, null);
+
+
                 //_Value = value;
                 //using (NetStream ns = new NetStream())
                 //{
@@ -412,7 +475,8 @@ namespace Nistec.Channels
             TypeName = (type != null) ? type.FullName : typeof(object).FullName;
             if (stream != null)
             {
-                SetContent(null, stream.ToArray());
+                _Body = stream.ToArray();
+                //SetContent(null, stream.ToArray());
             }
         }
 
@@ -426,7 +490,8 @@ namespace Nistec.Channels
             TypeName = (type != null) ? type.FullName : typeof(object).FullName;
             if (value != null)
             {
-                SetContent(null, value);
+                _Body = value;
+                //SetContent(null, value);
             }
         }
         /// <summary>
@@ -1428,7 +1493,8 @@ namespace Nistec.Channels
             message.TransformType = (TransformType)dict.Get<byte>("TransformType");
             //mqh-message.EncodingName = Types.NZorEmpty(dict.Get<string>("EncodingName"), DefaultEncoding);
 
-            message.SetContent(null, body);
+            message.SetBody(body, message.TypeName);
+            //message.SetContent(null, body);
             return message;
         }
 
@@ -1456,7 +1522,8 @@ namespace Nistec.Channels
             message.Args = dict.Get<NameValueArgs>("Args");
             message.TransformType = (TransformType)dict.Get<byte>("TransformType");
             //mqh-message.EncodingName = Types.NZorEmpty(dict.Get<string>("EncodingName"), DefaultEncoding);
-            message.SetContent(null, body);
+            message.SetBody(body, message.TypeName);
+            //message.SetContent(null, body);
             return message;
         }
 

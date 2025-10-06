@@ -25,6 +25,7 @@ namespace Nistec.Channels.Http
         None,
         Basic,
         Bearer,
+        Co
     }
     public enum AuthMetods
     {

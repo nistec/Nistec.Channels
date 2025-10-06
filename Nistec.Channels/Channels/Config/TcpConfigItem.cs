@@ -65,6 +65,14 @@ namespace Nistec.Channels.Config
                 return Types.ToInt(this["Port"]);
             }
         }
+        [ConfigurationProperty("AllowedIp", IsRequired = false)]
+        public string AllowedIp
+        {
+            get
+            {
+                return this["AllowedIp"] as string;
+            }
+        }
 
         /// <summary>
         /// Get indicate if host server is async.

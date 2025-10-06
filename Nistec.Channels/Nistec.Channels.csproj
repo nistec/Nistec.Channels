@@ -91,6 +91,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Channels\http\HttpHeader.cs" />
     <Compile Include="Channels\http\HttpEnums.cs" />
     <Compile Include="Channels\http\Requester.cs" />
     <Compile Include="Channels\http\HttpRequestInfo.cs" />

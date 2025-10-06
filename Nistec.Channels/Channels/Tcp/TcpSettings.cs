@@ -137,7 +137,6 @@ namespace Nistec.Channels.Tcp
         /// Infinite
         /// </summary>
         public const int InfiniteReadTimeout = -1;
-
         public const int DefaultPingBufferSize = 1024;
         public const int DefaultPingReadTimeout = 2500;
         public const bool DefaultIsAsync = true;
@@ -158,7 +157,33 @@ namespace Nistec.Channels.Tcp
         ///  Get or Set Port.
         /// </summary>
         public int Port { get; set; }
-       
+        /// <summary>
+        /// AllowedIp
+        /// </summary>
+        string _AllowedIp;
+        string[] _AllowedIps;
+        public string AllowedIp
+        {
+            get { return _AllowedIp; }
+            set
+            {
+                _AllowedIp = value;
+                if (value != null)
+                    _AllowedIps = value.SplitTrim(',');
+            }
+        }
+
+        public string[] AllowedListIp
+        {
+            get
+            {
+                return _AllowedIps;
+                //if (string.IsNullOrEmpty(AllowedIp))
+                //    return null;
+                //return AllowedIp.SplitTrim(',');
+            }
+        }
+
         /// <summary>
         ///  Get or Set Indicates that the channel can be used for asynchronous reading and writing..
         /// </summary>
@@ -181,18 +206,21 @@ namespace Nistec.Channels.Tcp
         /// </summary>
         public int ReadTimeout { get; set; }
         /// <summary>
-        /// Get or Set ReceiveBufferSize (Default=8192).
+        /// Get or Set ReceiveBufferSize (Default=4096).
         /// </summary>
         public int ReceiveBufferSize { get; set; }
         /// <summary>
-        /// Get or Set SendBufferSize (Default=8192).
+        /// Get or Set SendBufferSize (Default=4096).
         /// </summary>
         public int SendBufferSize { get; set; }
         /// <summary>
         /// Get or Set the max socket errors
         /// </summary>
         public int MaxSocketError { get; set; }
-
+        /// <summary>
+        /// UseDataAvailable
+        /// </summary>
+        public bool UseDataAvailable { get; set; }
         /// <summary>
         ///  Get Host Address.
         /// </summary>
@@ -239,6 +267,7 @@ namespace Nistec.Channels.Tcp
             SendBufferSize = DefaultSendBufferSize;
             MaxServerConnections = 0;
             MaxSocketError = DefaultMaxSocketError;
+            UseDataAvailable = false;
         }
 
         /// <summary>
@@ -520,6 +549,7 @@ namespace Nistec.Channels.Tcp
                 HostName = settings.HostName,
                 Address = TcpSettings.EnsureHostAddress(settings.Address),
                 Port = settings.Port,
+                AllowedIp=settings.AllowedIp,
                 IsAsync = settings.IsAsync,
                 ReceiveBufferSize = settings.ReceiveBufferSize,
                 SendBufferSize = settings.SendBufferSize,
@@ -533,7 +563,7 @@ namespace Nistec.Channels.Tcp
         /// <summary>
         /// Parse TcpSettings
         /// </summary>
-        /// <param name="settings">tcp:localhost:1500?host[&timeout&buffer]</param>
+        /// <param name="settings">tcp:localhost:1500?host[timeout,buffer]</param>
         /// <returns></returns>
         public static TcpSettings Parse(string settings)
         {

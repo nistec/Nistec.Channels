@@ -72,6 +72,71 @@ namespace Nistec.Channels
         Response
     }
 
+    //See AckStatus
+    public enum ChannelState
+    {
+        None = 0,
+        //Succesfull
+        Ok = 200,
+        Scheduled = 201,
+        Received = 202,
+
+        BadRequest = 400,
+        Unauthorized = 401,
+        NotEnoughCredit = 402,//Payment Required
+        Forbidden = 403,//User or Account is blocked
+        ItemNotFound = 404,
+        MethodNotAllowed = 405, //Method Not Allowed
+        TokenVerificationExpired = 406, //Not Acceptable
+        ProxyAuthenticationRequired = 407,
+        RequestTimeout = 408,
+        SenderIsNotCconfirmed = 412,//Precondition Failed
+        SizeToolarge = 413, //Payload Too Large
+        Unsupported = 415,//Unsupported Media Type
+        IpAddressNotallowed = 416,//Range Not Satisfiable
+        Failed = 417,//Expectation Failed
+        Qoutaexceeds = 419,
+        UnprocessableContent = 422,
+        TargetIsBlocked = 423,
+        UpgradeRequired = 426,//Evaluationexpired
+        PreconditionRequired = 428,//UserNonConfirmed
+        TooManyRequests = 429,
+
+        //Server error
+        InternalServerError = 500,
+        NotImplemented = 501,
+        ConnectionError = 502,
+        ServiceUnavailable = 503,
+        TimeoutError = 504,
+        NetworkError = 505,
+        ArgumentError = 506,
+        OperationError = 508,
+        SerializeError = 510,
+        SecurityError = 511,
+
+        //Custom server error
+        //InvalidContent = 550,
+        //BillingEror = 551,
+        //NotificationError = 552,
+        //BlockedItem = 553,
+        //RejectedItem = 554,
+        //DuplicateKey = 555,
+        //PersonalizeError = 556,
+        //ParsingError = 557,
+        //QueueError = 558,
+        //LoadingError = 559,
+        //SqlError = 560,
+        //IOException = 561,
+
+        //fatal error
+        FatalException = 590,
+        FatalCarrierException = 591,
+        FatalSchedulerException = 592,
+
+        UnexpectedError = 599,
+        Exception = -1
+    }
+    /*
     public enum ChannelState
     {
         None = 0,
@@ -93,7 +158,7 @@ namespace Nistec.Channels
         Unsupported = 415,
         //NotEnoughCredit = 416,//Ip address not allowed
         Failed = 417,//Expectation Failed
-        UnprocessableConten =422,//Invalid Content
+        UnprocessableContent =422,//Invalid Content
         //Qouta exceeds = 419,
         //Target is blocked=423,
         //Invalid Price=425,
@@ -120,7 +185,7 @@ namespace Nistec.Channels
         UnexpectedError = 599,
         Exception = -1
     }
-
+    */
     public enum ChannelStateSection
     {
         None,

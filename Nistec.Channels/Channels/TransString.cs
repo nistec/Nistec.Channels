@@ -40,7 +40,7 @@ namespace Nistec.Channels
     /// String message stream
     /// </summary>
     [Serializable]
-    public class TransString : ITransformMessage, ITransformResponse, IDisposable
+    public class TransString : ITransformMessage, ITransformResponse, IDisposable, IDataStream
     {
 
         #region ctor
@@ -72,6 +72,48 @@ namespace Nistec.Channels
 
         public string Body { get; internal set; }
 
+        static byte[] StringToBytes(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return null;
+            return Encoding.UTF8.GetBytes(text);
+        }
+
+        #region IDataStream
+
+        public byte[] DataStream()
+        {
+            return StringToBytes(Body);
+        }
+        public byte[] GetBytes()
+        {
+            return  BinarySerializer.SerializeToBytes(this);
+        }
+        public virtual object ReadBody()
+        {
+            return Body;
+        }
+
+        public string TypeName { get; set; }
+        //string ToJson();
+        public TransType TransType { get; set; }
+
+        public string Message { get; set; }
+
+        public bool IsEmpty
+        {
+            get { return Body == null || Body.Length == 0; }
+        }
+
+        public object GetContent()
+        {
+            return Body;
+        }
+        //T ReadBody<T>();
+        //object GetContent();
+
+        #endregion
+
         #region ITransformMessage
         /// <summary>
         /// Get or Set DuplexTypes
@@ -101,10 +143,10 @@ namespace Nistec.Channels
             TransformType = TransformType.State;
         }
 
-        public byte[] GetBytes()
-        {
-            return Encoding.UTF8.GetBytes(Body);
-        }
+        //public byte[] GetBytes()
+        //{
+        //    return Encoding.UTF8.GetBytes(Body);
+        //}
         public byte[] GetBytes(Encoding encoding)
         {
             return encoding.GetBytes(Body);

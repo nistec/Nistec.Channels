@@ -190,6 +190,33 @@ namespace Nistec.Channels
 
         #endregion
 
+        #region Converters
+
+        public byte[] Serialize()
+        {
+            return BinarySerializer.SerializeToBytes(this);
+        }
+        public NetStream SerializeToStream()
+        {
+            return BinarySerializer.SerializeToStream(this);
+        }
+        public static MessageAck Deserialize(byte[] bytes)
+        {
+            return BinarySerializer.Deserialize<MessageAck>(bytes);
+        }
+
+        //public string ToJson()
+        //{
+        //    return JsonSerializer.Serialize(this);
+        //}
+
+        public static MessageAck Deserialize(string json)
+        {
+            return JsonSerializer.Deserialize<MessageAck>(json);
+        }
+
+        #endregion
+
         #region static
         public static MessageAck DoOk()
         {
@@ -228,7 +255,7 @@ namespace Nistec.Channels
         public static NetStream DoStream(ChannelState state, string message, object response=null)
         {
             MessageAck pm = new MessageAck(state, message, response);
-            return pm.Serialize();
+            return pm.SerializeToStream();
         }
         //public static TransStream ToTransStream(ChannelState state, string message, object response = null)
         //{

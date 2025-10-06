@@ -8,6 +8,21 @@ using System.Text;
 #pragma warning disable CS1591
 namespace Nistec.Channels
 {
+
+    public interface IDataStream
+    {
+        byte[] DataStream();
+        byte[] GetBytes();
+        object ReadBody();
+        //T ReadBody<T>();
+        object GetContent();
+        string TypeName { get; }
+        //string ToJson();
+        TransType TransType { get; set; }
+        bool IsEmpty { get; }
+        string Message { get; }
+    }
+
     public interface INotify
     {
         void Notify(params string[] args);

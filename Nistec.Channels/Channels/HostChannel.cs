@@ -54,9 +54,9 @@ namespace Nistec.Channels
             Segments = new string[5];
         }
         /// <summary>
-        /// tcp:localhost:1500?host[&timeout&buffer]
+        /// tcp:localhost:1500?host[timeout,buffer]
         /// </summary>
-        /// <param name="address">tcp:localhost:1500?host[&timeout&buffer]</param>
+        /// <param name="address">tcp:localhost:1500?host[timeout,buffer]</param>
         public HostChannel(string address)
         {
             Segments = new string[5];

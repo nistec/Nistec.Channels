@@ -37,10 +37,10 @@ namespace Nistec.Channels
 {
     //public enum FlexType : byte { None = 0, Object = 100, Stream = 101, Json = 102, Base64 = 103, Text = 104, Ack = 105, State = 106, Csv = 107, Xml = 108 }//{Message=0,Stream=1,Json=2 }
 
-    public enum FlexType : byte {Stream= 101, Json = 102, Base64 = 103, Text = 104, Csv = 107, Xml = 108 }
+    public enum FlexType : byte { Object = 100, Stream = 101, Json = 102, Base64 = 103, Text = 104, Csv = 107, Xml = 108 }
 
     [Serializable]
-    public class TransFlex : ISerialEntity, ISerialJson, IDisposable
+    public class TransFlex : ISerialEntity, ISerialJson, IDisposable, IDataStream
     {
         const string schema =
 @"
@@ -169,6 +169,40 @@ namespace Nistec.Channels
         }
         #endregion
 
+        #region IDataStream
+
+        public byte[] DataStream()
+        {
+            return InputStream;
+        }
+        public byte[] GetBytes()
+        {
+            return ToStream().ToArray();
+        }
+        public virtual object ReadBody()
+        {
+            if (InputStream == null)
+                return null;
+            //BodyStream.Position = 0;
+            var ser = new BinarySerializer();
+            return ser.Deserialize(new NetStream(InputStream));
+        }
+
+        //public string TypeName { get; set; }
+        //string ToJson();
+        public TransType TransType { get; set; }
+
+        //public string Message { get; set; }
+
+        public bool IsEmpty
+        {
+            get { return InputStream == null || InputStream.Length == 0; }
+        }
+        //T ReadBody<T>();
+        //object GetContent();
+
+        #endregion
+
         #region properties
 
         /// <summary>
@@ -229,6 +263,26 @@ namespace Nistec.Channels
 
         #region Set/Get Body
 
+        //public byte[] GetBytes()
+        //{
+        //    if (InputStream == null || InputStream.Length == 0)
+        //        return InputStream;
+        //    //if (TypeName == typeof(byte[]).FullName)
+        //    //    return BinarySerializer.Deserialize(InputStream);
+        //    //if (TypeName == typeof(NetStream).FullName)
+        //    //    return new NetStream(InputStream);
+        //    //if (SerializeTools.IsEntityClassOrStructSerialize(SerializeTools.GetType(TypeName)))
+        //    //    return BinarySerializer.Deserialize(InputStream);
+        //    else
+        //        return InputStream;
+
+        //    //if (_Body == null)
+        //    //    return null;
+        //    //byte[] bytes = new byte[_Body.Length];
+        //    //Array.Copy(_Body, bytes, _Body.Length);
+        //    //return bytes;
+        //}
+
         //public object Content
         //{
         //    get
@@ -238,6 +292,20 @@ namespace Nistec.Channels
         //        return Message;
         //    }
         //}
+
+        public NetStream ToStream()
+        {
+            NetStream stream = new NetStream();
+            EntityWrite(stream, null);
+            return stream;
+        }
+
+        public NetStream GetStream()
+        {
+            NetStream stream = new NetStream();
+            EntityRead(stream, null);
+            return stream;
+        }
 
         void SetBodyInternal(string typeName, string inputStream, string message)
         {
@@ -316,8 +384,17 @@ namespace Nistec.Channels
                         else
                             return Message;
                     }
+                case FlexType.Object:
+                    {
+                        var type = SerializeTools.GetType(TypeName);
+                        if (InputStream == null)
+                            return null;
+                        //BodyStream.Position = 0;
+                        return BinarySerializer.Deserialize(InputStream);
+                        //return ReadBody();
+                    }
                 default:
-                    return null;
+                    return this;
             }
         }
         /// <summary>
@@ -379,6 +456,10 @@ namespace Nistec.Channels
                         TypeName = value.GetType().FullName;
                         InputStream = null;
                         break;
+                    case FlexType.Object:
+                        InputStream = BinarySerializer.SerializeToBytes(value);
+                        TypeName = value.GetType().FullName;
+                        break;
                 }
             }
         }
@@ -410,7 +491,7 @@ namespace Nistec.Channels
         {
             if (!IsValidContent())
             {
-                throw new ChannelException(ChannelState.UnprocessableConten, "TransFlex Error: Invalid Content!");
+                throw new ChannelException(ChannelState.UnprocessableContent, "TransFlex Error: Invalid Content!");
             }
         }
 
@@ -418,7 +499,7 @@ namespace Nistec.Channels
         {
             if (!IsValidHeader())
             {
-                throw new ChannelException(ChannelState.UnprocessableConten, "TransFlex Error: Invalid one or more header properties (Topic,Source,Destination)!");
+                throw new ChannelException(ChannelState.UnprocessableContent, "TransFlex Error: Invalid one or more header properties (Topic,Source,Destination)!");
             }
         }
 

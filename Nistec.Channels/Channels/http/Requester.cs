@@ -57,6 +57,142 @@ namespace Nistec.Channels.Http
         //}
         #endregion
 
+        #region static
+        //public static HttpResponseMessage SendWebRequest(string url, string postData, string authToken, AuthScheme scheme = AuthScheme.Basic)
+        //{
+        //    var request = (HttpWebRequest)WebRequest.Create(url);
+        //    request.Headers.Add("Authorization", scheme.ToString() + " " + authToken);
+        //    request.Method = "POST";
+        //    request.ContentType = "application/json";// "application/x-www-form-urlencoded";
+        //    byte[] data = Encoding.UTF8.GetBytes(postData);
+        //    request.ContentLength = data.Length;
+        //    using (var stream = request.GetRequestStream())
+        //    {
+        //        stream.Write(data, 0, data.Length);
+        //    }
+        //    using (var response = (HttpWebResponse)request.GetResponse())
+        //    using (var stream = response.GetResponseStream())
+        //    using (var reader = new StreamReader(stream))
+        //    {
+        //        string result = reader.ReadToEnd();
+        //        //Console.WriteLine(result);
+        //        //return result;
+        //        return new HttpResponseMessage() { Content= new StringContent(result, Encoding.UTF8, "application/json"), StatusCode= HttpStatusCode.OK };
+        //    }
+        //}
+
+        public static string SendWebRequest(string url, string postData, string authToken, AuthScheme scheme = AuthScheme.Basic)
+        {
+            var request = (HttpWebRequest)WebRequest.Create(url);
+            request.Headers.Add("Authorization", scheme.ToString() + " " + authToken);
+            request.Method = "POST";
+            request.ContentType = "application/json";// "application/x-www-form-urlencoded";
+            byte[] data = Encoding.UTF8.GetBytes(postData);
+            request.ContentLength = data.Length;
+            using (var stream = request.GetRequestStream())
+            {
+                stream.Write(data, 0, data.Length);
+            }
+            using (var response = (HttpWebResponse)request.GetResponse())
+            using (var stream = response.GetResponseStream())
+            using (var reader = new StreamReader(stream))
+            {
+                return reader.ReadToEnd();
+                //Console.WriteLine(result);
+                //return result;
+                //return new HttpResponseMessage() { Content = new StringContent(result, Encoding.UTF8, "application/json"), StatusCode = HttpStatusCode.OK };
+            }
+        }
+
+        public static string SendPostMessage(string url, string data, HttpHeader header)
+        {
+            using (var httpClient = new System.Net.Http.HttpClient())
+            {
+                if (header != null)
+                    httpClient.DefaultRequestHeaders.Add("Authorization", header.AuthScheme.ToString() + " " + header.Token);
+                using (var request = new HttpRequestMessage(HttpMethod.Post, url))
+                //request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                using (request.Content = new StringContent(data, Encoding.UTF8, "application/json"))
+                using (var response = httpClient.SendAsync(request).GetAwaiter().GetResult())//, ctsTocken))
+                {
+                    return response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                }
+            }
+        }
+
+        //public static HttpResponseMessage SendPostMessage(string url, string data, HttpHeader header)
+        //{
+        //    using (var httpClient = new System.Net.Http.HttpClient())
+        //    {
+        //        if (header != null)
+        //            httpClient.DefaultRequestHeaders.Add("Authorization", header.AuthScheme.ToString() + " " + header.Token);
+        //        using (var request = new HttpRequestMessage(HttpMethod.Post, url))
+        //        //request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        //        using (request.Content = new StringContent(data, Encoding.UTF8, "application/json"))
+        //        using (var response = httpClient.SendAsync(request).GetAwaiter().GetResult())//, ctsTocken))
+        //        {
+        //            return response;
+        //        }
+        //    }
+        //}
+
+        public static string SendPostMessage(string url, string data, string authToken, AuthScheme scheme = AuthScheme.Basic)
+        {
+            using (var httpClient = new System.Net.Http.HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Add("Authorization", scheme.ToString() + " " + authToken);
+                using (var request = new HttpRequestMessage(HttpMethod.Post, url))
+                //request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                using (request.Content = new StringContent(data, Encoding.UTF8, "application/json"))
+                using (var response = httpClient.SendAsync(request).GetAwaiter().GetResult())//, ctsTocken))
+                {
+                    return response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                }
+            }
+        }
+
+        //public static HttpResponseMessage SendPostMessage(string url, string data, string authToken, AuthScheme scheme = AuthScheme.Basic)
+        //{
+        //    using (var httpClient = new System.Net.Http.HttpClient())
+        //    {
+        //        httpClient.DefaultRequestHeaders.Add("Authorization", scheme.ToString() + " " + authToken);
+        //        using (var request = new HttpRequestMessage(HttpMethod.Post, url))
+        //        //request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        //        using (request.Content = new StringContent(data, Encoding.UTF8, "application/json"))
+        //        using (var response = httpClient.SendAsync(request).GetAwaiter().GetResult())//, ctsTocken))
+        //        {
+        //            return response;
+        //        }
+        //    }
+        //}
+
+        public static async Task<string> SendPost(string url, string data, string authToken, AuthScheme scheme = AuthScheme.Basic)
+        {
+            using (var httpClient = new System.Net.Http.HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Add("Authorization", scheme.ToString() + " " + authToken);
+                var httpResponseMessage =
+                    await httpClient.PostAsync(url, new StringContent(data, Encoding.UTF8, "application/json"));// Application.Json));
+                httpResponseMessage.EnsureSuccessStatusCode();
+                return await httpResponseMessage.Content.ReadAsStringAsync();
+            }
+        }
+
+        public static async Task<string> SendGet(string requestUri, string authToken, AuthScheme scheme = AuthScheme.Basic)
+        {
+            using (var httpClient = new System.Net.Http.HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Add("Authorization", scheme.ToString() + " " + authToken);
+                var httpResponseMessage =
+                    await httpClient.GetAsync(requestUri);
+                httpResponseMessage.EnsureSuccessStatusCode();
+                return await httpResponseMessage.Content.ReadAsStringAsync();
+            }
+        }
+
+
+        #endregion
+
         #region properties
         //public int Timeout = 5000;
 
@@ -241,6 +377,9 @@ namespace Nistec.Channels.Http
         }
 
         #endregion
+
+        #region Invoke async
+
         public async Task<HttpResponseMessage> InvokePost(RequestType requestType, string address, string request, string[] keyValueHeaders=null)
         {
             try
@@ -652,6 +791,8 @@ namespace Nistec.Channels.Http
             //}
         }
 
+        #endregion
+
         #region Helpers
 
         //public static GenericNameValue GenericHeader(params string[] keyValue)
@@ -671,6 +812,11 @@ namespace Nistec.Channels.Http
         {
             var credetial = scheme.ToString() + " " + token;
             return new string[] { "Authorization", credetial };
+        }
+        public static string CreateAuthHeaderString(string userName, string password, AuthScheme scheme)
+        {
+            var token = CreateAuthToken(userName, password, scheme);
+            return $"Authorization: {token}";
         }
         //public static string[] CreateAuthHeader(string token, string scheme)
         //{

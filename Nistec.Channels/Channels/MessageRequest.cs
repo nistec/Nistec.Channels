@@ -262,7 +262,7 @@ namespace Nistec.Channels
                 if (args != null)
                 {
                     string[] nameValue = args.SplitTrim(':', ',', ';');
-                    Request = GenericNameValue.Create(nameValue);
+                    Request = GenericNameValue.Parse(nameValue);
                 }
                 DuplexType = queryString.GetEnum<DuplexTypes>("DuplexType", DuplexTypes.None);
                 TransformType = queryString.GetEnum<TransformType>("TransformType", TransformType.None);

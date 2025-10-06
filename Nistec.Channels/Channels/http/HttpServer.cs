@@ -347,7 +347,7 @@ namespace Nistec.Channels.Http
             }
             byte[] buffer = null;
 
-            if (bResponse.PeekTransType() == TransType.Json)
+            if (bResponse.TransType== TransType.Json)//.PeekTransType() == TransType.Json)
             {
                 var json = bResponse.ReadToJson();
                 buffer = Encoding.UTF8.GetBytes(json);
