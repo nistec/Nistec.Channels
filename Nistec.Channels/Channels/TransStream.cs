@@ -147,10 +147,10 @@ namespace Nistec.Channels
                 BodyStream = null;
             }
         }
-        public TransStream(object value, string command, TransType type = TransType.Object)
+        public TransStream(object value, string message, TransType type = TransType.Object)
         {
             TransType = type;
-            Message = command;
+            Message = message;
             State = 0;
             if (value != null)
             {

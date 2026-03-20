@@ -29,7 +29,7 @@ using System.Xml;
 namespace Nistec.Channels.Http
 {
 
-    
+
     /// <summary>
     /// Http Requester
     /// </summary>
@@ -40,7 +40,7 @@ namespace Nistec.Channels.Http
         {
             var client = new Requester();
             client.AddHeaderAuth("name", "pass", AuthScheme.Basic);
-            var response= await client.InvokePost(RequestType.Json,"https://myt.co.il","{\"data\":\"hello\"}");
+            var response = await client.InvokePost(RequestType.Json, "https://myt.co.il", "{\"data\":\"hello\"}");
             Console.WriteLine(response);
             return await JsonSerializer.DeserializeAsync<T>(await response.Content.ReadAsStringAsync());
         }
@@ -119,6 +119,24 @@ namespace Nistec.Channels.Http
                 }
             }
         }
+
+        public static string SendPostMessage(string url, string data, HttpHeader header, int timeout = 8000)
+        {
+            using (var httpClient = new System.Net.Http.HttpClient())
+            {
+                if (header != null)
+                    httpClient.DefaultRequestHeaders.Add("Authorization", header.AuthScheme.ToString() + " " + header.Token);
+                using (var request = new HttpRequestMessage(HttpMethod.Post, url))
+                //request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                using (request.Content = new StringContent(data, Encoding.UTF8, "application/json"))
+                using (var response = httpClient.SendAsync(request).GetAwaiter().GetResult())//, ctsTocken))
+                {
+                    return response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                }
+            }
+        }
+
+
 
         //public static HttpResponseMessage SendPostMessage(string url, string data, HttpHeader header)
         //{
